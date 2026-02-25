@@ -4,9 +4,18 @@ import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/tx_tile.dart';
 
 class TxList extends StatelessWidget {
-  const TxList({super.key, required this.items});
+  const TxList({
+    super.key,
+    required this.items,
+    this.onItemTap,
+    this.shrinkWrap = false,
+    this.physics,
+  });
 
   final List<TxItem> items;
+  final ValueChanged<TxItem>? onItemTap;
+  final bool shrinkWrap;
+  final ScrollPhysics? physics;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +30,15 @@ class TxList extends StatelessWidget {
     return ListView.builder(
       itemCount: items.length,
       padding: EdgeInsets.zero,
-      itemBuilder: (context, index) => TxTile(item: items[index]),
+      shrinkWrap: shrinkWrap,
+      physics: physics,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return TxTile(
+          item: item,
+          onTap: onItemTap == null ? null : () => onItemTap!(item),
+        );
+      },
     );
   }
 }

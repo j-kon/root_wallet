@@ -9,6 +9,8 @@ class TxDto {
     required this.timestamp,
     required this.direction,
     required this.status,
+    this.feeSats,
+    this.confirmations,
   });
 
   final String txId;
@@ -16,4 +18,6 @@ class TxDto {
   final DateTime timestamp;
   final TxDirection direction;
   final TxStatus status;
+  final int? feeSats;
+  final int? confirmations;
 }

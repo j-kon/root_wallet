@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:root_wallet/app/routing/main_shell.dart';
 import 'package:root_wallet/app/routing/routes.dart';
-import 'package:root_wallet/features/send/presentation/pages/confirm_send_page.dart';
+import 'package:root_wallet/features/send/presentation/pages/review_transfer_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/about_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/security_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/create_wallet_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/restore_wallet_page.dart';
+import 'package:root_wallet/features/wallet/presentation/pages/transaction_details_page.dart';
 
 abstract final class AppRouter {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
@@ -19,10 +20,13 @@ abstract final class AppRouter {
         return _page(settings, const BackupSeedPage());
       case AppRoutes.restoreWallet:
         return _page(settings, const RestoreWalletPage());
+      case AppRoutes.transactionDetails:
+        return _page(settings, const TransactionDetailsPage());
       case AppRoutes.send:
         return _page(settings, const MainShell(initialIndex: 2));
+      case AppRoutes.reviewTransfer:
       case AppRoutes.confirmSend:
-        return _page(settings, const ConfirmSendPage());
+        return _page(settings, const ReviewTransferPage());
       case AppRoutes.receive:
         return _page(settings, const MainShell(initialIndex: 1));
       case AppRoutes.settings:

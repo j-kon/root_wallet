@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/features/send/presentation/models/send_draft.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 
 class FeeSelector extends ConsumerWidget {
@@ -8,13 +9,13 @@ class FeeSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final form = ref.watch(sendFormProvider);
-    final notifier = ref.read(sendFormProvider.notifier);
+    final state = ref.watch(sendControllerProvider);
+    final notifier = ref.read(sendControllerProvider.notifier);
     final suggested = ref.watch(suggestedFeeProvider);
 
     final suggestedRate = suggested.maybeWhen(
       data: (fee) => fee.satsPerVByte,
-      orElse: () => form.feeRate.satsPerVByte,
+      orElse: () => state.draft.feeRate.satsPerVByte,
     );
 
     return Column(
@@ -40,7 +41,7 @@ class FeeSelector extends ConsumerWidget {
               icon: Icon(Icons.bolt_rounded),
             ),
           ],
-          selected: <FeePreset>{form.feePreset},
+          selected: <FeePreset>{state.draft.feePreset},
           onSelectionChanged: (selectedSet) {
             final selected = selectedSet.first;
             notifier.setFeePreset(selected, suggestedRate);
@@ -48,7 +49,7 @@ class FeeSelector extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          '${form.feeRate.satsPerVByte} sat/vB estimated',
+          '${state.draft.feeRate.satsPerVByte} sat/vB estimated',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

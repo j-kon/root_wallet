@@ -50,43 +50,54 @@ final getTransactionsUsecaseProvider = Provider<GetTransactions>(
   (ref) => GetTransactions(ref.watch(walletRepositoryProvider)),
 );
 
-class WalletViewState {
-  const WalletViewState({
+class WalletHomeState {
+  const WalletHomeState({
     required this.balance,
     required this.transactions,
     required this.receiveAddress,
+    required this.lastSyncedAt,
   });
 
   final Balance balance;
   final List<TxItem> transactions;
   final String receiveAddress;
+  final DateTime lastSyncedAt;
 }
 
-class WalletController extends AsyncNotifier<WalletViewState> {
+class WalletHomeController extends AsyncNotifier<WalletHomeState> {
   @override
-  Future<WalletViewState> build() {
+  Future<WalletHomeState> build() {
     return _load();
   }
 
-  Future<void> refresh() async {
-    state = const AsyncLoading();
+  Future<void> refresh() {
+    return sync(showLoading: true);
+  }
+
+  Future<void> sync({bool showLoading = false}) async {
+    if (showLoading || !state.hasValue) {
+      state = const AsyncLoading();
+    }
     state = await AsyncValue.guard(_load);
   }
 
-  Future<WalletViewState> _load() async {
+  Future<WalletHomeState> _load() async {
     final balance = await ref.read(getBalanceUsecaseProvider).call();
     final transactions = await ref.read(getTransactionsUsecaseProvider).call();
     final receiveAddress = await ref.read(getAddressUsecaseProvider).call();
 
-    return WalletViewState(
+    return WalletHomeState(
       balance: balance,
       transactions: transactions,
       receiveAddress: receiveAddress,
+      lastSyncedAt: DateTime.now(),
     );
   }
 }
 
-final walletControllerProvider =
-    AsyncNotifierProvider<WalletController, WalletViewState>(
-      WalletController.new,
+final walletHomeControllerProvider =
+    AsyncNotifierProvider<WalletHomeController, WalletHomeState>(
+      WalletHomeController.new,
     );
+
+final walletControllerProvider = walletHomeControllerProvider;

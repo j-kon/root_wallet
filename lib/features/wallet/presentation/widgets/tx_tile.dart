@@ -3,9 +3,10 @@ import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/shared/widgets/transaction_tile.dart';
 
 class TxTile extends StatelessWidget {
-  const TxTile({super.key, required this.item});
+  const TxTile({super.key, required this.item, this.onTap});
 
   final TxItem item;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +16,7 @@ class TxTile extends StatelessWidget {
       timestamp: item.timestamp,
       isIncoming: item.isIncoming,
       isPending: item.isPending,
+      onTap: onTap,
     );
   }
 }

@@ -18,6 +18,8 @@ class BdkSyncDatasource {
         timestamp: now.subtract(const Duration(hours: 6)),
         direction: TxDirection.incoming,
         status: TxStatus.confirmed,
+        feeSats: 850,
+        confirmations: 6,
       ),
       TxDto(
         txId: 'tx_002',
@@ -25,6 +27,8 @@ class BdkSyncDatasource {
         timestamp: now.subtract(const Duration(days: 1)),
         direction: TxDirection.outgoing,
         status: TxStatus.pending,
+        feeSats: 420,
+        confirmations: 0,
       ),
     ];
   }

@@ -11,6 +11,7 @@ class TransactionTile extends StatelessWidget {
     required this.timestamp,
     required this.isIncoming,
     required this.isPending,
+    this.onTap,
   });
 
   final String txId;
@@ -18,6 +19,7 @@ class TransactionTile extends StatelessWidget {
   final DateTime timestamp;
   final bool isIncoming;
   final bool isPending;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +37,7 @@ class TransactionTile extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: ListTile(
+        onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.xs,

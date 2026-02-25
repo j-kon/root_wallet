@@ -4,11 +4,14 @@ import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
+import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
+import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/balance_card.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/tx_list.dart';
@@ -29,7 +32,9 @@ class WalletHomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final walletState = ref.watch(walletControllerProvider);
+    final walletState = ref.watch(walletHomeControllerProvider);
+    final walletController = ref.read(walletHomeControllerProvider.notifier);
+    final backupConfirmed = ref.watch(backupReminderProvider);
     final env = ref.watch(appEnvProvider);
     final btcNgnRate = ref.watch(btcNgnRateProvider);
     final networkLabel = env.isProduction ? 'Mainnet' : 'Testnet';
@@ -69,8 +74,7 @@ class WalletHomePage extends ConsumerWidget {
             title: 'Could not load wallet',
             message: 'Could not load wallet: $error',
             actionLabel: 'Retry',
-            onAction: () =>
-                ref.read(walletControllerProvider.notifier).refresh(),
+            onAction: walletController.refresh,
             icon: Icons.wallet_outlined,
           );
         },
@@ -82,52 +86,113 @@ class WalletHomePage extends ConsumerWidget {
             error: (_, _) => '≈ NGN -- (TODO: rate)',
           );
 
-          return Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                BalanceCard(balance: data.balance, fiatAmountLabel: fiatLabel),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: PrimaryActionButton(
-                        icon: Icons.call_received_rounded,
-                        label: 'Receive',
-                        onTap:
-                            onReceiveRequested ??
-                            () => Navigator.of(
-                              context,
-                            ).pushNamed(AppRoutes.receive),
-                      ),
+          return RefreshIndicator(
+            onRefresh: () => walletController.sync(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xxs,
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: PrimaryActionButton(
-                        icon: Icons.send_rounded,
-                        label: 'Send',
-                        onTap:
-                            onSendRequested ??
-                            () =>
-                                Navigator.of(context).pushNamed(AppRoutes.send),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.sync_rounded,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            AppDateTime.updatedAgo(data.lastSyncedAt),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Sync now',
+                          onPressed: () => walletController.sync(),
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (backupConfirmed.valueOrNull == false) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    InfoBanner(
+                      type: InfoBannerType.warning,
+                      message:
+                          'Back up your recovery phrase to secure your funds.',
+                      icon: Icons.shield_outlined,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton(
+                        onPressed: () =>
+                            Navigator.of(context).pushNamed(AppRoutes.backupSeed),
+                        child: const Text('Back up now'),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                SectionHeader(
-                  title: 'Activity',
-                  trailing: IconButton(
-                    onPressed: () =>
-                        ref.read(walletControllerProvider.notifier).refresh(),
-                    tooltip: 'Refresh activity',
-                    icon: const Icon(Icons.refresh_rounded),
+                  const SizedBox(height: AppSpacing.md),
+                  BalanceCard(
+                    balance: data.balance,
+                    fiatAmountLabel: fiatLabel,
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Expanded(child: TxList(items: data.transactions)),
-              ],
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: PrimaryActionButton(
+                          icon: Icons.call_received_rounded,
+                          label: 'Receive',
+                          onTap:
+                              onReceiveRequested ??
+                              () => Navigator.of(
+                                context,
+                              ).pushNamed(AppRoutes.receive),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: PrimaryActionButton(
+                          icon: Icons.send_rounded,
+                          label: 'Send',
+                          onTap:
+                              onSendRequested ??
+                              () => Navigator.of(
+                                context,
+                              ).pushNamed(AppRoutes.send),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const SectionHeader(title: 'Activity'),
+                  const SizedBox(height: AppSpacing.xs),
+                  TxList(
+                    items: data.transactions,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    onItemTap: (tx) {
+                      Navigator.of(
+                        context,
+                      ).pushNamed(AppRoutes.transactionDetails, arguments: tx);
+                    },
+                  ),
+                ],
+              ),
             ),
           );
         },

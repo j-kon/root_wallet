@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/features/send/data/datasources/broadcast_datasource.dart';
 import 'package:root_wallet/features/send/data/datasources/mempool_fee_datasource.dart';
 import 'package:root_wallet/features/send/data/repositories/send_repository_impl.dart';
@@ -11,6 +10,7 @@ import 'package:root_wallet/features/send/domain/repositories/send_repository.da
 import 'package:root_wallet/features/send/domain/usecases/broadcast_tx.dart';
 import 'package:root_wallet/features/send/domain/usecases/build_tx.dart';
 import 'package:root_wallet/features/send/domain/usecases/sign_tx.dart';
+import 'package:root_wallet/features/send/presentation/models/send_draft.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 
 final mempoolFeeDatasourceProvider = Provider<MempoolFeeDatasource>(
@@ -43,82 +43,42 @@ final suggestedFeeProvider = FutureProvider<FeeRate>((ref) {
   return ref.watch(mempoolFeeDatasourceProvider).recommendedFee();
 });
 
-enum FeePreset { slow, standard, fast }
-
-extension FeePresetX on FeePreset {
-  String get label {
-    return switch (this) {
-      FeePreset.slow => 'Slow',
-      FeePreset.standard => 'Standard',
-      FeePreset.fast => 'Fast',
-    };
-  }
-}
-
-class SendFormState {
-  const SendFormState({
-    required this.address,
-    required this.amountBtcText,
-    required this.feeRate,
-    required this.feePreset,
-    this.builtPsbt,
+class SendState {
+  const SendState({
+    required this.draft,
     this.errorMessage,
-    this.isSubmitting = false,
+    this.isSending = false,
+    this.lastTxId,
   });
 
-  factory SendFormState.initial() {
-    return const SendFormState(
-      address: '',
-      amountBtcText: '',
-      feeRate: FeeRate(satsPerVByte: 1),
-      feePreset: FeePreset.standard,
-    );
+  factory SendState.initial() {
+    return SendState(draft: SendDraft.initial());
   }
 
-  final String address;
-  final String amountBtcText;
-  final FeeRate feeRate;
-  final FeePreset feePreset;
-  final String? builtPsbt;
+  final SendDraft draft;
   final String? errorMessage;
-  final bool isSubmitting;
+  final bool isSending;
+  final String? lastTxId;
 
-  SendFormState copyWith({
-    String? address,
-    String? amountBtcText,
-    FeeRate? feeRate,
-    FeePreset? feePreset,
-    String? builtPsbt,
+  SendState copyWith({
+    SendDraft? draft,
     String? errorMessage,
-    bool? isSubmitting,
-    bool clearBuiltPsbt = false,
+    bool? isSending,
+    String? lastTxId,
     bool clearError = false,
+    bool clearTxId = false,
   }) {
-    return SendFormState(
-      address: address ?? this.address,
-      amountBtcText: amountBtcText ?? this.amountBtcText,
-      feeRate: feeRate ?? this.feeRate,
-      feePreset: feePreset ?? this.feePreset,
-      builtPsbt: clearBuiltPsbt ? null : (builtPsbt ?? this.builtPsbt),
+    return SendState(
+      draft: draft ?? this.draft,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      isSubmitting: isSubmitting ?? this.isSubmitting,
+      isSending: isSending ?? this.isSending,
+      lastTxId: clearTxId ? null : (lastTxId ?? this.lastTxId),
     );
   }
 
-  double? get amountBtc {
-    return double.tryParse(amountBtcText.trim());
-  }
+  int? get amountSats => draft.amountSats;
 
-  int? get amountSats {
-    final btc = amountBtc;
-    if (btc == null || btc <= 0) {
-      return null;
-    }
-
-    return (btc * AppConstants.satoshisPerBitcoin).round();
-  }
-
-  int get estimatedFeeSats => feeRate.satsPerVByte * 140;
+  int get estimatedFeeSats => draft.feeRate.satsPerVByte * 140;
 
   int? get totalSats {
     final sats = amountSats;
@@ -128,45 +88,45 @@ class SendFormState {
     return sats + estimatedFeeSats;
   }
 
-  bool get canSubmit => address.trim().isNotEmpty && amountSats != null;
+  bool get canReview => draft.canReview;
 }
 
-class SendFormNotifier extends StateNotifier<SendFormState> {
-  SendFormNotifier(this._ref) : super(SendFormState.initial()) {
+class SendController extends StateNotifier<SendState> {
+  SendController(this._ref) : super(SendState.initial()) {
     _primeFee();
   }
 
   final Ref _ref;
 
-  void resetAfterSuccess() {
-    state = SendFormState.initial().copyWith(
-      feeRate: state.feeRate,
-      feePreset: state.feePreset,
+  void setAddress(String value) {
+    state = state.copyWith(
+      draft: state.draft.copyWith(address: value),
       clearError: true,
-      clearBuiltPsbt: true,
+      clearTxId: true,
     );
   }
 
-  void setAddress(String value) {
-    state = state.copyWith(address: value, clearError: true);
-  }
-
   void setAmountBtc(String value) {
-    state = state.copyWith(amountBtcText: value, clearError: true);
+    state = state.copyWith(
+      draft: state.draft.copyWith(amountBtcText: value),
+      clearError: true,
+      clearTxId: true,
+    );
   }
 
   void setFeePreset(FeePreset preset, int suggestedRate) {
     final satsPerVByte = _rateForPreset(preset, suggestedRate);
     state = state.copyWith(
-      feePreset: preset,
-      feeRate: FeeRate(satsPerVByte: satsPerVByte),
+      draft: state.draft.copyWith(
+        feePreset: preset,
+        feeRate: FeeRate(satsPerVByte: satsPerVByte),
+      ),
       clearError: true,
     );
   }
 
-  Future<bool> buildTransaction() async {
-    final address = state.address.trim();
-    if (!_isValidBitcoinAddress(address)) {
+  bool validateForReview() {
+    if (!state.draft.hasValidAddress) {
       state = state.copyWith(errorMessage: 'Invalid address');
       return false;
     }
@@ -177,21 +137,29 @@ class SendFormNotifier extends StateNotifier<SendFormState> {
       return false;
     }
 
-    state = state.copyWith(
-      isSubmitting: true,
-      clearError: true,
-      clearBuiltPsbt: true,
-    );
+    state = state.copyWith(clearError: true);
+    return true;
+  }
+
+  Future<String?> send() async {
+    if (!validateForReview()) {
+      return null;
+    }
+
+    final amountSats = state.amountSats!;
+    final address = state.draft.address.trim();
+
+    state = state.copyWith(isSending: true, clearError: true, clearTxId: true);
 
     try {
       final balance = await _ref.read(getBalanceUsecaseProvider).call();
       final totalToSpend = amountSats + state.estimatedFeeSats;
       if (totalToSpend > balance.totalSats) {
         state = state.copyWith(
-          isSubmitting: false,
+          isSending: false,
           errorMessage: 'Insufficient balance',
         );
-        return false;
+        return null;
       }
 
       final psbt = await _ref
@@ -200,40 +168,35 @@ class SendFormNotifier extends StateNotifier<SendFormState> {
             SendRequest(
               address: address,
               amountSats: amountSats,
-              feeRate: state.feeRate,
+              feeRate: state.draft.feeRate,
             ),
           );
-      state = state.copyWith(isSubmitting: false, builtPsbt: psbt);
-      return true;
-    } catch (_) {
-      state = state.copyWith(
-        isSubmitting: false,
-        errorMessage: 'Network error. Try again.',
-      );
-      return false;
-    }
-  }
-
-  Future<String?> signAndBroadcast() async {
-    final psbt = state.builtPsbt;
-    if (psbt == null) {
-      return null;
-    }
-
-    state = state.copyWith(isSubmitting: true, clearError: true);
-
-    try {
       final signed = await _ref.read(signTxUsecaseProvider).call(psbt);
       final txId = await _ref.read(broadcastTxUsecaseProvider).call(signed);
-      state = state.copyWith(isSubmitting: false);
+
+      state = state.copyWith(isSending: false, lastTxId: txId);
       return txId;
     } catch (_) {
       state = state.copyWith(
-        isSubmitting: false,
+        isSending: false,
         errorMessage: 'Network error. Try again.',
       );
       return null;
     }
+  }
+
+  void resetAfterSuccess() {
+    final feePreset = state.draft.feePreset;
+    final feeRate = state.draft.feeRate;
+
+    state = SendState.initial().copyWith(
+      draft: SendDraft.initial().copyWith(
+        feePreset: feePreset,
+        feeRate: feeRate,
+      ),
+      clearError: true,
+      clearTxId: true,
+    );
   }
 
   Future<void> _primeFee() async {
@@ -248,24 +211,10 @@ class SendFormNotifier extends StateNotifier<SendFormState> {
       FeePreset.fast => max(1, suggestedRate + 4),
     };
   }
-
-  bool _isValidBitcoinAddress(String address) {
-    if (address.isEmpty) {
-      return false;
-    }
-
-    final normalized = address.toLowerCase();
-    if (normalized.startsWith('bc1') ||
-        normalized.startsWith('tb1') ||
-        normalized.startsWith('bcrt1')) {
-      return address.length >= 14;
-    }
-
-    final legacyPattern = RegExp(r'^[13mn2][a-km-zA-HJ-NP-Z1-9]{25,34}$');
-    return legacyPattern.hasMatch(address);
-  }
 }
 
-final sendFormProvider = StateNotifierProvider<SendFormNotifier, SendFormState>(
-  (ref) => SendFormNotifier(ref),
+final sendControllerProvider = StateNotifierProvider<SendController, SendState>(
+  (ref) => SendController(ref),
 );
+
+final sendFormProvider = sendControllerProvider;

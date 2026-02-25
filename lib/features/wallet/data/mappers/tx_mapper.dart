@@ -10,7 +10,11 @@ class TxMapper {
       amountSats: dto.amountSats,
       timestamp: dto.timestamp,
       isIncoming: dto.direction == TxDirection.incoming,
-      isPending: dto.status == TxStatus.pending,
+      status: dto.status == TxStatus.pending
+          ? TxItemStatus.pending
+          : TxItemStatus.confirmed,
+      feeSats: dto.feeSats,
+      confirmations: dto.confirmations,
     );
   }
 }

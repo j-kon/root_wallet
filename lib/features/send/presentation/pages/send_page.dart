@@ -25,9 +25,9 @@ class _SendPageState extends ConsumerState<SendPage> {
   @override
   void initState() {
     super.initState();
-    final form = ref.read(sendFormProvider);
-    _addressController = TextEditingController(text: form.address);
-    _amountController = TextEditingController(text: form.amountBtcText);
+    final state = ref.read(sendControllerProvider);
+    _addressController = TextEditingController(text: state.draft.address);
+    _amountController = TextEditingController(text: state.draft.amountBtcText);
   }
 
   @override
@@ -39,13 +39,13 @@ class _SendPageState extends ConsumerState<SendPage> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(sendFormProvider);
-    final notifier = ref.read(sendFormProvider.notifier);
+    final state = ref.watch(sendControllerProvider);
+    final controller = ref.read(sendControllerProvider.notifier);
     final btcNgnRate = ref.watch(btcNgnRateProvider);
 
     final estimatedNgn = btcNgnRate.when(
       data: (rate) {
-        final amountBtc = state.amountBtc;
+        final amountBtc = state.draft.amountBtc;
         if (amountBtc == null) {
           return 'Enter BTC amount to estimate NGN';
         }
@@ -79,7 +79,7 @@ class _SendPageState extends ConsumerState<SendPage> {
                         }
 
                         _addressController.text = text;
-                        notifier.setAddress(text);
+                        controller.setAddress(text);
                       },
                       icon: const Icon(Icons.content_paste_rounded),
                     ),
@@ -95,7 +95,7 @@ class _SendPageState extends ConsumerState<SendPage> {
                   ],
                 ),
               ),
-              onChanged: notifier.setAddress,
+              onChanged: controller.setAddress,
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
@@ -107,7 +107,7 @@ class _SendPageState extends ConsumerState<SendPage> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              onChanged: notifier.setAmountBtc,
+              onChanged: controller.setAmountBtc,
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(estimatedNgn, style: Theme.of(context).textTheme.bodySmall),
@@ -121,15 +121,15 @@ class _SendPageState extends ConsumerState<SendPage> {
               ),
             const Spacer(),
             PrimaryButton(
-              label: state.isSubmitting ? 'Preparing...' : 'Review transfer',
-              onPressed: state.isSubmitting || !state.canSubmit
+              label: 'Review transfer',
+              onPressed: state.isSending || !state.canReview
                   ? null
-                  : () async {
-                      final ok = await notifier.buildTransaction();
-                      if (!ok || !context.mounted) {
+                  : () {
+                      final valid = controller.validateForReview();
+                      if (!valid || !context.mounted) {
                         return;
                       }
-                      Navigator.of(context).pushNamed(AppRoutes.confirmSend);
+                      Navigator.of(context).pushNamed(AppRoutes.reviewTransfer);
                     },
             ),
           ],

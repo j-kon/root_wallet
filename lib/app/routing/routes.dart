@@ -3,8 +3,10 @@ abstract final class AppRoutes {
   static const createWallet = '/wallet/create';
   static const backupSeed = '/wallet/backup';
   static const restoreWallet = '/wallet/restore';
+  static const transactionDetails = '/wallet/transaction';
 
   static const send = '/send';
+  static const reviewTransfer = '/send/review';
   static const confirmSend = '/send/confirm';
   static const receive = '/receive';
 
