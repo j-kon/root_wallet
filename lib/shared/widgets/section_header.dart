@@ -11,10 +11,15 @@ class SectionHeader extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-        // ignore: use_null_aware_elements
-        if (trailing != null) trailing!,
+        ...?(trailing == null ? null : <Widget>[trailing!]),
       ],
     );
   }

@@ -17,12 +17,14 @@ class BdkSyncDatasource {
         amountSats: 150000,
         timestamp: now.subtract(const Duration(hours: 6)),
         direction: TxDirection.incoming,
+        status: TxStatus.confirmed,
       ),
       TxDto(
         txId: 'tx_002',
         amountSats: 32000,
         timestamp: now.subtract(const Duration(days: 1)),
         direction: TxDirection.outgoing,
+        status: TxStatus.pending,
       ),
     ];
   }

@@ -15,3 +15,7 @@ final ratesRepositoryProvider = Provider<RatesRepository>(
 final btcUsdRateProvider = FutureProvider<FxRate>((ref) {
   return ref.watch(ratesRepositoryProvider).fetchRate();
 });
+
+final btcNgnRateProvider = FutureProvider<FxRate>((ref) {
+  return ref.watch(ratesRepositoryProvider).fetchRate(quote: 'NGN');
+});

@@ -1,40 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
+import 'package:root_wallet/shared/widgets/balance_card.dart' as shared;
 
 class BalanceCard extends StatelessWidget {
-  const BalanceCard({super.key, required this.balance, this.onReceiveTap});
+  const BalanceCard({
+    super.key,
+    required this.balance,
+    required this.fiatAmountLabel,
+  });
 
   final Balance balance;
-  final VoidCallback? onReceiveTap;
+  final String fiatAmountLabel;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Total balance',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${balance.btc.toStringAsFixed(8)} BTC',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 4),
-            Text('${balance.totalSats} sats'),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: onReceiveTap,
-              icon: const Icon(Icons.qr_code),
-              label: const Text('Receive'),
-            ),
-          ],
-        ),
-      ),
+    return shared.BalanceCard(
+      btcAmount: AppFormatters.btc(balance.btc),
+      fiatAmountLabel: fiatAmountLabel,
     );
   }
 }

@@ -8,6 +8,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Wallet'), findsOneWidget);
-    expect(find.text('Transactions'), findsOneWidget);
+    expect(find.text('Activity'), findsOneWidget);
   });
 }

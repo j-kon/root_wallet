@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:root_wallet/app/theme/colors.dart';
+import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 
 class AddressQr extends StatelessWidget {
@@ -8,21 +10,30 @@ class AddressQr extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).colorScheme.outline),
-          borderRadius: BorderRadius.circular(12),
-        ),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.qr_code_2, size: 128),
-            const SizedBox(height: 12),
+            AspectRatio(
+              aspectRatio: 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: const Center(
+                  child: Icon(Icons.qr_code_2_rounded, size: 168),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
             Text(
               AppFormatters.maskAddress(address),
+              style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
           ],

@@ -10,4 +10,8 @@ abstract final class AppFormatters {
   }
 
   static String sats(int value) => '$value sats';
+
+  static String btc(double value) => '${value.toStringAsFixed(8)} BTC';
+
+  static String ngn(double value) => 'NGN ${value.toStringAsFixed(2)}';
 }

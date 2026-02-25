@@ -11,12 +11,16 @@ class TxList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const EmptyState(message: 'No transactions yet');
+      return const EmptyState(
+        title: 'No activity yet',
+        message: 'Receive BTC to see transactions here.',
+        icon: Icons.receipt_long_outlined,
+      );
     }
 
-    return ListView.separated(
+    return ListView.builder(
       itemCount: items.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
+      padding: EdgeInsets.zero,
       itemBuilder: (context, index) => TxTile(item: items[index]),
     );
   }

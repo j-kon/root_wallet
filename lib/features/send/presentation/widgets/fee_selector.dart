@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:root_wallet/features/send/domain/entities/fee_rate.dart';
+import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 
 class FeeSelector extends ConsumerWidget {
@@ -12,29 +12,46 @@ class FeeSelector extends ConsumerWidget {
     final notifier = ref.read(sendFormProvider.notifier);
     final suggested = ref.watch(suggestedFeeProvider);
 
-    final options = <int>{1, 2, 5, 10, 20, form.feeRate.satsPerVByte};
-    if (suggested.hasValue) {
-      options.add(suggested.value!.satsPerVByte);
-    }
+    final suggestedRate = suggested.maybeWhen(
+      data: (fee) => fee.satsPerVByte,
+      orElse: () => form.feeRate.satsPerVByte,
+    );
 
-    final sorted = options.toList()..sort();
-
-    return DropdownButtonFormField<int>(
-      initialValue: form.feeRate.satsPerVByte,
-      decoration: const InputDecoration(
-        labelText: 'Fee rate (sat/vB)',
-        border: OutlineInputBorder(),
-      ),
-      items: [
-        for (final value in sorted)
-          DropdownMenuItem<int>(value: value, child: Text('$value sat/vB')),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Fee speed', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: AppSpacing.xs),
+        SegmentedButton<FeePreset>(
+          segments: const [
+            ButtonSegment<FeePreset>(
+              value: FeePreset.slow,
+              label: Text('Slow'),
+              icon: Icon(Icons.hourglass_bottom_rounded),
+            ),
+            ButtonSegment<FeePreset>(
+              value: FeePreset.standard,
+              label: Text('Standard'),
+              icon: Icon(Icons.timelapse_rounded),
+            ),
+            ButtonSegment<FeePreset>(
+              value: FeePreset.fast,
+              label: Text('Fast'),
+              icon: Icon(Icons.bolt_rounded),
+            ),
+          ],
+          selected: <FeePreset>{form.feePreset},
+          onSelectionChanged: (selectedSet) {
+            final selected = selectedSet.first;
+            notifier.setFeePreset(selected, suggestedRate);
+          },
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '${form.feeRate.satsPerVByte} sat/vB estimated',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ],
-      onChanged: (value) {
-        if (value == null) {
-          return;
-        }
-        notifier.setFeeRate(FeeRate(satsPerVByte: value));
-      },
     );
   }
 }
