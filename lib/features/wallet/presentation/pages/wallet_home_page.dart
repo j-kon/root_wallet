@@ -16,7 +16,16 @@ import 'package:root_wallet/shared/widgets/primary_action_button.dart';
 import 'package:root_wallet/shared/widgets/section_header.dart';
 
 class WalletHomePage extends ConsumerWidget {
-  const WalletHomePage({super.key});
+  const WalletHomePage({
+    super.key,
+    this.onReceiveRequested,
+    this.onSendRequested,
+    this.onSettingsRequested,
+  });
+
+  final VoidCallback? onReceiveRequested;
+  final VoidCallback? onSendRequested;
+  final VoidCallback? onSettingsRequested;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -47,7 +56,9 @@ class WalletHomePage extends ConsumerWidget {
           ),
         ),
         IconButton(
-          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.settings),
+          onPressed:
+              onSettingsRequested ??
+              () => Navigator.of(context).pushNamed(AppRoutes.settings),
           icon: const Icon(Icons.settings),
         ),
       ],
@@ -84,8 +95,11 @@ class WalletHomePage extends ConsumerWidget {
                       child: PrimaryActionButton(
                         icon: Icons.call_received_rounded,
                         label: 'Receive',
-                        onTap: () =>
-                            Navigator.of(context).pushNamed(AppRoutes.receive),
+                        onTap:
+                            onReceiveRequested ??
+                            () => Navigator.of(
+                              context,
+                            ).pushNamed(AppRoutes.receive),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -93,8 +107,10 @@ class WalletHomePage extends ConsumerWidget {
                       child: PrimaryActionButton(
                         icon: Icons.send_rounded,
                         label: 'Send',
-                        onTap: () =>
-                            Navigator.of(context).pushNamed(AppRoutes.send),
+                        onTap:
+                            onSendRequested ??
+                            () =>
+                                Navigator.of(context).pushNamed(AppRoutes.send),
                       ),
                     ),
                   ],
