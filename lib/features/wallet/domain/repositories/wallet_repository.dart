@@ -1,0 +1,11 @@
+import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
+import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
+
+abstract class WalletRepository {
+  Future<WalletIdentity> createWallet();
+  Future<WalletIdentity> restoreWallet({required String mnemonic});
+  Future<String> getAddress();
+  Future<Balance> getBalance();
+  Future<List<TxItem>> getTransactions();
+}

@@ -1,0 +1,24 @@
+abstract class SecureStorage {
+  Future<void> write({required String key, required String value});
+  Future<String?> read({required String key});
+  Future<void> delete({required String key});
+}
+
+class InMemorySecureStorage implements SecureStorage {
+  final Map<String, String> _storage = <String, String>{};
+
+  @override
+  Future<void> delete({required String key}) async {
+    _storage.remove(key);
+  }
+
+  @override
+  Future<String?> read({required String key}) async {
+    return _storage[key];
+  }
+
+  @override
+  Future<void> write({required String key, required String value}) async {
+    _storage[key] = value;
+  }
+}
