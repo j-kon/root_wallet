@@ -3,7 +3,11 @@ import 'package:root_wallet/app/env/app_env.dart';
 import 'package:root_wallet/app/env/dev_env.dart';
 import 'package:root_wallet/core/logging/logger.dart';
 import 'package:root_wallet/core/network/api_client.dart';
+import 'package:root_wallet/core/security/biometric_service.dart';
+import 'package:root_wallet/core/security/lock_service.dart';
+import 'package:root_wallet/core/security/pin_lock_service.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final appEnvProvider = Provider<AppEnv>((ref) => const DevEnv());
 
@@ -13,8 +17,29 @@ final loggerProvider = Provider<AppLogger>((ref) {
 });
 
 final secureStorageProvider = Provider<SecureStorage>(
-  (ref) => InMemorySecureStorage(),
+  (ref) => FlutterSecureStorageAdapter(),
 );
+
+final biometricServiceProvider = Provider<BiometricService>(
+  (ref) => LocalAuthBiometricService(),
+);
+
+final pinLockServiceProvider = Provider<PinLockService>(
+  (ref) => PinLockService(ref.watch(secureStorageProvider)),
+);
+
+final lockServiceProvider = Provider<LockService>(
+  (ref) => LockService(
+    pinLockService: ref.watch(pinLockServiceProvider),
+    biometricService: ref.watch(biometricServiceProvider),
+  ),
+);
+
+final sharedPreferencesProvider = FutureProvider<SharedPreferences>((
+  ref,
+) async {
+  return SharedPreferences.getInstance();
+});
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final env = ref.watch(appEnvProvider);

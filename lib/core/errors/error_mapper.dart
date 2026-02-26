@@ -1,10 +1,66 @@
 import 'package:root_wallet/core/errors/app_exception.dart';
 import 'package:root_wallet/core/errors/failure.dart';
 
-Failure mapErrorToFailure(Object error, [StackTrace? stackTrace]) {
-  if (error is AppException) {
-    return Failure(message: error.message, stackTrace: stackTrace);
+enum ErrorContext { general, network, sync, send, broadcast }
+
+String mapErrorToMessage(
+  Object error, {
+  ErrorContext context = ErrorContext.general,
+  bool includeDebugDetails = false,
+}) {
+  final raw = error.toString();
+  final normalized = raw.toLowerCase();
+
+  String message;
+  if (normalized.contains('invalid address')) {
+    message = 'Invalid address.';
+  } else if (normalized.contains('insufficient')) {
+    message = 'Insufficient balance.';
+  } else if (normalized.contains('broadcast')) {
+    message = 'Transaction failed to send. Try again.';
+  } else if (_isNetworkLike(normalized)) {
+    message = switch (context) {
+      ErrorContext.sync => 'Couldn\'t sync right now.',
+      _ => 'Network issue. Try again.',
+    };
+  } else {
+    message = switch (context) {
+      ErrorContext.sync => 'Couldn\'t sync right now.',
+      ErrorContext.broadcast => 'Transaction failed to send. Try again.',
+      ErrorContext.send => 'Couldn\'t prepare transaction. Try again.',
+      ErrorContext.network => 'Network issue. Try again.',
+      ErrorContext.general => 'Something went wrong. Please try again.',
+    };
   }
 
-  return Failure(message: 'Unexpected error: $error', stackTrace: stackTrace);
+  if (includeDebugDetails) {
+    return '$message\n\nDebug details: $raw';
+  }
+
+  return message;
+}
+
+Failure mapErrorToFailure(
+  Object error, [
+  StackTrace? stackTrace,
+  ErrorContext context = ErrorContext.general,
+]) {
+  if (error is AppException) {
+    return Failure(
+      message: mapErrorToMessage(error.message, context: context),
+      stackTrace: stackTrace,
+    );
+  }
+
+  return Failure(
+    message: mapErrorToMessage(error, context: context),
+    stackTrace: stackTrace,
+  );
+}
+
+bool _isNetworkLike(String normalizedError) {
+  return normalizedError.contains('socket') ||
+      normalizedError.contains('timeout') ||
+      normalizedError.contains('network') ||
+      normalizedError.contains('connection');
 }

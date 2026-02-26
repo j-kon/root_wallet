@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_sync_datasource.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_wallet_datasource.dart';
+import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
 import 'package:root_wallet/features/wallet/data/mappers/tx_mapper.dart';
 import 'package:root_wallet/features/wallet/data/repositories/wallet_repository_impl.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
@@ -11,6 +15,7 @@ import 'package:root_wallet/features/wallet/domain/usecases/get_address.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_balance.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_transactions.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/restore_wallet.dart';
+import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 
 final bdkWalletDatasourceProvider = Provider<BdkWalletDatasource>(
   (ref) => BdkWalletDatasource(),
@@ -50,24 +55,57 @@ final getTransactionsUsecaseProvider = Provider<GetTransactions>(
   (ref) => GetTransactions(ref.watch(walletRepositoryProvider)),
 );
 
+final walletSnapshotCacheProvider = FutureProvider<WalletSnapshotCache>((
+  ref,
+) async {
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  return WalletSnapshotCache(prefs);
+});
+
 class WalletHomeState {
   const WalletHomeState({
     required this.balance,
     required this.transactions,
     required this.receiveAddress,
     required this.lastSyncedAt,
+    required this.isOffline,
   });
 
   final Balance balance;
   final List<TxItem> transactions;
   final String receiveAddress;
   final DateTime lastSyncedAt;
+  final bool isOffline;
+
+  WalletHomeState copyWith({
+    Balance? balance,
+    List<TxItem>? transactions,
+    String? receiveAddress,
+    DateTime? lastSyncedAt,
+    bool? isOffline,
+  }) {
+    return WalletHomeState(
+      balance: balance ?? this.balance,
+      transactions: transactions ?? this.transactions,
+      receiveAddress: receiveAddress ?? this.receiveAddress,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      isOffline: isOffline ?? this.isOffline,
+    );
+  }
 }
 
 class WalletHomeController extends AsyncNotifier<WalletHomeState> {
   @override
-  Future<WalletHomeState> build() {
-    return _load();
+  Future<WalletHomeState> build() async {
+    final cached = await _readCachedState();
+    if (cached != null) {
+      unawaited(sync());
+      return cached.copyWith(isOffline: true);
+    }
+
+    final fresh = await _loadRemoteState();
+    await _writeCache(fresh);
+    return fresh;
   }
 
   Future<void> refresh() {
@@ -75,13 +113,33 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
   }
 
   Future<void> sync({bool showLoading = false}) async {
-    if (showLoading || !state.hasValue) {
+    final previous = state.valueOrNull;
+    if (showLoading || previous == null) {
       state = const AsyncLoading();
     }
-    state = await AsyncValue.guard(_load);
+
+    try {
+      final fresh = await _loadRemoteState();
+      await _writeCache(fresh);
+      state = AsyncData(fresh);
+      return;
+    } catch (error, stackTrace) {
+      final cached = await _readCachedState();
+      if (cached != null) {
+        state = AsyncData(cached.copyWith(isOffline: true));
+        return;
+      }
+
+      if (previous != null) {
+        state = AsyncData(previous.copyWith(isOffline: true));
+        return;
+      }
+
+      state = AsyncError(error, stackTrace);
+    }
   }
 
-  Future<WalletHomeState> _load() async {
+  Future<WalletHomeState> _loadRemoteState() async {
     final balance = await ref.read(getBalanceUsecaseProvider).call();
     final transactions = await ref.read(getTransactionsUsecaseProvider).call();
     final receiveAddress = await ref.read(getAddressUsecaseProvider).call();
@@ -91,7 +149,71 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
       transactions: transactions,
       receiveAddress: receiveAddress,
       lastSyncedAt: DateTime.now(),
+      isOffline: false,
     );
+  }
+
+  Future<WalletHomeState?> _readCachedState() async {
+    final cache = await ref.read(walletSnapshotCacheProvider.future);
+    final snapshot = await cache.read();
+    if (snapshot == null) {
+      return null;
+    }
+
+    return WalletHomeState(
+      balance: Balance(
+        confirmedSats: snapshot.confirmedSats,
+        pendingSats: snapshot.pendingSats,
+      ),
+      transactions: snapshot.transactions
+          .map(
+            (tx) => TxItem(
+              txId: tx.txId,
+              amountSats: tx.amountSats,
+              timestamp: DateTime.fromMillisecondsSinceEpoch(tx.timestampMs),
+              isIncoming: tx.isIncoming,
+              status: tx.status == 'pending'
+                  ? TxItemStatus.pending
+                  : TxItemStatus.confirmed,
+              feeSats: tx.feeSats,
+              confirmations: tx.confirmations,
+            ),
+          )
+          .toList(growable: false),
+      receiveAddress: snapshot.receiveAddress,
+      lastSyncedAt: DateTime.fromMillisecondsSinceEpoch(
+        snapshot.lastSyncedAtMs,
+      ),
+      isOffline: true,
+    );
+  }
+
+  Future<void> _writeCache(WalletHomeState state) async {
+    final cache = await ref.read(walletSnapshotCacheProvider.future);
+    final snapshot = WalletSnapshot(
+      confirmedSats: state.balance.confirmedSats,
+      pendingSats: state.balance.pendingSats,
+      receiveAddress: state.receiveAddress,
+      lastSyncedAtMs: state.lastSyncedAt.millisecondsSinceEpoch,
+      transactions: state.transactions
+          .take(20)
+          .map(
+            (tx) => WalletSnapshotTx(
+              txId: tx.txId,
+              amountSats: tx.amountSats,
+              timestampMs: tx.timestamp.millisecondsSinceEpoch,
+              isIncoming: tx.isIncoming,
+              status: tx.status == TxItemStatus.pending
+                  ? 'pending'
+                  : 'confirmed',
+              feeSats: tx.feeSats,
+              confirmations: tx.confirmations,
+            ),
+          )
+          .toList(growable: false),
+    );
+
+    await cache.write(snapshot);
   }
 }
 

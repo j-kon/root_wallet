@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/core/errors/error_mapper.dart';
 import 'package:root_wallet/features/send/data/datasources/broadcast_datasource.dart';
 import 'package:root_wallet/features/send/data/datasources/mempool_fee_datasource.dart';
 import 'package:root_wallet/features/send/data/repositories/send_repository_impl.dart';
@@ -176,10 +177,10 @@ class SendController extends StateNotifier<SendState> {
 
       state = state.copyWith(isSending: false, lastTxId: txId);
       return txId;
-    } catch (_) {
+    } catch (error) {
       state = state.copyWith(
         isSending: false,
-        errorMessage: 'Network error. Try again.',
+        errorMessage: mapErrorToMessage(error, context: ErrorContext.broadcast),
       );
       return null;
     }

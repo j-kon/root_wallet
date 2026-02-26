@@ -4,6 +4,7 @@ import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/core/errors/error_mapper.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
@@ -70,9 +71,14 @@ class WalletHomePage extends ConsumerWidget {
       body: walletState.when(
         loading: () => const Loading(label: 'Loading wallet...'),
         error: (error, _) {
+          final message = mapErrorToMessage(
+            error,
+            context: ErrorContext.sync,
+            includeDebugDetails: !env.isProduction,
+          );
           return EmptyState(
             title: 'Could not load wallet',
-            message: 'Could not load wallet: $error',
+            message: message,
             actionLabel: 'Retry',
             onAction: walletController.refresh,
             icon: Icons.wallet_outlined,
@@ -139,10 +145,20 @@ class WalletHomePage extends ConsumerWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: OutlinedButton(
-                        onPressed: () =>
-                            Navigator.of(context).pushNamed(AppRoutes.backupSeed),
+                        onPressed: () => Navigator.of(
+                          context,
+                        ).pushNamed(AppRoutes.backupSeed),
                         child: const Text('Back up now'),
                       ),
+                    ),
+                  ],
+                  if (data.isOffline) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    InfoBanner(
+                      type: InfoBannerType.warning,
+                      message:
+                          'Offline. Showing last updated data from ${AppDateTime.ymdHm(data.lastSyncedAt)}.',
+                      icon: Icons.wifi_off_rounded,
                     ),
                   ],
                   const SizedBox(height: AppSpacing.md),
