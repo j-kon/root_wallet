@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:root_wallet/app/routing/app_start_gate.dart';
 import 'package:root_wallet/app/routing/main_shell.dart';
 import 'package:root_wallet/app/routing/routes.dart';
+import 'package:root_wallet/features/onboarding/presentation/pages/confirm_seed_page.dart';
+import 'package:root_wallet/features/onboarding/presentation/pages/welcome_page.dart';
 import 'package:root_wallet/features/send/presentation/pages/review_transfer_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/about_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/security_page.dart';
@@ -13,11 +16,25 @@ abstract final class AppRouter {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case AppRoutes.walletHome:
-        return _page(settings, const MainShell());
+        return _page(settings, const AppStartGate());
+      case AppRoutes.welcome:
+        return _page(settings, const WelcomePage());
       case AppRoutes.createWallet:
         return _page(settings, const CreateWalletPage());
       case AppRoutes.backupSeed:
-        return _page(settings, const BackupSeedPage());
+        final args = settings.arguments;
+        final options = args is BackupSeedPageArgs
+            ? args
+            : const BackupSeedPageArgs();
+        return _page(
+          settings,
+          BackupSeedPage(
+            requireReauth: options.requireReauth,
+            isOnboardingFlow: options.isOnboardingFlow,
+          ),
+        );
+      case AppRoutes.confirmSeed:
+        return _page(settings, const ConfirmSeedPage());
       case AppRoutes.restoreWallet:
         return _page(settings, const RestoreWalletPage());
       case AppRoutes.transactionDetails:
@@ -36,7 +53,7 @@ abstract final class AppRouter {
       case AppRoutes.about:
         return _page(settings, const AboutPage());
       default:
-        return _page(settings, const MainShell());
+        return _page(settings, const AppStartGate());
     }
   }
 

@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Root Wallet uses the camera to scan Bitcoin QR codes.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Root Wallet uses Face ID to unlock your wallet securely.</string>
 </dict>
 </plist>

@@ -13,6 +13,7 @@ import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
+import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/balance_card.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/tx_list.dart';
@@ -145,9 +146,13 @@ class WalletHomePage extends ConsumerWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: OutlinedButton(
-                        onPressed: () => Navigator.of(
-                          context,
-                        ).pushNamed(AppRoutes.backupSeed),
+                        onPressed: () => Navigator.of(context).pushNamed(
+                          AppRoutes.backupSeed,
+                          arguments: const BackupSeedPageArgs(
+                            requireReauth: true,
+                            isOnboardingFlow: false,
+                          ),
+                        ),
                         child: const Text('Back up now'),
                       ),
                     ),

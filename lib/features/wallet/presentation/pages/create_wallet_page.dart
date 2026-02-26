@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/routing/routes.dart';
+import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
-import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
+import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 
 class CreateWalletPage extends ConsumerWidget {
   const CreateWalletPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(onboardingControllerProvider);
+    final controller = ref.read(onboardingControllerProvider.notifier);
+
     return AppScaffold(
       title: 'Create Wallet',
       body: Padding(
@@ -21,21 +27,31 @@ class CreateWalletPage extends ConsumerWidget {
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 24),
+            if (state.errorMessage != null) ...[
+              InfoBanner(
+                type: InfoBannerType.error,
+                message: state.errorMessage!,
+              ),
+              const SizedBox(height: 16),
+            ],
             PrimaryButton(
-              label: 'Create',
+              label: state.isBusy ? 'Creating...' : 'Create',
               onPressed: () async {
-                final identity = await ref
-                    .read(createWalletUsecaseProvider)
-                    .call();
+                final created = await controller.createWallet();
                 if (!context.mounted) {
                   return;
                 }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Wallet created: ${identity.fingerprint}'),
+
+                if (!created) {
+                  return;
+                }
+                Navigator.of(context).pushReplacementNamed(
+                  AppRoutes.backupSeed,
+                  arguments: const BackupSeedPageArgs(
+                    requireReauth: false,
+                    isOnboardingFlow: true,
                   ),
                 );
-                Navigator.of(context).pop();
               },
             ),
           ],

@@ -15,16 +15,21 @@ import 'package:root_wallet/features/send/presentation/models/send_draft.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 
 final mempoolFeeDatasourceProvider = Provider<MempoolFeeDatasource>(
-  (ref) => MempoolFeeDatasource(),
+  (ref) => MempoolFeeDatasource(
+    walletDatasource: ref.watch(bdkWalletDatasourceProvider),
+  ),
 );
 
 final broadcastDatasourceProvider = Provider<BroadcastDatasource>(
-  (ref) => BroadcastDatasource(),
+  (ref) => BroadcastDatasource(
+    walletDatasource: ref.watch(bdkWalletDatasourceProvider),
+  ),
 );
 
 final sendRepositoryProvider = Provider<SendRepository>((ref) {
   return SendRepositoryImpl(
     broadcastDatasource: ref.watch(broadcastDatasourceProvider),
+    walletDatasource: ref.watch(bdkWalletDatasourceProvider),
   );
 });
 

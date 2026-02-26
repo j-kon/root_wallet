@@ -1,5 +1,14 @@
+import 'package:bdk_flutter/bdk_flutter.dart';
+import 'package:root_wallet/features/wallet/data/datasources/bdk_wallet_datasource.dart';
+
 class BroadcastDatasource {
-  Future<String> broadcast(String rawTx) async {
-    return 'txid_${DateTime.now().millisecondsSinceEpoch}';
+  BroadcastDatasource({required BdkWalletDatasource walletDatasource})
+    : _walletDatasource = walletDatasource;
+
+  final BdkWalletDatasource _walletDatasource;
+
+  Future<String> broadcast(Transaction transaction) async {
+    final blockchain = await _walletDatasource.resolveBlockchain();
+    return blockchain.broadcast(transaction: transaction);
   }
 }

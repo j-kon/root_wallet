@@ -30,13 +30,9 @@ class TransactionDetailsPage extends ConsumerWidget {
     }
 
     final tx = args;
-    final env = ref.watch(appEnvProvider);
     final btcAmount = tx.amountSats / AppConstants.satoshisPerBitcoin;
     final statusLabel = tx.isPending ? 'Pending' : 'Confirmed';
-    final explorerBase = env.isProduction
-        ? 'https://mempool.space/tx/'
-        : 'https://mempool.space/testnet/tx/';
-    final explorerUri = Uri.parse('$explorerBase${tx.txId}');
+    final explorerUri = Uri.parse('https://mempool.space/testnet/tx/${tx.txId}');
 
     return AppScaffold(
       title: 'Transaction',

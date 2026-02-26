@@ -8,6 +8,8 @@ import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
+import 'package:root_wallet/features/send/presentation/models/scanned_btc_uri.dart';
+import 'package:root_wallet/features/send/presentation/pages/scan_address_page.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/send/presentation/widgets/fee_selector.dart';
 
@@ -85,10 +87,27 @@ class _SendPageState extends ConsumerState<SendPage> {
                     ),
                     IconButton(
                       tooltip: 'Scan QR',
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('QR scan coming soon.')),
+                      onPressed: () async {
+                        final result = await Navigator.of(context).push<
+                          ScannedBtcUri
+                        >(
+                          MaterialPageRoute<ScannedBtcUri>(
+                            builder: (_) => const ScanAddressPage(),
+                          ),
                         );
+                        if (!context.mounted || result == null) {
+                          return;
+                        }
+
+                        _addressController.text = result.address;
+                        controller.setAddress(result.address);
+
+                        final amountBtc = result.amountBtc;
+                        if (amountBtc != null) {
+                          final normalized = _normalizeBtcAmount(amountBtc);
+                          _amountController.text = normalized;
+                          controller.setAmountBtc(normalized);
+                        }
                       },
                       icon: const Icon(Icons.qr_code_scanner_rounded),
                     ),
@@ -136,5 +155,13 @@ class _SendPageState extends ConsumerState<SendPage> {
         ),
       ),
     );
+  }
+
+  String _normalizeBtcAmount(double value) {
+    final fixed = value.toStringAsFixed(8);
+    final trimmed = fixed
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+    return trimmed.isEmpty ? '0' : trimmed;
   }
 }

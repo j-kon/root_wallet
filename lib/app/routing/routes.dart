@@ -1,7 +1,9 @@
 abstract final class AppRoutes {
   static const walletHome = '/';
+  static const welcome = '/welcome';
   static const createWallet = '/wallet/create';
   static const backupSeed = '/wallet/backup';
+  static const confirmSeed = '/wallet/backup/confirm';
   static const restoreWallet = '/wallet/restore';
   static const transactionDetails = '/wallet/transaction';
 

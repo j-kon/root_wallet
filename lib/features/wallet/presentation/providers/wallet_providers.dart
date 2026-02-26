@@ -13,16 +13,22 @@ import 'package:root_wallet/features/wallet/domain/repositories/wallet_repositor
 import 'package:root_wallet/features/wallet/domain/usecases/create_wallet.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_address.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_balance.dart';
+import 'package:root_wallet/features/wallet/domain/usecases/get_recovery_phrase.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_transactions.dart';
+import 'package:root_wallet/features/wallet/domain/usecases/has_wallet.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/restore_wallet.dart';
 import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 
 final bdkWalletDatasourceProvider = Provider<BdkWalletDatasource>(
-  (ref) => BdkWalletDatasource(),
+  (ref) => BdkWalletDatasource(
+    secureStorage: ref.watch(secureStorageProvider),
+  ),
 );
 
 final bdkSyncDatasourceProvider = Provider<BdkSyncDatasource>(
-  (ref) => BdkSyncDatasource(),
+  (ref) => BdkSyncDatasource(
+    walletDatasource: ref.watch(bdkWalletDatasourceProvider),
+  ),
 );
 
 final txMapperProvider = Provider<TxMapper>((ref) => const TxMapper());
@@ -37,6 +43,10 @@ final walletRepositoryProvider = Provider<WalletRepository>((ref) {
 
 final createWalletUsecaseProvider = Provider<CreateWallet>(
   (ref) => CreateWallet(ref.watch(walletRepositoryProvider)),
+);
+
+final hasWalletUsecaseProvider = Provider<HasWallet>(
+  (ref) => HasWallet(ref.watch(walletRepositoryProvider)),
 );
 
 final restoreWalletUsecaseProvider = Provider<RestoreWallet>(
@@ -54,6 +64,14 @@ final getBalanceUsecaseProvider = Provider<GetBalance>(
 final getTransactionsUsecaseProvider = Provider<GetTransactions>(
   (ref) => GetTransactions(ref.watch(walletRepositoryProvider)),
 );
+
+final getRecoveryPhraseUsecaseProvider = Provider<GetRecoveryPhrase>(
+  (ref) => GetRecoveryPhrase(ref.watch(walletRepositoryProvider)),
+);
+
+final recoveryPhraseProvider = FutureProvider<String>((ref) {
+  return ref.watch(getRecoveryPhraseUsecaseProvider).call();
+});
 
 final walletSnapshotCacheProvider = FutureProvider<WalletSnapshotCache>((
   ref,

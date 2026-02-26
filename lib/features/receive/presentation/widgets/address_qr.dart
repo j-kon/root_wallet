@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
@@ -10,6 +11,8 @@ class AddressQr extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final qrPayload = 'bitcoin:$address';
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -25,8 +28,21 @@ class AddressQr extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: const Center(
-                  child: Icon(Icons.qr_code_2_rounded, size: 168),
+                child: Center(
+                  child: QrImageView(
+                    data: qrPayload,
+                    version: QrVersions.auto,
+                    size: 220,
+                    backgroundColor: AppColors.surface,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: AppColors.textPrimary,
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ),
               ),
             ),

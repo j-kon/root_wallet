@@ -20,6 +20,11 @@ class WalletRepositoryImpl implements WalletRepository {
   final TxMapper _txMapper;
 
   @override
+  Future<bool> hasWallet() {
+    return _walletDatasource.hasWallet();
+  }
+
+  @override
   Future<WalletIdentity> createWallet() {
     return _walletDatasource.createWallet();
   }
@@ -30,7 +35,17 @@ class WalletRepositoryImpl implements WalletRepository {
   }
 
   @override
+  Future<String> getRecoveryPhrase() async {
+    final phrase = await _walletDatasource.getMnemonic();
+    if (phrase == null || phrase.trim().isEmpty) {
+      throw StateError('No wallet recovery phrase found.');
+    }
+    return phrase;
+  }
+
+  @override
   Future<Balance> getBalance() async {
+    await _syncDatasource.sync();
     final confirmed = await _syncDatasource.confirmedBalance();
     final pending = await _syncDatasource.pendingBalance();
     return Balance(confirmedSats: confirmed, pendingSats: pending);
@@ -38,6 +53,7 @@ class WalletRepositoryImpl implements WalletRepository {
 
   @override
   Future<List<TxItem>> getTransactions() async {
+    await _syncDatasource.sync();
     final txs = await _syncDatasource.transactions();
     return txs.map(_txMapper.fromDto).toList(growable: false);
   }

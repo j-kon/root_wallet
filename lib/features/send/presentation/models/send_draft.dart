@@ -66,13 +66,11 @@ class SendDraft {
     }
 
     final normalized = candidate.toLowerCase();
-    if (normalized.startsWith('bc1') ||
-        normalized.startsWith('tb1') ||
-        normalized.startsWith('bcrt1')) {
+    if (normalized.startsWith('tb1')) {
       return candidate.length >= 14;
     }
 
-    final legacyPattern = RegExp(r'^[13mn2][a-km-zA-HJ-NP-Z1-9]{25,34}$');
+    final legacyPattern = RegExp(r'^[mn2][a-km-zA-HJ-NP-Z1-9]{25,34}$');
     return legacyPattern.hasMatch(candidate);
   }
 
