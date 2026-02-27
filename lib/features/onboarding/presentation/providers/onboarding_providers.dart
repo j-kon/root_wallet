@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/errors/error_mapper.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/app_start_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
@@ -46,14 +47,21 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     try {
       await _ref.read(createWalletUsecaseProvider).call();
       await _ref.read(backupReminderProvider.notifier).clearBackupConfirmation();
-      await _prepareChallenge();
       _ref.invalidate(appStartControllerProvider);
-      state = state.copyWith(isBusy: false, clearError: true);
+      state = state.copyWith(
+        isBusy: false,
+        challengeIndices: const [],
+        clearError: true,
+      );
       return true;
     } catch (error) {
       state = state.copyWith(
         isBusy: false,
-        errorMessage: mapErrorToMessage(error, context: ErrorContext.general),
+        errorMessage: mapErrorToMessage(
+          error,
+          context: ErrorContext.general,
+          includeDebugDetails: !_ref.read(appEnvProvider).isProduction,
+        ),
       );
       return false;
     }
@@ -64,14 +72,21 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     try {
       await _ref.read(restoreWalletUsecaseProvider).call(mnemonic);
       await _ref.read(backupReminderProvider.notifier).clearBackupConfirmation();
-      await _prepareChallenge();
       _ref.invalidate(appStartControllerProvider);
-      state = state.copyWith(isBusy: false, clearError: true);
+      state = state.copyWith(
+        isBusy: false,
+        challengeIndices: const [],
+        clearError: true,
+      );
       return true;
     } catch (error) {
       state = state.copyWith(
         isBusy: false,
-        errorMessage: mapErrorToMessage(error, context: ErrorContext.general),
+        errorMessage: mapErrorToMessage(
+          error,
+          context: ErrorContext.general,
+          includeDebugDetails: !_ref.read(appEnvProvider).isProduction,
+        ),
       );
       return false;
     }
@@ -81,7 +96,17 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     if (state.challengeIndices.isNotEmpty) {
       return;
     }
-    await _prepareChallenge();
+    try {
+      await _prepareChallenge();
+    } catch (error) {
+      state = state.copyWith(
+        errorMessage: mapErrorToMessage(
+          error,
+          context: ErrorContext.general,
+          includeDebugDetails: !_ref.read(appEnvProvider).isProduction,
+        ),
+      );
+    }
   }
 
   Future<bool> confirmBackup(Map<int, String> answers) async {
@@ -112,7 +137,11 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     } catch (error) {
       state = state.copyWith(
         isBusy: false,
-        errorMessage: mapErrorToMessage(error, context: ErrorContext.general),
+        errorMessage: mapErrorToMessage(
+          error,
+          context: ErrorContext.general,
+          includeDebugDetails: !_ref.read(appEnvProvider).isProduction,
+        ),
       );
       return false;
     }
@@ -123,10 +152,13 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   }
 
   Future<void> _prepareChallenge() async {
-      final phrase = await _ref.read(getRecoveryPhraseUsecaseProvider).call();
-      final words = _normalizeWords(phrase);
-      state = state.copyWith(challengeIndices: _randomIndices(words.length));
-    }
+    final phrase = await _ref.read(getRecoveryPhraseUsecaseProvider).call();
+    final words = _normalizeWords(phrase);
+    state = state.copyWith(
+      challengeIndices: _randomIndices(words.length),
+      clearError: true,
+    );
+  }
 
   List<String> _normalizeWords(String phrase) {
     return phrase

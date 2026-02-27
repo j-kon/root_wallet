@@ -25,8 +25,7 @@ class BdkSyncDatasource {
 
   Future<List<TxDto>> transactions() async {
     final wallet = await _walletDatasource.resolveWallet();
-    final blockchain = await _walletDatasource.resolveBlockchain();
-    final chainHeight = await blockchain.getHeight();
+    final chainHeight = await _walletDatasource.chainHeight();
     final txs = wallet.listTransactions(includeRaw: true);
 
     final mapped = txs

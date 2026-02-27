@@ -8,7 +8,6 @@ class BroadcastDatasource {
   final BdkWalletDatasource _walletDatasource;
 
   Future<String> broadcast(Transaction transaction) async {
-    final blockchain = await _walletDatasource.resolveBlockchain();
-    return blockchain.broadcast(transaction: transaction);
+    return _walletDatasource.broadcastTransaction(transaction);
   }
 }

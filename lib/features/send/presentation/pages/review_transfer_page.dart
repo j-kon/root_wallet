@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
@@ -21,7 +20,6 @@ class ReviewTransferPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(sendControllerProvider);
     final controller = ref.read(sendControllerProvider.notifier);
-    final env = ref.watch(appEnvProvider);
     final btcNgnRate = ref.watch(btcNgnRateProvider);
 
     if (!state.canReview || state.amountSats == null) {
@@ -43,7 +41,7 @@ class ReviewTransferPage extends ConsumerWidget {
       loading: () => '≈ —',
       error: (_, _) => '≈ —',
     );
-    final networkLabel = env.isProduction ? 'Mainnet' : 'Testnet';
+    const networkLabel = 'Testnet';
 
     return AppScaffold(
       title: 'Review transfer',
@@ -123,13 +121,18 @@ class ReviewTransferPage extends ConsumerWidget {
                         vertical: AppSpacing.xs,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceMuted,
+                        color: AppColors.warning.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(AppRadius.pill),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(
+                          color: AppColors.warning.withValues(alpha: 0.35),
+                        ),
                       ),
                       child: Text(
                         networkLabel,
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.brown.shade800,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],

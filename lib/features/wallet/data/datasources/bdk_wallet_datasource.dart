@@ -17,6 +17,11 @@ class BdkWalletDatasource {
   Future<Wallet>? _walletFuture;
   Blockchain? _blockchain;
   Future<Blockchain>? _blockchainFuture;
+  String? _blockchainEndpoint;
+  int _activeEsploraIndex = 0;
+  final List<String> _esploraEndpoints = List<String>.unmodifiable(
+    AppConstants.testnetEsploraFallbackUrls,
+  );
 
   static const Network _network = Network.testnet;
 
@@ -63,8 +68,28 @@ class BdkWalletDatasource {
 
   Future<void> syncWallet() async {
     final wallet = await _loadWallet();
-    final blockchain = await _loadBlockchain();
-    await wallet.sync(blockchain: blockchain);
+    await _withBlockchainFailover<void>(
+      (blockchain) => wallet.sync(blockchain: blockchain),
+    );
+  }
+
+  Future<int> chainHeight() {
+    return _withBlockchainFailover<int>(
+      (blockchain) => blockchain.getHeight(),
+    );
+  }
+
+  Future<double> estimateFeeSatPerVbyte({int targetBlocks = 3}) async {
+    final feeRate = await _withBlockchainFailover<FeeRate>(
+      (blockchain) => blockchain.estimateFee(target: BigInt.from(targetBlocks)),
+    );
+    return feeRate.satPerVb;
+  }
+
+  Future<String> broadcastTransaction(Transaction transaction) {
+    return _withBlockchainFailover<String>(
+      (blockchain) => blockchain.broadcast(transaction: transaction),
+    );
   }
 
   Future<Wallet> resolveWallet() {
@@ -96,12 +121,22 @@ class BdkWalletDatasource {
   Future<void> _resetSession() async {
     _wallet = null;
     _walletFuture = null;
-    _blockchain = null;
-    _blockchainFuture = null;
+    await _resetBlockchainState();
   }
 
-  Future<Blockchain> _loadBlockchain() async {
-    if (_blockchain != null) {
+  Future<void> _resetBlockchainState() async {
+    _blockchain = null;
+    _blockchainFuture = null;
+    _blockchainEndpoint = null;
+  }
+
+  Future<Blockchain> _loadBlockchain({bool forceReload = false}) async {
+    if (forceReload) {
+      await _resetBlockchainState();
+    }
+
+    final endpoint = _currentEsploraEndpoint;
+    if (_blockchain != null && _blockchainEndpoint == endpoint) {
       return _blockchain!;
     }
 
@@ -110,21 +145,22 @@ class BdkWalletDatasource {
       return inflight;
     }
 
-    final future = _createBlockchain();
+    final future = _createBlockchain(baseUrl: endpoint);
     _blockchainFuture = future;
     try {
       final blockchain = await future;
       _blockchain = blockchain;
+      _blockchainEndpoint = endpoint;
       return blockchain;
     } finally {
       _blockchainFuture = null;
     }
   }
 
-  Future<Blockchain> _createBlockchain() {
+  Future<Blockchain> _createBlockchain({required String baseUrl}) {
     final config = BlockchainConfig.esplora(
       config: EsploraConfig(
-        baseUrl: AppConstants.testnetEsploraUrl,
+        baseUrl: baseUrl,
         stopGap: BigInt.from(20),
         concurrency: 4,
         timeout: BigInt.from(30),
@@ -132,6 +168,37 @@ class BdkWalletDatasource {
     );
     return Blockchain.create(config: config);
   }
+
+  Future<T> _withBlockchainFailover<T>(
+    Future<T> Function(Blockchain blockchain) task,
+  ) async {
+    Object? lastError;
+    StackTrace? lastStackTrace;
+    final endpointCount = _esploraEndpoints.length;
+    if (endpointCount == 0) {
+      throw StateError('No Esplora endpoints configured.');
+    }
+
+    for (var offset = 0; offset < endpointCount; offset++) {
+      final index = (_activeEsploraIndex + offset) % endpointCount;
+      _activeEsploraIndex = index;
+      final blockchain = await _loadBlockchain(forceReload: offset > 0);
+      try {
+        return await task(blockchain);
+      } catch (error, stackTrace) {
+        lastError = error;
+        lastStackTrace = stackTrace;
+      }
+    }
+
+    if (lastError != null) {
+      Error.throwWithStackTrace(lastError, lastStackTrace ?? StackTrace.current);
+    }
+
+    throw StateError('Blockchain operation failed.');
+  }
+
+  String get _currentEsploraEndpoint => _esploraEndpoints[_activeEsploraIndex];
 
   Future<Wallet> _loadWallet() async {
     if (_wallet != null) {

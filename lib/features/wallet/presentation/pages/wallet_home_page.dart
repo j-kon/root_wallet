@@ -39,7 +39,7 @@ class WalletHomePage extends ConsumerWidget {
     final backupConfirmed = ref.watch(backupReminderProvider);
     final env = ref.watch(appEnvProvider);
     final btcNgnRate = ref.watch(btcNgnRateProvider);
-    final networkLabel = env.isProduction ? 'Mainnet' : 'Testnet';
+    const networkLabel = 'Testnet';
 
     return AppScaffold(
       title: 'Wallet',
@@ -52,13 +52,16 @@ class WalletHomePage extends ConsumerWidget {
               vertical: AppSpacing.xxs,
             ),
             decoration: BoxDecoration(
-              color: AppColors.surfaceMuted,
+              color: AppColors.warning.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
             ),
             child: Text(
               networkLabel,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.brown.shade800,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),

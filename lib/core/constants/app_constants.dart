@@ -5,5 +5,9 @@ abstract final class AppConstants {
   static const minPinLength = 6;
   static const supportUrl = 'https://support.rootwallet.app';
   static const mainnetEsploraUrl = 'https://blockstream.info/api';
-  static const testnetEsploraUrl = 'https://blockstream.info/testnet/api';
+  static const testnetEsploraUrl = 'https://mempool.space/testnet/api';
+  static const testnetEsploraFallbackUrls = <String>[
+    testnetEsploraUrl,
+    'https://blockstream.info/testnet/api',
+  ];
 }
