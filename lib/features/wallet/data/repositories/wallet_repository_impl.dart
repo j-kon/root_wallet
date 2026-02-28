@@ -45,7 +45,11 @@ class WalletRepositoryImpl implements WalletRepository {
 
   @override
   Future<Balance> getBalance() async {
-    await _syncDatasource.sync();
+    try {
+      await _syncDatasource.sync();
+    } catch (_) {
+      // Keep the wallet usable offline by falling back to local state.
+    }
     final confirmed = await _syncDatasource.confirmedBalance();
     final pending = await _syncDatasource.pendingBalance();
     return Balance(confirmedSats: confirmed, pendingSats: pending);
@@ -53,7 +57,11 @@ class WalletRepositoryImpl implements WalletRepository {
 
   @override
   Future<List<TxItem>> getTransactions() async {
-    await _syncDatasource.sync();
+    try {
+      await _syncDatasource.sync();
+    } catch (_) {
+      // Local transactions can still be read even when sync fails.
+    }
     final txs = await _syncDatasource.transactions();
     return txs.map(_txMapper.fromDto).toList(growable: false);
   }

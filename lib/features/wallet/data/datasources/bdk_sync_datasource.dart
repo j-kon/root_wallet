@@ -25,7 +25,12 @@ class BdkSyncDatasource {
 
   Future<List<TxDto>> transactions() async {
     final wallet = await _walletDatasource.resolveWallet();
-    final chainHeight = await _walletDatasource.chainHeight();
+    int? chainHeight;
+    try {
+      chainHeight = await _walletDatasource.chainHeight();
+    } catch (_) {
+      chainHeight = null;
+    }
     final txs = wallet.listTransactions(includeRaw: true);
 
     final mapped = txs
@@ -35,7 +40,7 @@ class BdkSyncDatasource {
     return mapped;
   }
 
-  TxDto _toTxDto(TransactionDetails tx, {required int chainHeight}) {
+  TxDto _toTxDto(TransactionDetails tx, {required int? chainHeight}) {
     final receivedSats = _toInt(tx.received);
     final sentSats = _toInt(tx.sent);
     final isIncoming = receivedSats >= sentSats;
@@ -50,7 +55,12 @@ class BdkSyncDatasource {
           );
     final confirmations = blockTime == null
         ? 0
-        : _safeConfirmations(chainHeight: chainHeight, blockHeight: blockTime.height);
+        : (chainHeight == null
+              ? null
+              : _safeConfirmations(
+                  chainHeight: chainHeight,
+                  blockHeight: blockTime.height,
+                ));
 
     return TxDto(
       txId: tx.txid,
