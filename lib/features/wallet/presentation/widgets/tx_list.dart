@@ -10,12 +10,14 @@ class TxList extends StatelessWidget {
     this.onItemTap,
     this.shrinkWrap = false,
     this.physics,
+    this.obscureAmounts = false,
   });
 
   final List<TxItem> items;
   final ValueChanged<TxItem>? onItemTap;
   final bool shrinkWrap;
   final ScrollPhysics? physics;
+  final bool obscureAmounts;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +38,7 @@ class TxList extends StatelessWidget {
         final item = items[index];
         return TxTile(
           item: item,
+          obscureAmount: obscureAmounts,
           onTap: onItemTap == null ? null : () => onItemTap!(item),
         );
       },

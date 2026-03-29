@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
+import 'package:root_wallet/core/utils/formatters.dart';
 
 class TransactionTile extends StatelessWidget {
   const TransactionTile({
@@ -11,6 +12,7 @@ class TransactionTile extends StatelessWidget {
     required this.timestamp,
     required this.isIncoming,
     required this.isPending,
+    this.obscureAmount = false,
     this.onTap,
   });
 
@@ -19,6 +21,7 @@ class TransactionTile extends StatelessWidget {
   final DateTime timestamp;
   final bool isIncoming;
   final bool isPending;
+  final bool obscureAmount;
   final VoidCallback? onTap;
 
   @override
@@ -129,7 +132,9 @@ class TransactionTile extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
-                '$amountPrefix$amountSats sats',
+                obscureAmount
+                    ? AppFormatters.obscuredSats()
+                    : '$amountPrefix$amountSats sats',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: accent,
                   fontWeight: FontWeight.w700,

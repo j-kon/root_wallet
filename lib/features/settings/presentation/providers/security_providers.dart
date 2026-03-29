@@ -30,6 +30,27 @@ final backupReminderProvider =
       BackupReminderController.new,
     );
 
+class BalancePrivacyController extends AsyncNotifier<bool> {
+  static const _hideBalancesKey = 'settings.hide_balances';
+
+  @override
+  Future<bool> build() async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    return prefs.getBool(_hideBalancesKey) ?? false;
+  }
+
+  Future<void> setHidden(bool hidden) async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    await prefs.setBool(_hideBalancesKey, hidden);
+    state = AsyncData(hidden);
+  }
+}
+
+final balancePrivacyProvider =
+    AsyncNotifierProvider<BalancePrivacyController, bool>(
+      BalancePrivacyController.new,
+    );
+
 enum AutoLockOption { immediate, after30Seconds }
 
 extension AutoLockOptionX on AutoLockOption {

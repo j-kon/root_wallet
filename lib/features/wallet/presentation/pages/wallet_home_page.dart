@@ -37,6 +37,7 @@ class WalletHomePage extends ConsumerWidget {
     final walletState = ref.watch(walletHomeControllerProvider);
     final walletController = ref.read(walletHomeControllerProvider.notifier);
     final backupConfirmed = ref.watch(backupReminderProvider);
+    final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
     final env = ref.watch(appEnvProvider);
     final btcNgnRate = ref.watch(btcNgnRateProvider);
     final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
@@ -159,6 +160,7 @@ class WalletHomePage extends ConsumerWidget {
                   subtitle: data.isOffline
                       ? 'Cached portfolio balance'
                       : 'Available portfolio balance',
+                  obscureValues: hideBalances,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Row(
@@ -241,6 +243,7 @@ class WalletHomePage extends ConsumerWidget {
                   items: data.transactions,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
+                  obscureAmounts: hideBalances,
                   onItemTap: (tx) {
                     Navigator.of(
                       context,

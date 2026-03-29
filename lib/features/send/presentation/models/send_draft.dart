@@ -11,6 +11,25 @@ extension FeePresetX on FeePreset {
       FeePreset.fast => 'Fast',
     };
   }
+
+  String get etaLabel {
+    return switch (this) {
+      FeePreset.slow => 'Lower priority',
+      FeePreset.standard => 'Balanced priority',
+      FeePreset.fast => 'Higher priority',
+    };
+  }
+
+  String get helperText {
+    return switch (this) {
+      FeePreset.slow =>
+        'Use when timing is flexible and you want to save on fees.',
+      FeePreset.standard =>
+        'A balanced choice for most payments and normal network conditions.',
+      FeePreset.fast =>
+        'Pays more to improve confirmation speed during busier periods.',
+    };
+  }
 }
 
 class SendDraft {

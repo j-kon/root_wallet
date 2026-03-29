@@ -1,61 +1,233 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/routing/routes.dart';
+import 'package:root_wallet/app/theme/colors.dart';
+import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
+import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
+import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
+import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final platform = Theme.of(context).platform;
     final useCupertino = platform == TargetPlatform.iOS;
+    final walletState = ref.watch(walletControllerProvider).valueOrNull;
+    final lockState = ref.watch(lockControllerProvider).valueOrNull;
+    final backupConfirmed =
+        ref.watch(backupReminderProvider).valueOrNull ?? false;
+    final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
+    final env = ref.watch(appEnvProvider);
+    final healthReady =
+        backupConfirmed &&
+        (lockState?.isLockEnabled ?? false) &&
+        (lockState?.hasPin ?? false);
 
     return AppScaffold(
       title: 'Settings',
       body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          ListTile(
-            leading: Icon(
-              useCupertino ? CupertinoIcons.add_circled : Icons.add_circle_outline,
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: healthReady
+                    ? [AppColors.secondary, AppColors.primary]
+                    : [Colors.brown.shade700, AppColors.warning],
+              ),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 24,
+                  offset: Offset(0, 14),
+                ),
+              ],
             ),
-            title: const Text('Create wallet'),
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.createWallet),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  healthReady
+                      ? 'Wallet health looks strong.'
+                      : 'A few protection steps still need attention.',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  walletState == null
+                      ? 'Security posture and sync health will appear here when wallet data is ready.'
+                      : 'Last synced ${AppDateTime.updatedAgo(walletState.lastSyncedAt)}. Review privacy, backup, and support controls below.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.82),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    _StatusPill(
+                      icon: Icons.shield_outlined,
+                      label: backupConfirmed
+                          ? 'Backup verified'
+                          : 'Backup needed',
+                    ),
+                    _StatusPill(
+                      icon: Icons.lock_outline_rounded,
+                      label: (lockState?.isLockEnabled ?? false)
+                          ? 'App lock on'
+                          : 'App lock off',
+                    ),
+                    _StatusPill(
+                      icon: Icons.visibility_off_outlined,
+                      label: hideBalances
+                          ? 'Balances hidden'
+                          : 'Balances visible',
+                    ),
+                    _StatusPill(
+                      icon: Icons.language_rounded,
+                      label: '${env.flavor.toUpperCase()} flavor',
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          ListTile(
-            leading: Icon(
-              useCupertino
-                  ? CupertinoIcons.arrow_2_circlepath
-                  : Icons.restore_rounded,
+          const SizedBox(height: AppSpacing.md),
+          _SettingsPanel(
+            title: 'Protection',
+            subtitle: 'Controls that affect wallet safety and privacy.',
+            child: Column(
+              children: [
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.lock_shield
+                      : Icons.security_rounded,
+                  title: 'Security',
+                  subtitle: (lockState?.isLockEnabled ?? false)
+                      ? 'PIN and unlock controls are configured.'
+                      : 'Configure app lock, biometrics, and auto-lock.',
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.security),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _SettingsTile(
+                  icon: Icons.vpn_key_outlined,
+                  title: 'Recovery phrase',
+                  subtitle: backupConfirmed
+                      ? 'Backup has been reviewed and confirmed.'
+                      : 'Complete your backup to protect wallet access.',
+                  onTap: () => Navigator.of(context).pushNamed(
+                    AppRoutes.backupSeed,
+                    arguments: const BackupSeedPageArgs(
+                      requireReauth: true,
+                      isOnboardingFlow: false,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Hide balances'),
+                  subtitle: const Text(
+                    'Mask amounts on overview and transaction screens.',
+                  ),
+                  value: hideBalances,
+                  onChanged: (value) => ref
+                      .read(balancePrivacyProvider.notifier)
+                      .setHidden(value),
+                ),
+              ],
             ),
-            title: const Text('Restore wallet'),
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.restoreWallet),
           ),
-          ListTile(
-            leading: Icon(
-              useCupertino ? CupertinoIcons.lock_shield : Icons.security,
+          const SizedBox(height: AppSpacing.md),
+          _SettingsPanel(
+            title: 'Wallet operations',
+            subtitle: 'Maintenance and lifecycle actions.',
+            child: Column(
+              children: [
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.refresh_circled
+                      : Icons.sync_rounded,
+                  title: 'Refresh wallet data',
+                  subtitle: 'Force a sync of balances, address, and activity.',
+                  onTap: () async {
+                    await ref
+                        .read(walletHomeControllerProvider.notifier)
+                        .sync();
+                    if (!context.mounted) {
+                      return;
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Wallet sync requested.')),
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.add_circled
+                      : Icons.add_circle_outline,
+                  title: 'Create wallet',
+                  subtitle: 'Start a fresh wallet setup flow.',
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.createWallet),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.arrow_2_circlepath
+                      : Icons.restore_rounded,
+                  title: 'Restore wallet',
+                  subtitle: 'Import an existing recovery phrase.',
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.restoreWallet),
+                ),
+              ],
             ),
-            title: const Text('Security'),
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.security),
           ),
-          ListTile(
-            leading: Icon(
-              useCupertino
-                  ? CupertinoIcons.question_circle
-                  : Icons.help_outline_rounded,
+          const SizedBox(height: AppSpacing.md),
+          _SettingsPanel(
+            title: 'Help and product info',
+            subtitle: 'Support, app information, and technical context.',
+            child: Column(
+              children: [
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.question_circle
+                      : Icons.help_outline_rounded,
+                  title: 'Help / Support',
+                  subtitle: 'Open support or copy the support URL.',
+                  onTap: () => _openSupport(context),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.info_circle
+                      : Icons.info_outline_rounded,
+                  title: 'About',
+                  subtitle: 'Architecture, environment, and wallet principles.',
+                  onTap: () => Navigator.of(context).pushNamed(AppRoutes.about),
+                ),
+              ],
             ),
-            title: const Text('Help / Support'),
-            onTap: () => _openSupport(context),
-          ),
-          ListTile(
-            leading: Icon(
-              useCupertino ? CupertinoIcons.info_circle : Icons.info_outline,
-            ),
-            title: const Text('About'),
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.about),
           ),
         ],
       ),
@@ -73,8 +245,150 @@ class SettingsPage extends StatelessWidget {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Could not open browser. Support URL copied.')),
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Support URL copied.')));
+  }
+}
+
+class _SettingsPanel extends StatelessWidget {
+  const _SettingsPanel({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 16,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: AppSpacing.md),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceRaised,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, color: AppColors.primary),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.white),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

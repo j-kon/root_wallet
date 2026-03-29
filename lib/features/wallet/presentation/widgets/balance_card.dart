@@ -9,18 +9,24 @@ class BalanceCard extends StatelessWidget {
     required this.balance,
     required this.fiatAmountLabel,
     this.subtitle = 'Available balance',
+    this.obscureValues = false,
   });
 
   final Balance balance;
   final String fiatAmountLabel;
   final String subtitle;
+  final bool obscureValues;
 
   @override
   Widget build(BuildContext context) {
     return shared.BalanceCard(
       subtitle: subtitle,
-      btcAmount: AppFormatters.btc(balance.btc),
-      fiatAmountLabel: fiatAmountLabel,
+      btcAmount: obscureValues
+          ? AppFormatters.obscuredBtc()
+          : AppFormatters.btc(balance.btc),
+      fiatAmountLabel: obscureValues
+          ? AppFormatters.obscuredNgn()
+          : fiatAmountLabel,
     );
   }
 }

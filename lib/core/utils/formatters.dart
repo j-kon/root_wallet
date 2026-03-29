@@ -1,3 +1,5 @@
+import 'package:root_wallet/core/constants/app_constants.dart';
+
 abstract final class AppFormatters {
   static String maskAddress(String address) {
     if (address.length <= 12) {
@@ -13,5 +15,14 @@ abstract final class AppFormatters {
 
   static String btc(double value) => '${value.toStringAsFixed(8)} BTC';
 
+  static String btcFromSats(int value) =>
+      btc(value / AppConstants.satoshisPerBitcoin);
+
   static String ngn(double value) => 'NGN ${value.toStringAsFixed(2)}';
+
+  static String obscuredBtc() => '•••••••• BTC';
+
+  static String obscuredNgn() => 'NGN ••••••';
+
+  static String obscuredSats() => '•••• sats';
 }
