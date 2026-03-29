@@ -65,51 +65,66 @@ class _MainShellState extends State<MainShell> {
         body: IndexedStack(index: _currentIndex, children: tabs),
         bottomNavigationBar: SafeArea(
           top: false,
-          child: Material(
-            color: Colors.transparent,
-            elevation: 6,
-            shadowColor: Colors.black.withValues(alpha: 0.08),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppRadius.lg),
-              ),
-              child: BottomNavigationBar(
-                currentIndex: _currentIndex,
-                onTap: _onTap,
-                type: BottomNavigationBarType.fixed,
-                backgroundColor: surface,
-                selectedItemColor: Theme.of(context).colorScheme.primary,
-                unselectedItemColor: inactiveColor,
-                showSelectedLabels: true,
-                showUnselectedLabels: true,
-                iconSize: 24,
-                selectedFontSize: 11,
-                unselectedFontSize: 11,
-                selectedLabelStyle: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.home_outlined),
-                    activeIcon: Icon(Icons.home),
-                    label: 'Wallet',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.qr_code_2_outlined),
-                    activeIcon: Icon(Icons.qr_code_2),
-                    label: 'Receive',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.north_east),
-                    activeIcon: Icon(Icons.north_east_rounded),
-                    label: 'Send',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.settings_outlined),
-                    activeIcon: Icon(Icons.settings),
-                    label: 'Settings',
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.md,
+            ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: surface.withValues(alpha: 0.94),
+                borderRadius: BorderRadius.circular(AppRadius.lg + 4),
+                border: Border.all(color: AppColors.border),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppColors.shadow,
+                    blurRadius: 26,
+                    offset: Offset(0, 14),
                   ),
                 ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.lg + 4),
+                child: BottomNavigationBar(
+                  currentIndex: _currentIndex,
+                  onTap: _onTap,
+                  type: BottomNavigationBarType.fixed,
+                  backgroundColor: Colors.transparent,
+                  selectedItemColor: Theme.of(context).colorScheme.primary,
+                  unselectedItemColor: inactiveColor,
+                  showSelectedLabels: true,
+                  showUnselectedLabels: true,
+                  iconSize: 24,
+                  selectedFontSize: 11,
+                  unselectedFontSize: 11,
+                  selectedLabelStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.home_outlined),
+                      activeIcon: Icon(Icons.home),
+                      label: 'Wallet',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.qr_code_2_outlined),
+                      activeIcon: Icon(Icons.qr_code_2),
+                      label: 'Receive',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.north_east),
+                      activeIcon: Icon(Icons.north_east_rounded),
+                      label: 'Send',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.settings_outlined),
+                      activeIcon: Icon(Icons.settings),
+                      label: 'Settings',
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

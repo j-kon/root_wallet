@@ -27,11 +27,26 @@ class InfoBanner extends StatelessWidget {
         color: palette.$1,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: palette.$2),
+        boxShadow: [
+          BoxShadow(
+            color: palette.$2.withValues(alpha: 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon ?? palette.$3, color: palette.$2, size: 18),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: palette.$2.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: Icon(icon ?? palette.$3, color: palette.$2, size: 18),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(

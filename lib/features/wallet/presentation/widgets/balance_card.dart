@@ -8,14 +8,17 @@ class BalanceCard extends StatelessWidget {
     super.key,
     required this.balance,
     required this.fiatAmountLabel,
+    this.subtitle = 'Available balance',
   });
 
   final Balance balance;
   final String fiatAmountLabel;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
     return shared.BalanceCard(
+      subtitle: subtitle,
       btcAmount: AppFormatters.btc(balance.btc),
       fiatAmountLabel: fiatAmountLabel,
     );

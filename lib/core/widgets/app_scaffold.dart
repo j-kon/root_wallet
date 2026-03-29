@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:root_wallet/app/theme/colors.dart';
 
 class AppScaffold extends StatelessWidget {
   const AppScaffold({
@@ -16,12 +17,28 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: title == null
-          ? null
-          : AppBar(title: Text(title!), actions: actions),
-      body: SafeArea(child: body),
-      floatingActionButton: floatingActionButton,
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.background,
+            AppColors.backgroundTint,
+            AppColors.background,
+          ],
+          stops: [0, 0.22, 0.72],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        appBar: title == null
+            ? null
+            : AppBar(title: Text(title!), actions: actions),
+        body: SafeArea(child: body),
+        floatingActionButton: floatingActionButton,
+      ),
     );
   }
 }
