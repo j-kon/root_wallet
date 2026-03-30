@@ -13,8 +13,8 @@ class AddressQr extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final qrPayload = 'bitcoin:$address';
-    final surface = AppColors.surfaceOf(context);
-    final textPrimary = AppColors.textPrimaryOf(context);
+    const qrInk = AppColors.textPrimary;
+    final outline = AppColors.borderOf(context);
 
     return Card(
       child: Padding(
@@ -25,9 +25,9 @@ class AddressQr extends StatelessWidget {
               aspectRatio: 1,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Colors.white,
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
+                    color: outline,
                   ),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
@@ -36,14 +36,14 @@ class AddressQr extends StatelessWidget {
                     data: qrPayload,
                     version: QrVersions.auto,
                     size: context.isCompactWidth ? 208 : 220,
-                    backgroundColor: surface,
+                    backgroundColor: Colors.white,
                     eyeStyle: QrEyeStyle(
                       eyeShape: QrEyeShape.square,
-                      color: textPrimary,
+                      color: qrInk,
                     ),
                     dataModuleStyle: QrDataModuleStyle(
                       dataModuleShape: QrDataModuleShape.square,
-                      color: textPrimary,
+                      color: qrInk,
                     ),
                   ),
                 ),

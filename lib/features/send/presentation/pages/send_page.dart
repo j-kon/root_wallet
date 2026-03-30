@@ -216,7 +216,7 @@ class _SendPageState extends ConsumerState<SendPage> {
                                 size: 18,
                                 color: hasAddress && state.draft.hasValidAddress
                                     ? AppColors.success
-                                    : AppColors.textSecondary,
+                                    : textSecondary,
                               ),
                               const SizedBox(width: AppSpacing.xs),
                               Expanded(
@@ -468,15 +468,19 @@ class _FormSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceOf(context);
+    final border = AppColors.borderOf(context);
+    final shadow = AppColors.shadowOf(context);
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.92),
+        color: surface.withValues(alpha: AppColors.isDark(context) ? 0.94 : 0.92),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
+        border: Border.all(color: border),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
+            color: shadow,
             blurRadius: 18,
             offset: Offset(0, 10),
           ),
@@ -509,15 +513,19 @@ class _StageChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surfaceRaised = AppColors.surfaceRaisedOf(context);
+    final border = AppColors.borderOf(context);
+    final textPrimary = AppColors.textPrimaryOf(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
+        color: surfaceRaised,
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -527,7 +535,7 @@ class _StageChip extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.textPrimary,
+              color: textPrimary,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -572,6 +580,8 @@ class _MetricRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textSecondary = AppColors.textSecondaryOf(context);
+
     return Row(
       children: [
         Expanded(
@@ -579,7 +589,7 @@ class _MetricRow extends StatelessWidget {
             label,
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            ).textTheme.bodyMedium?.copyWith(color: textSecondary),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),

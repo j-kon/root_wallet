@@ -398,6 +398,8 @@ class _ReviewRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textSecondary = AppColors.textSecondaryOf(context);
+
     return Row(
       children: [
         Expanded(
@@ -405,7 +407,7 @@ class _ReviewRow extends StatelessWidget {
             label,
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            ).textTheme.bodyMedium?.copyWith(color: textSecondary),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),

@@ -35,6 +35,7 @@ class WalletHomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = AppColors.isDark(context);
     final textSecondary = AppColors.textSecondaryOf(context);
     final walletState = ref.watch(walletHomeControllerProvider);
     final walletController = ref.read(walletHomeControllerProvider.notifier);
@@ -56,16 +57,16 @@ class WalletHomePage extends ConsumerWidget {
               vertical: AppSpacing.xxs,
             ),
             decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.14),
+              color: AppColors.warning.withValues(alpha: isDark ? 0.18 : 0.14),
               borderRadius: BorderRadius.circular(AppRadius.pill),
               border: Border.all(
-                color: AppColors.warning.withValues(alpha: 0.28),
+                color: AppColors.warning.withValues(alpha: isDark ? 0.36 : 0.28),
               ),
             ),
             child: Text(
               networkLabel,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.brown.shade800,
+                color: isDark ? const Color(0xFFFFD48B) : Colors.brown.shade800,
                 fontWeight: FontWeight.w700,
               ),
             ),

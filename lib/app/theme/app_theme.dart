@@ -8,6 +8,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
   final primary = AppColors.primaryFor(brightness);
   final secondary = AppColors.secondaryFor(brightness);
   final surface = AppColors.surfaceFor(brightness);
+  final surfaceMuted = AppColors.surfaceMutedFor(brightness);
   final background = AppColors.backgroundFor(brightness);
   final surfaceRaised = AppColors.surfaceRaisedFor(brightness);
   final border = AppColors.borderFor(brightness);
@@ -62,6 +63,20 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surfaceRaised,
+      labelStyle: TextStyle(
+        color: isDark ? textPrimary.withValues(alpha: 0.90) : textSecondary,
+        fontWeight: FontWeight.w600,
+      ),
+      floatingLabelStyle: TextStyle(
+        color: primary,
+        fontWeight: FontWeight.w700,
+      ),
+      hintStyle: TextStyle(
+        color: textSecondary.withValues(alpha: isDark ? 0.78 : 0.92),
+      ),
+      helperStyle: TextStyle(
+        color: textSecondary.withValues(alpha: isDark ? 0.90 : 1),
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: BorderSide(color: border),
@@ -83,6 +98,8 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       style: FilledButton.styleFrom(
         backgroundColor: secondary,
         foregroundColor: Colors.white,
+        disabledBackgroundColor: surfaceMuted,
+        disabledForegroundColor: textSecondary.withValues(alpha: 0.72),
         minimumSize: const Size.fromHeight(54),
         elevation: 0,
         padding: const EdgeInsets.symmetric(
@@ -104,7 +121,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
         minimumSize: const Size.fromHeight(52),
         side: BorderSide(color: border),
         foregroundColor: textPrimary,
-        backgroundColor: surface.withValues(alpha: isDark ? 0.96 : 0.74),
+        backgroundColor: surfaceRaised.withValues(alpha: isDark ? 0.92 : 0.74),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,

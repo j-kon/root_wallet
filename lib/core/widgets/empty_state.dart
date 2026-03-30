@@ -20,6 +20,10 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surfaceMuted = AppColors.surfaceMutedOf(context);
+    final border = AppColors.borderOf(context);
+    final textSecondary = AppColors.textSecondaryOf(context);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -30,11 +34,11 @@ class EmptyState extends StatelessWidget {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: AppColors.surfaceMuted,
+                color: surfaceMuted,
                 borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: border),
               ),
-              child: Icon(icon, color: AppColors.textSecondary),
+              child: Icon(icon, color: textSecondary),
             ),
             const SizedBox(height: AppSpacing.md),
             if (title != null) ...[

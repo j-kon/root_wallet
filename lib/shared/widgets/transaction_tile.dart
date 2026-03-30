@@ -26,6 +26,16 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceOf(context);
+    final shadow = AppColors.shadowOf(context);
+    final textSecondary = AppColors.textSecondaryOf(context);
+    final statusTextColor = isPending
+        ? (AppColors.isDark(context)
+              ? const Color(0xFFFFD48B)
+              : Colors.brown.shade800)
+        : (AppColors.isDark(context)
+              ? const Color(0xFF91E2C6)
+              : Colors.green.shade900);
     final accent = isIncoming ? AppColors.success : AppColors.warning;
     final icon = isIncoming
         ? Icons.south_west_rounded
@@ -37,12 +47,12 @@ class TransactionTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: accent.withValues(alpha: 0.16)),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
+            color: shadow,
             blurRadius: 14,
             offset: Offset(0, 8),
           ),
@@ -91,7 +101,7 @@ class TransactionTile extends StatelessWidget {
                         Icon(
                           Icons.schedule_rounded,
                           size: 14,
-                          color: AppColors.textSecondary,
+                          color: textSecondary,
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         Expanded(
@@ -118,9 +128,7 @@ class TransactionTile extends StatelessWidget {
                             statusLabel,
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
-                                  color: isPending
-                                      ? Colors.brown.shade800
-                                      : Colors.green.shade900,
+                                  color: statusTextColor,
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),

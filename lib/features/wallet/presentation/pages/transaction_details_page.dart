@@ -18,6 +18,9 @@ class TransactionDetailsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final surfaceRaised = AppColors.surfaceRaisedOf(context);
+    final border = AppColors.borderOf(context);
+    final textSecondary = AppColors.textSecondaryOf(context);
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is! TxItem) {
       return const AppScaffold(
@@ -173,14 +176,14 @@ class TransactionDetailsPage extends ConsumerWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceRaised,
+                    color: surfaceRaised,
                     borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: border),
                   ),
                   child: SelectableText(
                     tx.txId,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
+                      color: textSecondary,
                     ),
                   ),
                 ),
@@ -254,15 +257,19 @@ class _DetailsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceOf(context);
+    final border = AppColors.borderOf(context);
+    final shadow = AppColors.shadowOf(context);
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.92),
+        color: surface.withValues(alpha: AppColors.isDark(context) ? 0.94 : 0.92),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
+        border: Border.all(color: border),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
+            color: shadow,
             blurRadius: 16,
             offset: Offset(0, 10),
           ),
@@ -330,6 +337,8 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textSecondary = AppColors.textSecondaryOf(context);
+
     return Row(
       children: [
         Expanded(
@@ -337,7 +346,7 @@ class _DetailRow extends StatelessWidget {
             label,
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            ).textTheme.bodyMedium?.copyWith(color: textSecondary),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
