@@ -6,6 +6,7 @@ import 'package:root_wallet/features/receive/presentation/pages/receive_page.dar
 import 'package:root_wallet/features/send/presentation/pages/send_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/settings_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/wallet_home_page.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key, this.initialIndex = 0});
@@ -39,7 +40,13 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final surface = Theme.of(context).colorScheme.surface;
-    final inactiveColor = AppColors.textSecondary.withValues(alpha: 0.72);
+    final border = AppColors.borderOf(context);
+    final shadow = AppColors.shadowOf(context);
+    final inactiveColor = AppColors.textSecondaryOf(
+      context,
+    ).withValues(alpha: 0.76);
+    final horizontalPadding = context.isCompactWidth ? AppSpacing.sm : AppSpacing.md;
+    final bottomSpacing = context.navBarBottomSpacing;
     final tabs = <Widget>[
       WalletHomePage(
         onReceiveRequested: () => _onTap(1),
@@ -66,22 +73,22 @@ class _MainShellState extends State<MainShell> {
         bottomNavigationBar: SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
               0,
-              AppSpacing.md,
-              AppSpacing.md,
+              horizontalPadding,
+              bottomSpacing,
             ),
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: surface.withValues(alpha: 0.94),
                 borderRadius: BorderRadius.circular(AppRadius.lg + 4),
-                border: Border.all(color: AppColors.border),
-                boxShadow: const [
+                border: Border.all(color: border),
+                boxShadow: [
                   BoxShadow(
-                    color: AppColors.shadow,
-                    blurRadius: 26,
-                    offset: Offset(0, 14),
+                    color: shadow,
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
@@ -99,6 +106,7 @@ class _MainShellState extends State<MainShell> {
                   iconSize: 24,
                   selectedFontSize: 11,
                   unselectedFontSize: 11,
+                  landscapeLayout: BottomNavigationBarLandscapeLayout.centered,
                   selectedLabelStyle: const TextStyle(
                     fontWeight: FontWeight.w700,
                   ),

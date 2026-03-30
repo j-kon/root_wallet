@@ -4,6 +4,7 @@ import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/features/send/presentation/models/send_draft.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class FeeSelector extends ConsumerWidget {
   const FeeSelector({super.key});
@@ -13,6 +14,9 @@ class FeeSelector extends ConsumerWidget {
     final state = ref.watch(sendControllerProvider);
     final notifier = ref.read(sendControllerProvider.notifier);
     final suggested = ref.watch(suggestedFeeProvider);
+    final surface = AppColors.surfaceRaisedOf(context);
+    final border = AppColors.borderOf(context);
+    final isCompact = context.isCompactWidth;
 
     final suggestedRate = suggested.maybeWhen(
       data: (fee) => fee.satsPerVByte,
@@ -34,28 +38,27 @@ class FeeSelector extends ConsumerWidget {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: AppSpacing.sm),
-        SegmentedButton<FeePreset>(
-          segments: const [
-            ButtonSegment<FeePreset>(
-              value: FeePreset.slow,
-              label: Text('Slow'),
-              icon: Icon(Icons.hourglass_bottom_rounded),
-            ),
-            ButtonSegment<FeePreset>(
-              value: FeePreset.standard,
-              label: Text('Standard'),
-              icon: Icon(Icons.timelapse_rounded),
-            ),
-            ButtonSegment<FeePreset>(
-              value: FeePreset.fast,
-              label: Text('Fast'),
-              icon: Icon(Icons.bolt_rounded),
-            ),
-          ],
-          selected: <FeePreset>{state.draft.feePreset},
-          onSelectionChanged: (selectedSet) {
-            final selected = selectedSet.first;
-            notifier.setFeePreset(selected, suggestedRate);
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final gap = AppSpacing.sm;
+            final itemWidth = (constraints.maxWidth - (gap * 2)) / 3;
+
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final preset in FeePreset.values)
+                  SizedBox(
+                    width: itemWidth,
+                    child: _FeePresetButton(
+                      preset: preset,
+                      selected: preset == state.draft.feePreset,
+                      compact: isCompact,
+                      onTap: () => notifier.setFeePreset(preset, suggestedRate),
+                    ),
+                  ),
+              ],
+            );
           },
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -63,9 +66,9 @@ class FeeSelector extends ConsumerWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: AppColors.surfaceRaised,
+            color: surface,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,15 +115,19 @@ class _FeeMetricChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceOf(context);
+    final border = AppColors.borderOf(context);
+    final textPrimary = AppColors.textPrimaryOf(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: surface,
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -130,12 +137,88 @@ class _FeeMetricChip extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.textPrimary,
+              color: textPrimary,
               fontWeight: FontWeight.w600,
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _FeePresetButton extends StatelessWidget {
+  const _FeePresetButton({
+    required this.preset,
+    required this.selected,
+    required this.onTap,
+    required this.compact,
+  });
+
+  final FeePreset preset;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = AppColors.primaryOf(context);
+    final surface = AppColors.surfaceOf(context);
+    final border = AppColors.borderOf(context);
+    final textPrimary = AppColors.textPrimaryOf(context);
+    final textSecondary = AppColors.textSecondaryOf(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        onTap: onTap,
+        child: Ink(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? AppSpacing.xs : AppSpacing.sm,
+            vertical: AppSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.accent.withValues(alpha: 0.22) : surface,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(
+              color: selected ? AppColors.accent : border,
+              width: selected ? 1.3 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _iconFor(preset),
+                size: compact ? 15 : 16,
+                color: selected ? primary : textPrimary,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  preset.label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected ? textPrimary : textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  IconData _iconFor(FeePreset preset) {
+    return switch (preset) {
+      FeePreset.slow => Icons.hourglass_bottom_rounded,
+      FeePreset.standard => Icons.timelapse_rounded,
+      FeePreset.fast => Icons.bolt_rounded,
+    };
   }
 }

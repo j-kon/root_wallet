@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class BalanceCard extends StatelessWidget {
   const BalanceCard({
@@ -16,6 +17,9 @@ class BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = context.isCompactWidth;
+    final shadow = AppColors.shadowOf(context);
+
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -29,11 +33,11 @@ class BalanceCard extends StatelessWidget {
           stops: <double>[0, 0.55, 1],
         ),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
+            color: shadow,
             blurRadius: 26,
-            offset: Offset(0, 18),
+            offset: const Offset(0, 18),
           ),
         ],
       ),
@@ -66,7 +70,7 @@ class BalanceCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: EdgeInsets.all(isCompact ? AppSpacing.md : AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -111,7 +115,7 @@ class BalanceCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.xl),
+                  SizedBox(height: isCompact ? AppSpacing.lg : AppSpacing.xl),
                   Text(
                     subtitle.toUpperCase(),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -130,7 +134,7 @@ class BalanceCard extends StatelessWidget {
                           ?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
-                            fontSize: 40,
+                            fontSize: isCompact ? 34 : 40,
                             letterSpacing: -1.4,
                           ),
                     ),
@@ -196,6 +200,8 @@ class _BalanceMetaChip extends StatelessWidget {
               color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

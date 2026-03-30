@@ -7,12 +7,14 @@ import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class SecurityPage extends ConsumerWidget {
   const SecurityPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final shadow = AppColors.shadowOf(context);
     final lockAsync = ref.watch(lockControllerProvider);
     final controller = ref.read(lockControllerProvider.notifier);
 
@@ -31,10 +33,17 @@ class SecurityPage extends ConsumerWidget {
               : 'Enable lock protection to reduce exposure when the app is reopened.';
 
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: EdgeInsets.fromLTRB(
+              context.pageHorizontalPadding,
+              AppSpacing.md,
+              context.pageHorizontalPadding,
+              context.contentBottomSpacing,
+            ),
             children: [
               Container(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: EdgeInsets.all(
+                  context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -44,11 +53,11 @@ class SecurityPage extends ConsumerWidget {
                         : [Colors.brown.shade700, AppColors.warning],
                   ),
                   borderRadius: BorderRadius.circular(AppRadius.lg),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: AppColors.shadow,
+                      color: shadow,
                       blurRadius: 24,
-                      offset: Offset(0, 14),
+                      offset: const Offset(0, 14),
                     ),
                   ],
                 ),
@@ -321,17 +330,21 @@ class _SecurityPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceOf(context);
+    final border = AppColors.borderOf(context);
+    final shadow = AppColors.shadowOf(context);
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.92),
+        color: surface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
+        border: Border.all(color: border),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
+            color: shadow,
             blurRadius: 16,
-            offset: Offset(0, 10),
+            offset: const Offset(0, 10),
           ),
         ],
       ),

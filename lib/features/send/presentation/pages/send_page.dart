@@ -15,6 +15,7 @@ import 'package:root_wallet/features/send/presentation/pages/scan_address_page.d
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/send/presentation/widgets/fee_selector.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class SendPage extends ConsumerStatefulWidget {
   const SendPage({super.key});
@@ -44,6 +45,12 @@ class _SendPageState extends ConsumerState<SendPage> {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceOf(context);
+    final surfaceRaised = AppColors.surfaceRaisedOf(context);
+    final border = AppColors.borderOf(context);
+    final shadow = AppColors.shadowOf(context);
+    final textPrimary = AppColors.textPrimaryOf(context);
+    final textSecondary = AppColors.textSecondaryOf(context);
     final state = ref.watch(sendControllerProvider);
     final controller = ref.read(sendControllerProvider.notifier);
     final walletState = ref.watch(walletControllerProvider);
@@ -77,23 +84,30 @@ class _SendPageState extends ConsumerState<SendPage> {
     return AppScaffold(
       title: 'Send BTC',
       body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: EdgeInsets.fromLTRB(
+          context.pageHorizontalPadding,
+          AppSpacing.md,
+          context.pageHorizontalPadding,
+          AppSpacing.sm,
+        ),
         child: Column(
           children: [
             Expanded(
               child: ListView(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    padding: EdgeInsets.all(
+                      context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
+                    ),
                     decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.9),
+                      color: surface.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: Border.all(color: AppColors.border),
-                      boxShadow: const [
+                      border: Border.all(color: border),
+                      boxShadow: [
                         BoxShadow(
-                          color: AppColors.shadow,
+                          color: shadow,
                           blurRadius: 20,
-                          offset: Offset(0, 12),
+                          offset: const Offset(0, 12),
                         ),
                       ],
                     ),
@@ -129,6 +143,7 @@ class _SendPageState extends ConsumerState<SendPage> {
                               ?.copyWith(
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.5,
+                                fontSize: context.isCompactWidth ? 22 : 24,
                               ),
                         ),
                         const SizedBox(height: AppSpacing.xs),
@@ -184,12 +199,12 @@ class _SendPageState extends ConsumerState<SendPage> {
                           decoration: BoxDecoration(
                             color: hasAddress && state.draft.hasValidAddress
                                 ? AppColors.success.withValues(alpha: 0.10)
-                                : AppColors.surfaceRaised,
+                                : surfaceRaised,
                             borderRadius: BorderRadius.circular(AppRadius.md),
                             border: Border.all(
                               color: hasAddress && state.draft.hasValidAddress
                                   ? AppColors.success.withValues(alpha: 0.22)
-                                  : AppColors.border,
+                                  : border,
                             ),
                           ),
                           child: Row(
@@ -209,7 +224,7 @@ class _SendPageState extends ConsumerState<SendPage> {
                                   addressStatusLabel,
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
-                                        color: AppColors.textPrimary,
+                                        color: textPrimary,
                                         fontWeight: FontWeight.w600,
                                       ),
                                 ),
@@ -242,7 +257,7 @@ class _SendPageState extends ConsumerState<SendPage> {
                         Text(
                           estimatedNgn,
                           style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppColors.textSecondary),
+                              ?.copyWith(color: textSecondary),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Wrap(
@@ -383,6 +398,7 @@ class _SendPageState extends ConsumerState<SendPage> {
                       Navigator.of(context).pushNamed(AppRoutes.reviewTransfer);
                     },
             ),
+            SizedBox(height: context.navBarBottomSpacing),
           ],
         ),
       ),

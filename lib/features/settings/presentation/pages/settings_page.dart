@@ -6,12 +6,14 @@ import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/app/theme/theme_mode_provider.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -21,6 +23,8 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final platform = Theme.of(context).platform;
     final useCupertino = platform == TargetPlatform.iOS;
+    final shadow = AppColors.shadowOf(context);
+    final themeMode = ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
     final walletState = ref.watch(walletControllerProvider).valueOrNull;
     final lockState = ref.watch(lockControllerProvider).valueOrNull;
     final backupConfirmed =
@@ -35,10 +39,17 @@ class SettingsPage extends ConsumerWidget {
     return AppScaffold(
       title: 'Settings',
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: EdgeInsets.fromLTRB(
+          context.pageHorizontalPadding,
+          AppSpacing.md,
+          context.pageHorizontalPadding,
+          context.contentBottomSpacing,
+        ),
         children: [
           Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: EdgeInsets.all(
+              context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
+            ),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -48,11 +59,11 @@ class SettingsPage extends ConsumerWidget {
                     : [Colors.brown.shade700, AppColors.warning],
               ),
               borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
-                  color: AppColors.shadow,
+                  color: shadow,
                   blurRadius: 24,
-                  offset: Offset(0, 14),
+                  offset: const Offset(0, 14),
                 ),
               ],
             ),
@@ -106,6 +117,25 @@ class SettingsPage extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _SettingsPanel(
+            title: 'Appearance',
+            subtitle: 'Choose how the wallet should look on this device.',
+            child: Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final option in ThemeMode.values)
+                  _ThemeModeOption(
+                    mode: option,
+                    selected: option == themeMode,
+                    onTap: () => ref
+                        .read(themeModeProvider.notifier)
+                        .setThemeMode(option),
+                  ),
               ],
             ),
           ),
@@ -264,17 +294,21 @@ class _SettingsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceOf(context);
+    final border = AppColors.borderOf(context);
+    final shadow = AppColors.shadowOf(context);
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.92),
+        color: surface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
+        border: Border.all(color: border),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
+            color: shadow,
             blurRadius: 16,
-            offset: Offset(0, 10),
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -312,15 +346,18 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surfaceRaised = AppColors.surfaceRaisedOf(context);
+    final border = AppColors.borderOf(context);
+
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadius.md),
       onTap: onTap,
       child: Ink(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: AppColors.surfaceRaised,
+          color: surfaceRaised,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: border),
         ),
         child: Row(
           children: [
@@ -351,6 +388,61 @@ class _SettingsTile extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.sm),
             const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeModeOption extends StatelessWidget {
+  const _ThemeModeOption({
+    required this.mode,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ThemeMode mode;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = AppColors.primaryOf(context);
+    final surface = AppColors.surfaceOf(context);
+    final border = AppColors.borderOf(context);
+    final textPrimary = AppColors.textPrimaryOf(context);
+    final textSecondary = AppColors.textSecondaryOf(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? primary.withValues(alpha: 0.14) : surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: selected ? primary : border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              mode.icon,
+              color: selected ? primary : textSecondary,
+              size: 18,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              mode.label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: selected ? textPrimary : textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),

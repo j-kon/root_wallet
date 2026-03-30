@@ -18,7 +18,7 @@ class InfoBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = _palette(type);
+    final palette = _palette(context, type);
 
     return Container(
       width: double.infinity,
@@ -62,29 +62,31 @@ class InfoBanner extends StatelessWidget {
     );
   }
 
-  (Color, Color, IconData) _palette(InfoBannerType type) {
+  (Color, Color, IconData) _palette(BuildContext context, InfoBannerType type) {
+    final isDark = AppColors.isDark(context);
+
     switch (type) {
       case InfoBannerType.info:
         return (
-          AppColors.primary.withValues(alpha: 0.10),
+          AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.10),
           AppColors.primary,
           Icons.info_outline_rounded,
         );
       case InfoBannerType.warning:
         return (
-          AppColors.warning.withValues(alpha: 0.16),
-          Colors.brown.shade800,
+          AppColors.warning.withValues(alpha: isDark ? 0.18 : 0.16),
+          isDark ? const Color(0xFFFFD48B) : Colors.brown.shade800,
           Icons.warning_amber_rounded,
         );
       case InfoBannerType.success:
         return (
-          AppColors.success.withValues(alpha: 0.12),
+          AppColors.success.withValues(alpha: isDark ? 0.18 : 0.12),
           AppColors.success,
           Icons.check_circle_outline_rounded,
         );
       case InfoBannerType.error:
         return (
-          AppColors.danger.withValues(alpha: 0.12),
+          AppColors.danger.withValues(alpha: isDark ? 0.18 : 0.12),
           AppColors.danger,
           Icons.error_outline_rounded,
         );

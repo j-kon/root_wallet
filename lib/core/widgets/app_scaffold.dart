@@ -17,15 +17,18 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final background = AppColors.backgroundOf(context);
+    final backgroundTint = AppColors.backgroundTintOf(context);
+
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppColors.background,
-            AppColors.backgroundTint,
-            AppColors.background,
+            background,
+            backgroundTint,
+            background,
           ],
           stops: [0, 0.22, 0.72],
         ),

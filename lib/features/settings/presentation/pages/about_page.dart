@@ -6,6 +6,7 @@ import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AboutPage extends ConsumerWidget {
@@ -13,15 +14,25 @@ class AboutPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final surface = AppColors.surfaceOf(context);
+    final border = AppColors.borderOf(context);
+    final shadow = AppColors.shadowOf(context);
     final env = ref.watch(appEnvProvider);
 
     return AppScaffold(
       title: 'About',
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: EdgeInsets.fromLTRB(
+          context.pageHorizontalPadding,
+          AppSpacing.md,
+          context.pageHorizontalPadding,
+          context.contentBottomSpacing,
+        ),
         children: [
           Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: EdgeInsets.all(
+              context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
+            ),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
@@ -29,11 +40,11 @@ class AboutPage extends ConsumerWidget {
                 colors: [AppColors.secondary, AppColors.primary],
               ),
               borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
-                  color: AppColors.shadow,
+                  color: shadow,
                   blurRadius: 24,
-                  offset: Offset(0, 14),
+                  offset: const Offset(0, 14),
                 ),
               ],
             ),
@@ -102,9 +113,9 @@ class AboutPage extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: AppColors.surface.withValues(alpha: 0.92),
+              color: surface.withValues(alpha: 0.92),
               borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,12 +192,15 @@ class _AboutPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceOf(context);
+    final border = AppColors.borderOf(context);
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.92),
+        color: surface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

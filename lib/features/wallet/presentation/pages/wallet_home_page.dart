@@ -17,6 +17,7 @@ import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/balance_card.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/tx_list.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 import 'package:root_wallet/shared/widgets/primary_action_button.dart';
 import 'package:root_wallet/shared/widgets/section_header.dart';
 
@@ -34,6 +35,7 @@ class WalletHomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final textSecondary = AppColors.textSecondaryOf(context);
     final walletState = ref.watch(walletHomeControllerProvider);
     final walletController = ref.read(walletHomeControllerProvider.notifier);
     final backupConfirmed = ref.watch(backupReminderProvider);
@@ -93,6 +95,11 @@ class WalletHomePage extends ConsumerWidget {
           );
         },
         data: (data) {
+          final headlineStyle = Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.9,
+            fontSize: context.isCompactWidth ? 26 : 30,
+          );
           final fiatLabel = btcNgnRate.when(
             data: (rate) =>
                 '≈ ${AppFormatters.ngn(data.balance.btc * rate.value)}',
@@ -100,7 +107,7 @@ class WalletHomePage extends ConsumerWidget {
             error: (_, _) => 'FX rate unavailable',
           );
           final marketLabel = btcNgnRate.when(
-            data: (rate) => '1 BTC ${AppFormatters.ngn(rate.value)}',
+            data: (rate) => '1 BTC ${AppFormatters.ngnCompact(rate.value)}',
             loading: () => 'Market data loading',
             error: (_, _) => 'Market data unavailable',
           );
@@ -112,27 +119,24 @@ class WalletHomePage extends ConsumerWidget {
             onRefresh: () => walletController.sync(),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
+              padding: EdgeInsets.fromLTRB(
+                context.pageHorizontalPadding,
                 AppSpacing.sm,
-                AppSpacing.md,
-                AppSpacing.xxl,
+                context.pageHorizontalPadding,
+                context.contentBottomSpacing,
               ),
               children: [
                 Text(
                   'Self-custody dashboard',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: textSecondary,
                     letterSpacing: 0.2,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   'Your bitcoin, clear and in control.',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.9,
-                  ),
+                  style: headlineStyle,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Wrap(
@@ -233,7 +237,7 @@ class WalletHomePage extends ConsumerWidget {
                   trailing: Text(
                     activitySummary,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
+                      color: textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -267,29 +271,41 @@ class _WalletStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceOf(context);
+    final border = AppColors.borderOf(context);
+    final textPrimary = AppColors.textPrimaryOf(context);
+    final maxWidth = context.isCompactWidth ? context.screenWidth * 0.72 : 260.0;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.82),
+        color: surface.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppColors.primary),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -314,17 +330,21 @@ class _WalletAttentionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceOf(context);
+    final shadow = AppColors.shadowOf(context);
+    final textSecondary = AppColors.textSecondaryOf(context);
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.88),
+        color: surface.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: tone.withValues(alpha: 0.20)),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
+            color: shadow,
             blurRadius: 18,
-            offset: Offset(0, 10),
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -355,7 +375,7 @@ class _WalletAttentionCard extends StatelessWidget {
                 Text(
                   message,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: textSecondary,
                     height: 1.45,
                   ),
                 ),

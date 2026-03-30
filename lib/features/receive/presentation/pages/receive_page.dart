@@ -10,6 +10,7 @@ import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/features/receive/presentation/widgets/address_qr.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class ReceivePage extends ConsumerWidget {
   const ReceivePage({super.key});
@@ -17,6 +18,11 @@ class ReceivePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final walletState = ref.watch(walletControllerProvider);
+    final surface = AppColors.surfaceOf(context);
+    final surfaceRaised = AppColors.surfaceRaisedOf(context);
+    final border = AppColors.borderOf(context);
+    final shadow = AppColors.shadowOf(context);
+    final textSecondary = AppColors.textSecondaryOf(context);
 
     return AppScaffold(
       title: 'Receive',
@@ -32,19 +38,26 @@ class ReceivePage extends ConsumerWidget {
           final paymentUri = 'bitcoin:$address';
 
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: EdgeInsets.fromLTRB(
+              context.pageHorizontalPadding,
+              AppSpacing.md,
+              context.pageHorizontalPadding,
+              context.contentBottomSpacing,
+            ),
             children: [
               Container(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: EdgeInsets.all(
+                  context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
+                ),
                 decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.92),
+                  color: surface.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: const [
+                  border: Border.all(color: border),
+                  boxShadow: [
                     BoxShadow(
-                      color: AppColors.shadow,
+                      color: shadow,
                       blurRadius: 20,
-                      offset: Offset(0, 12),
+                      offset: const Offset(0, 12),
                     ),
                   ],
                 ),
@@ -92,14 +105,14 @@ class ReceivePage extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.92),
+                  color: surface.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: const [
+                  border: Border.all(color: border),
+                  boxShadow: [
                     BoxShadow(
-                      color: AppColors.shadow,
+                      color: shadow,
                       blurRadius: 18,
-                      offset: Offset(0, 10),
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
@@ -122,9 +135,9 @@ class ReceivePage extends ConsumerWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceRaised,
+                        color: surfaceRaised,
                         borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(color: border),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,36 +151,71 @@ class ReceivePage extends ConsumerWidget {
                           SelectableText(
                             address,
                             style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppColors.textSecondary),
+                                ?.copyWith(color: textSecondary),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () =>
-                                _copyValue(context, address, 'Address copied.'),
-                            icon: const Icon(Icons.copy_rounded),
-                            label: const Text('Copy address'),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: () => _copyValue(
-                              context,
-                              paymentUri,
-                              'Payment URI copied.',
+                    if (context.isCompactWidth) ...[
+                      Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _copyValue(
+                                context,
+                                address,
+                                'Address copied.',
+                              ),
+                              icon: const Icon(Icons.copy_rounded),
+                              label: const Text('Copy address'),
                             ),
-                            icon: const Icon(Icons.link_rounded),
-                            label: const Text('Copy URI'),
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () => _copyValue(
+                                context,
+                                paymentUri,
+                                'Payment URI copied.',
+                              ),
+                              icon: const Icon(Icons.link_rounded),
+                              label: const Text('Copy URI'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _copyValue(
+                                context,
+                                address,
+                                'Address copied.',
+                              ),
+                              icon: const Icon(Icons.copy_rounded),
+                              label: const Text('Copy address'),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () => _copyValue(
+                                context,
+                                paymentUri,
+                                'Payment URI copied.',
+                              ),
+                              icon: const Icon(Icons.link_rounded),
+                              label: const Text('Copy URI'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -215,15 +263,19 @@ class _ReceiveBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surfaceRaised = AppColors.surfaceRaisedOf(context);
+    final border = AppColors.borderOf(context);
+    final textPrimary = AppColors.textPrimaryOf(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
+        color: surfaceRaised,
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -233,7 +285,7 @@ class _ReceiveBadge extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.textPrimary,
+              color: textPrimary,
               fontWeight: FontWeight.w600,
             ),
           ),

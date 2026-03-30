@@ -3,63 +3,76 @@ import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/app/theme/typography.dart';
 
-ThemeData buildAppTheme() {
+ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
+  final isDark = brightness == Brightness.dark;
+  final primary = AppColors.primaryFor(brightness);
+  final secondary = AppColors.secondaryFor(brightness);
+  final surface = AppColors.surfaceFor(brightness);
+  final background = AppColors.backgroundFor(brightness);
+  final surfaceRaised = AppColors.surfaceRaisedFor(brightness);
+  final border = AppColors.borderFor(brightness);
+  final textPrimary = AppColors.textPrimaryFor(brightness);
+  final textSecondary = AppColors.textSecondaryFor(brightness);
+
   final base = ThemeData(
     useMaterial3: true,
-    colorScheme: const ColorScheme.light(
-      primary: AppColors.primary,
-      secondary: AppColors.accent,
-      surface: AppColors.surface,
-      error: AppColors.danger,
-      outline: AppColors.border,
+    brightness: brightness,
+    colorScheme: ColorScheme(
+      brightness: brightness,
+      primary: primary,
       onPrimary: Colors.white,
-      onSecondary: AppColors.secondary,
-      onSurface: AppColors.textPrimary,
+      secondary: AppColors.accent,
+      onSecondary: secondary,
+      error: AppColors.danger,
+      onError: Colors.white,
+      surface: surface,
+      onSurface: textPrimary,
+      outline: border,
     ),
-    scaffoldBackgroundColor: AppColors.background,
-    textTheme: buildTypography(),
-    dividerColor: AppColors.border,
+    scaffoldBackgroundColor: background,
+    textTheme: buildTypography(brightness: brightness),
+    dividerColor: border,
     splashFactory: InkRipple.splashFactory,
   );
 
   return base.copyWith(
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       centerTitle: false,
       elevation: 0,
       backgroundColor: Colors.transparent,
-      foregroundColor: AppColors.textPrimary,
+      foregroundColor: textPrimary,
       scrolledUnderElevation: 0,
       titleTextStyle: TextStyle(
         fontSize: 22,
         fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
+        color: textPrimary,
         letterSpacing: -0.4,
       ),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
-      color: AppColors.surface,
+      color: surface,
       margin: EdgeInsets.zero,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: border),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.surfaceRaised,
+      fillColor: surfaceRaised,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: border),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+        borderSide: BorderSide(color: primary, width: 1.4),
       ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
@@ -68,7 +81,7 @@ ThemeData buildAppTheme() {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: AppColors.secondary,
+        backgroundColor: secondary,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(54),
         elevation: 0,
@@ -89,9 +102,9 @@ ThemeData buildAppTheme() {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(52),
-        side: const BorderSide(color: AppColors.border),
-        foregroundColor: AppColors.textPrimary,
-        backgroundColor: AppColors.surface.withValues(alpha: 0.74),
+        side: BorderSide(color: border),
+        foregroundColor: textPrimary,
+        backgroundColor: surface.withValues(alpha: isDark ? 0.96 : 0.74),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
@@ -110,11 +123,11 @@ ThemeData buildAppTheme() {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
-      iconColor: AppColors.textSecondary,
+      iconColor: textSecondary,
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      backgroundColor: AppColors.secondary,
+      backgroundColor: secondary,
       contentTextStyle: const TextStyle(
         color: Colors.white,
         fontWeight: FontWeight.w500,
@@ -123,26 +136,26 @@ ThemeData buildAppTheme() {
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
     ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: Colors.transparent,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: AppColors.textSecondary,
+      selectedItemColor: primary,
+      unselectedItemColor: textSecondary,
       type: BottomNavigationBarType.fixed,
       elevation: 0,
       showSelectedLabels: true,
       showUnselectedLabels: true,
     ),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(
-      color: AppColors.primary,
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: primary,
     ),
     chipTheme: base.chipTheme.copyWith(
-      backgroundColor: AppColors.surfaceMuted,
+      backgroundColor: AppColors.surfaceMutedFor(brightness),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
-      side: const BorderSide(color: AppColors.border),
-      labelStyle: const TextStyle(
-        color: AppColors.textPrimary,
+      side: BorderSide(color: border),
+      labelStyle: TextStyle(
+        color: textPrimary,
         fontWeight: FontWeight.w600,
       ),
     ),
