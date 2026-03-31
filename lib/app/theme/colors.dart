@@ -19,6 +19,14 @@ abstract final class AppColors {
   static const surfaceRaisedDark = Color(0xFF19312A);
   static const border = Color(0xFFD7E3DC);
   static const borderDark = Color(0xFF2A4A42);
+  static const glassWhite = Color(0xFFFFFFFF);
+  static const glassNight = Color(0xFF091512);
+  static const glassMint = Color(0xFFDCF5EC);
+  static const glassMintDark = Color(0xFF17322B);
+  static const glassBorderLight = Color(0x99FFFFFF);
+  static const glassBorderNight = Color(0x4DDBFFF2);
+  static const glassHighlightLight = Color(0xE6FFFFFF);
+  static const glassHighlightNight = Color(0x66F4FFF9);
   static const success = Color(0xFF17976F);
   static const warning = Color(0xFFF59E0B);
   static const danger = Color(0xFFD94A4A);
@@ -65,6 +73,27 @@ abstract final class AppColors {
   static Color shadowFor(Brightness brightness) =>
       brightness == Brightness.dark ? shadowDark : shadow;
 
+  static Color glassSurfaceFor(Brightness brightness) =>
+      brightness == Brightness.dark
+      ? glassNight.withValues(alpha: 0.62)
+      : glassWhite.withValues(alpha: 0.66);
+
+  static Color glassSurfaceStrongFor(Brightness brightness) =>
+      brightness == Brightness.dark
+      ? glassMintDark.withValues(alpha: 0.58)
+      : glassMint.withValues(alpha: 0.74);
+
+  static Color glassBorderFor(Brightness brightness) =>
+      brightness == Brightness.dark ? glassBorderNight : glassBorderLight;
+
+  static Color glassHighlightFor(Brightness brightness) =>
+      brightness == Brightness.dark ? glassHighlightNight : glassHighlightLight;
+
+  static Color glassGlowFor(Brightness brightness) =>
+      brightness == Brightness.dark
+      ? primaryBright.withValues(alpha: 0.18)
+      : primary.withValues(alpha: 0.10);
+
   static Color primaryOf(BuildContext context) =>
       primaryFor(Theme.of(context).brightness);
 
@@ -97,4 +126,19 @@ abstract final class AppColors {
 
   static Color shadowOf(BuildContext context) =>
       shadowFor(Theme.of(context).brightness);
+
+  static Color glassSurfaceOf(BuildContext context) =>
+      glassSurfaceFor(Theme.of(context).brightness);
+
+  static Color glassSurfaceStrongOf(BuildContext context) =>
+      glassSurfaceStrongFor(Theme.of(context).brightness);
+
+  static Color glassBorderOf(BuildContext context) =>
+      glassBorderFor(Theme.of(context).brightness);
+
+  static Color glassHighlightOf(BuildContext context) =>
+      glassHighlightFor(Theme.of(context).brightness);
+
+  static Color glassGlowOf(BuildContext context) =>
+      glassGlowFor(Theme.of(context).brightness);
 }

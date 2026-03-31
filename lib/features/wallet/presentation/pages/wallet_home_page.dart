@@ -9,6 +9,7 @@ import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
@@ -307,22 +308,19 @@ class _WalletStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final border = AppColors.borderOf(context);
     final textPrimary = AppColors.textPrimaryOf(context);
     final maxWidth = context.isCompactWidth
         ? context.screenWidth * 0.72
         : 260.0;
 
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      tint: AppColors.glassSurfaceOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.46 : 0.68),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: surface.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: border),
       ),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
@@ -368,20 +366,16 @@ class _WalletAttentionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final shadow = AppColors.shadowOf(context);
     final textSecondary = AppColors.textSecondaryOf(context);
 
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      tint: AppColors.glassSurfaceStrongOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.50 : 0.70),
+      borderColor: tone.withValues(alpha: 0.22),
+      shadowColor: tone.withValues(alpha: 0.12),
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: surface.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: tone.withValues(alpha: 0.20)),
-        boxShadow: [
-          BoxShadow(color: shadow, blurRadius: 18, offset: const Offset(0, 10)),
-        ],
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

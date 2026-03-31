@@ -21,12 +21,10 @@ void main() {
       urlLauncherService: launcher,
     );
 
-    final openExplorerButton = find.widgetWithText(
-      FilledButton,
-      'Open explorer',
-    );
-    await tester.scrollUntilVisible(openExplorerButton, 300);
-    await tester.tap(openExplorerButton);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open explorer'));
     await tester.pumpAndSettle();
 
     expect(
@@ -46,9 +44,10 @@ void main() {
       urlLauncherService: _FakeUrlLauncherService(),
     );
 
-    final shareButton = find.widgetWithText(FilledButton, 'Share transaction');
-    await tester.scrollUntilVisible(shareButton, 300);
-    await tester.tap(shareButton);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.share_outlined));
     await tester.pumpAndSettle();
 
     expect(shareService.sharedTexts, hasLength(1));
@@ -70,7 +69,7 @@ Future<void> _pumpTransactionDetailsPage(
   required UrlLauncherService urlLauncherService,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
-  await tester.binding.setSurfaceSize(const Size(375, 844));
+  await tester.binding.setSurfaceSize(const Size(375, 1200));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
     ProviderScope(

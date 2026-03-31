@@ -3,6 +3,7 @@ import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 
 class TransactionTile extends StatelessWidget {
   const TransactionTile({
@@ -26,8 +27,6 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final shadow = AppColors.shadowOf(context);
     final textSecondary = AppColors.textSecondaryOf(context);
     final statusTextColor = isPending
         ? (AppColors.isDark(context)
@@ -46,110 +45,107 @@ class TransactionTile extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: accent.withValues(alpha: 0.16)),
-        boxShadow: [
-          BoxShadow(
-            color: shadow,
-            blurRadius: 14,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: GlassSurface(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            tint: AppColors.glassSurfaceOf(
+              context,
+            ).withValues(alpha: AppColors.isDark(context) ? 0.54 : 0.78),
+            borderColor: accent.withValues(alpha: 0.18),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: Icon(icon, color: accent, size: 22),
                 ),
-                child: Icon(icon, color: accent, size: 22),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      directionLabel,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        directionLabel,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(
-                      _compactTxId(txId),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(letterSpacing: 0.15),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.schedule_rounded,
-                          size: 14,
-                          color: textSecondary,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Expanded(
-                          child: Text(
-                            AppDateTime.ymdHm(timestamp),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall,
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        _compactTxId(txId),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(letterSpacing: 0.15),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 14,
+                            color: textSecondary,
                           ),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xs,
-                            vertical: 2,
+                          const SizedBox(width: AppSpacing.xs),
+                          Expanded(
+                            child: Text(
+                              AppDateTime.ymdHm(timestamp),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ),
-                          decoration: BoxDecoration(
-                            color: isPending
-                                ? AppColors.warning.withValues(alpha: 0.14)
-                                : AppColors.success.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                          const SizedBox(width: AppSpacing.xs),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isPending
+                                  ? AppColors.warning.withValues(alpha: 0.14)
+                                  : AppColors.success.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
+                            ),
+                            child: Text(
+                              statusLabel,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: statusTextColor,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
                           ),
-                          child: Text(
-                            statusLabel,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: statusTextColor,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                obscureAmount
-                    ? AppFormatters.obscuredSats()
-                    : '$amountPrefix$amountSats sats',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: accent,
-                  fontWeight: FontWeight.w700,
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  obscureAmount
+                      ? AppFormatters.obscuredSats()
+                      : '$amountPrefix$amountSats sats',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.right,
                 ),
-                textAlign: TextAlign.right,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

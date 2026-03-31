@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 
 enum InfoBannerType { info, warning, success, error }
 
@@ -20,21 +21,12 @@ class InfoBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = _palette(context, type);
 
-    return Container(
-      width: double.infinity,
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      tint: palette.$1,
+      borderColor: palette.$2.withValues(alpha: 0.34),
+      shadowColor: palette.$2.withValues(alpha: 0.12),
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: palette.$1,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: palette.$2),
-        boxShadow: [
-          BoxShadow(
-            color: palette.$2.withValues(alpha: 0.08),
-            blurRadius: 14,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

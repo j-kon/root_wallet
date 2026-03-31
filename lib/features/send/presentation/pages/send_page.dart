@@ -7,6 +7,7 @@ import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
@@ -45,10 +46,8 @@ class _SendPageState extends ConsumerState<SendPage> {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
     final surfaceRaised = AppColors.surfaceRaisedOf(context);
     final border = AppColors.borderOf(context);
-    final shadow = AppColors.shadowOf(context);
     final textPrimary = AppColors.textPrimaryOf(context);
     final textSecondary = AppColors.textSecondaryOf(context);
     final state = ref.watch(sendControllerProvider);
@@ -97,21 +96,13 @@ class _SendPageState extends ConsumerState<SendPage> {
             Expanded(
               child: ListView(
                 children: [
-                  Container(
+                  GlassSurface(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    tint: AppColors.glassSurfaceStrongOf(context).withValues(
+                      alpha: AppColors.isDark(context) ? 0.52 : 0.72,
+                    ),
                     padding: EdgeInsets.all(
                       context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
-                    ),
-                    decoration: BoxDecoration(
-                      color: surface.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: Border.all(color: border),
-                      boxShadow: [
-                        BoxShadow(
-                          color: shadow,
-                          blurRadius: 20,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,22 +472,12 @@ class _FormSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final border = AppColors.borderOf(context);
-    final shadow = AppColors.shadowOf(context);
-
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      tint: AppColors.glassSurfaceOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.50 : 0.78),
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: surface.withValues(
-          alpha: AppColors.isDark(context) ? 0.94 : 0.92,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: border),
-        boxShadow: [
-          BoxShadow(color: shadow, blurRadius: 18, offset: Offset(0, 10)),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -524,19 +505,16 @@ class _StageChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surfaceRaised = AppColors.surfaceRaisedOf(context);
-    final border = AppColors.borderOf(context);
     final textPrimary = AppColors.textPrimaryOf(context);
 
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      tint: AppColors.glassSurfaceOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.46 : 0.66),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: surfaceRaised,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

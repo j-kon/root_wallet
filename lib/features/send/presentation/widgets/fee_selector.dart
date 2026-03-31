@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/features/send/presentation/models/send_draft.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
@@ -14,8 +15,6 @@ class FeeSelector extends ConsumerWidget {
     final state = ref.watch(sendControllerProvider);
     final notifier = ref.read(sendControllerProvider.notifier);
     final suggested = ref.watch(suggestedFeeProvider);
-    final surface = AppColors.surfaceRaisedOf(context);
-    final border = AppColors.borderOf(context);
     final isCompact = context.isCompactWidth;
 
     final suggestedRate = suggested.maybeWhen(
@@ -62,14 +61,9 @@ class FeeSelector extends ConsumerWidget {
           },
         ),
         const SizedBox(height: AppSpacing.sm),
-        Container(
-          width: double.infinity,
+        GlassSurface(
+          borderRadius: BorderRadius.circular(AppRadius.md),
           padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: border),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -115,8 +109,6 @@ class _FeeMetricChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final border = AppColors.borderOf(context);
     final textPrimary = AppColors.textPrimaryOf(context);
 
     return Container(
@@ -125,9 +117,9 @@ class _FeeMetricChip extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: surface,
+        color: AppColors.glassSurfaceOf(context),
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: border),
+        border: Border.all(color: AppColors.glassBorderOf(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -163,7 +155,6 @@ class _FeePresetButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = AppColors.primaryOf(context);
-    final surface = AppColors.surfaceOf(context);
     final border = AppColors.borderOf(context);
     final textPrimary = AppColors.textPrimaryOf(context);
     final textSecondary = AppColors.textSecondaryOf(context);
@@ -179,7 +170,9 @@ class _FeePresetButton extends StatelessWidget {
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            color: selected ? AppColors.accent.withValues(alpha: 0.22) : surface,
+            color: selected
+                ? AppColors.accent.withValues(alpha: 0.22)
+                : AppColors.glassSurfaceOf(context),
             borderRadius: BorderRadius.circular(AppRadius.pill),
             border: Border.all(
               color: selected ? AppColors.accent : border,

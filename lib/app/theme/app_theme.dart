@@ -8,12 +8,12 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
   final primary = AppColors.primaryFor(brightness);
   final secondary = AppColors.secondaryFor(brightness);
   final surface = AppColors.surfaceFor(brightness);
-  final surfaceMuted = AppColors.surfaceMutedFor(brightness);
-  final background = AppColors.backgroundFor(brightness);
-  final surfaceRaised = AppColors.surfaceRaisedFor(brightness);
   final border = AppColors.borderFor(brightness);
   final textPrimary = AppColors.textPrimaryFor(brightness);
   final textSecondary = AppColors.textSecondaryFor(brightness);
+  final glassSurface = AppColors.glassSurfaceFor(brightness);
+  final glassStrong = AppColors.glassSurfaceStrongFor(brightness);
+  final glassBorder = AppColors.glassBorderFor(brightness);
 
   final base = ThemeData(
     useMaterial3: true,
@@ -30,7 +30,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       onSurface: textPrimary,
       outline: border,
     ),
-    scaffoldBackgroundColor: background,
+    scaffoldBackgroundColor: Colors.transparent,
     textTheme: buildTypography(brightness: brightness),
     dividerColor: border,
     splashFactory: InkRipple.splashFactory,
@@ -52,17 +52,17 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     ),
     cardTheme: CardThemeData(
       elevation: 0,
-      color: surface,
+      color: glassSurface,
       margin: EdgeInsets.zero,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        side: BorderSide(color: border),
+        side: BorderSide(color: glassBorder),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: surfaceRaised,
+      fillColor: glassStrong,
       labelStyle: TextStyle(
         color: isDark ? textPrimary.withValues(alpha: 0.90) : textSecondary,
         fontWeight: FontWeight.w600,
@@ -79,11 +79,11 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(color: border),
+        borderSide: BorderSide(color: glassBorder),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(color: border),
+        borderSide: BorderSide(color: glassBorder),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -98,7 +98,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       style: FilledButton.styleFrom(
         backgroundColor: secondary,
         foregroundColor: Colors.white,
-        disabledBackgroundColor: surfaceMuted,
+        disabledBackgroundColor: glassStrong,
         disabledForegroundColor: textSecondary.withValues(alpha: 0.72),
         minimumSize: const Size.fromHeight(54),
         elevation: 0,
@@ -119,9 +119,9 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(52),
-        side: BorderSide(color: border),
+        side: BorderSide(color: glassBorder),
         foregroundColor: textPrimary,
-        backgroundColor: surfaceRaised.withValues(alpha: isDark ? 0.92 : 0.74),
+        backgroundColor: glassSurface,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
@@ -156,25 +156,20 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: Colors.transparent,
       selectedItemColor: primary,
-      unselectedItemColor: textSecondary,
+      unselectedItemColor: textSecondary.withValues(alpha: 0.76),
       type: BottomNavigationBarType.fixed,
       elevation: 0,
       showSelectedLabels: true,
       showUnselectedLabels: true,
     ),
-    progressIndicatorTheme: ProgressIndicatorThemeData(
-      color: primary,
-    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: primary),
     chipTheme: base.chipTheme.copyWith(
-      backgroundColor: AppColors.surfaceMutedFor(brightness),
+      backgroundColor: glassStrong,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
-      side: BorderSide(color: border),
-      labelStyle: TextStyle(
-        color: textPrimary,
-        fontWeight: FontWeight.w600,
-      ),
+      side: BorderSide(color: glassBorder),
+      labelStyle: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
     ),
   );
 }

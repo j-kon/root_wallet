@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/features/receive/presentation/pages/receive_page.dart';
 import 'package:root_wallet/features/send/presentation/pages/send_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/settings_page.dart';
@@ -39,9 +40,6 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surface;
-    final border = AppColors.borderOf(context);
-    final shadow = AppColors.shadowOf(context);
     final inactiveColor = AppColors.textSecondaryOf(
       context,
     ).withValues(alpha: 0.76);
@@ -80,23 +78,12 @@ class _MainShellState extends State<MainShell> {
               0,
               horizontalPadding,
               0,
-              //bottomSpacing,
             ),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: surface.withValues(alpha: 0.94),
-                borderRadius: BorderRadius.circular(AppRadius.lg + 4),
-                border: Border.all(color: border),
-                boxShadow: [
-                  BoxShadow(
-                    color: shadow,
-                    blurRadius: 24,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
+            child: GlassSurface(
+              borderRadius: BorderRadius.circular(AppRadius.lg + 6),
+              blur: 28,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.lg + 4),
+                borderRadius: BorderRadius.circular(AppRadius.lg + 6),
                 child: BottomNavigationBar(
                   currentIndex: _currentIndex,
                   onTap: _onTap,

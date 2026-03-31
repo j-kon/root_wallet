@@ -7,6 +7,7 @@ import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/features/receive/presentation/widgets/address_qr.dart';
@@ -19,10 +20,8 @@ class ReceivePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final walletState = ref.watch(walletControllerProvider);
-    final surface = AppColors.surfaceOf(context);
-    final surfaceRaised = AppColors.surfaceRaisedOf(context);
     final border = AppColors.borderOf(context);
-    final shadow = AppColors.shadowOf(context);
+    final surfaceRaised = AppColors.surfaceRaisedOf(context);
     final textSecondary = AppColors.textSecondaryOf(context);
 
     return AppScaffold(
@@ -46,21 +45,13 @@ class ReceivePage extends ConsumerWidget {
               context.contentBottomSpacing,
             ),
             children: [
-              Container(
+              GlassSurface(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                tint: AppColors.glassSurfaceStrongOf(
+                  context,
+                ).withValues(alpha: AppColors.isDark(context) ? 0.50 : 0.72),
                 padding: EdgeInsets.all(
                   context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
-                ),
-                decoration: BoxDecoration(
-                  color: surface.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: shadow,
-                      blurRadius: 20,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,20 +94,12 @@ class ReceivePage extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               AddressQr(address: address),
               const SizedBox(height: AppSpacing.md),
-              Container(
+              GlassSurface(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                tint: AppColors.glassSurfaceOf(
+                  context,
+                ).withValues(alpha: AppColors.isDark(context) ? 0.48 : 0.78),
                 padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: surface.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: shadow,
-                      blurRadius: 18,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

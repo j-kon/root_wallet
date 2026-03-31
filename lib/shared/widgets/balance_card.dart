@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class BalanceCard extends StatelessWidget {
@@ -18,33 +19,35 @@ class BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCompact = context.isCompactWidth;
-    final shadow = AppColors.shadowOf(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            AppColors.secondary,
-            AppColors.primaryDeep,
-            AppColors.primary,
-          ],
-          stops: <double>[0, 0.55, 1],
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: [
-          BoxShadow(
-            color: shadow,
-            blurRadius: 26,
-            offset: const Offset(0, 18),
-          ),
-        ],
-      ),
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      blur: 30,
+      tint: AppColors.glassSurfaceStrongOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.74),
+      borderColor: AppColors.glassBorderOf(context),
+      shadowColor: AppColors.glassGlowOf(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Stack(
           children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      AppColors.secondary,
+                      AppColors.primaryDeep,
+                      AppColors.primary,
+                    ],
+                    stops: <double>[0, 0.55, 1],
+                  ),
+                ),
+              ),
+            ),
             Positioned(
               top: -34,
               right: -18,
@@ -70,7 +73,9 @@ class BalanceCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: EdgeInsets.all(isCompact ? AppSpacing.md : AppSpacing.lg),
+              padding: EdgeInsets.all(
+                isCompact ? AppSpacing.md : AppSpacing.lg,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

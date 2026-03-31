@@ -22,13 +22,10 @@ void main() {
       urlLauncherService: _FakeUrlLauncherService(),
     );
 
-    final shareOptions = find.text('Share options').last;
-    await tester.scrollUntilVisible(
-      shareOptions,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(shareOptions, warnIfMissed: false);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Share options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Share address'));
     await tester.pumpAndSettle();
@@ -48,13 +45,10 @@ void main() {
       urlLauncherService: _FakeUrlLauncherService(),
     );
 
-    final shareOptions = find.text('Share options').last;
-    await tester.scrollUntilVisible(
-      shareOptions,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(shareOptions, warnIfMissed: false);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Share options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Share payment request'));
     await tester.pumpAndSettle();
@@ -70,7 +64,7 @@ Future<void> _pumpReceivePage(
   required UrlLauncherService urlLauncherService,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
-  await tester.binding.setSurfaceSize(const Size(375, 844));
+  await tester.binding.setSurfaceSize(const Size(375, 1200));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
     ProviderScope(

@@ -67,13 +67,10 @@ void main() {
       urlLauncherService: launcher,
     );
 
-    final button = find.text('View explorer').last;
-    await tester.scrollUntilVisible(
-      button,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(button, warnIfMissed: false);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('View explorer'));
     await tester.pumpAndSettle();
 
     expect(
@@ -93,13 +90,10 @@ void main() {
       urlLauncherService: _FakeUrlLauncherService(),
     );
 
-    final shareButton = find.text('Share tracking link').last;
-    await tester.scrollUntilVisible(
-      shareButton,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(shareButton, warnIfMissed: false);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.share_outlined));
     await tester.pumpAndSettle();
 
     expect(shareService.sharedTexts, hasLength(1));
@@ -121,7 +115,7 @@ Future<void> _pumpSuccessPage(
   required UrlLauncherService urlLauncherService,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
-  await tester.binding.setSurfaceSize(const Size(375, 844));
+  await tester.binding.setSurfaceSize(const Size(375, 1200));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
     ProviderScope(
