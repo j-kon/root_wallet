@@ -11,6 +11,7 @@ import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/features/receive/presentation/widgets/address_qr.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ReceivePage extends ConsumerWidget {
   const ReceivePage({super.key});
@@ -185,6 +186,19 @@ class ReceivePage extends ConsumerWidget {
                               label: const Text('Copy URI'),
                             ),
                           ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.tonalIcon(
+                              onPressed: () => _showShareOptions(
+                                context,
+                                address: address,
+                                paymentUri: paymentUri,
+                              ),
+                              icon: const Icon(Icons.share_outlined),
+                              label: const Text('Share options'),
+                            ),
+                          ),
                         ],
                       ),
                     ] else ...[
@@ -211,6 +225,18 @@ class ReceivePage extends ConsumerWidget {
                               ),
                               icon: const Icon(Icons.link_rounded),
                               label: const Text('Copy URI'),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: FilledButton.tonalIcon(
+                              onPressed: () => _showShareOptions(
+                                context,
+                                address: address,
+                                paymentUri: paymentUri,
+                              ),
+                              icon: const Icon(Icons.share_outlined),
+                              label: const Text('Share options'),
                             ),
                           ),
                         ],
@@ -252,6 +278,74 @@ class ReceivePage extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _showShareOptions(
+    BuildContext context, {
+    required String address,
+    required String paymentUri,
+  }) async {
+    final parentContext = context;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.copy_rounded),
+                title: const Text('Copy address'),
+                subtitle: const Text('Share the raw testnet address.'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await _copyValue(parentContext, address, 'Address copied.');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.link_rounded),
+                title: const Text('Copy payment URI'),
+                subtitle: const Text(
+                  'Includes the bitcoin: prefix for requests.',
+                ),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await _copyValue(
+                    parentContext,
+                    paymentUri,
+                    'Payment URI copied.',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.open_in_new_rounded),
+                title: const Text('Open payment request'),
+                subtitle: const Text(
+                  'Open the bitcoin URI in another app if your device supports it.',
+                ),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final uri = Uri.parse(paymentUri);
+                  final launched = await launchUrl(
+                    uri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                  if (launched || !parentContext.mounted) {
+                    return;
+                  }
+                  await _copyValue(
+                    parentContext,
+                    paymentUri,
+                    'Payment URI copied.',
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 

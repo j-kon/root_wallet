@@ -45,8 +45,9 @@ class _MainShellState extends State<MainShell> {
     final inactiveColor = AppColors.textSecondaryOf(
       context,
     ).withValues(alpha: 0.76);
-    final horizontalPadding = context.isCompactWidth ? AppSpacing.sm : AppSpacing.md;
-    final bottomSpacing = context.navBarBottomSpacing;
+    final horizontalPadding = context.isCompactWidth
+        ? AppSpacing.sm
+        : AppSpacing.md;
     final tabs = <Widget>[
       WalletHomePage(
         onReceiveRequested: () => _onTap(1),

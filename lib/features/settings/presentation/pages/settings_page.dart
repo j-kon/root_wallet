@@ -24,7 +24,8 @@ class SettingsPage extends ConsumerWidget {
     final platform = Theme.of(context).platform;
     final useCupertino = platform == TargetPlatform.iOS;
     final shadow = AppColors.shadowOf(context);
-    final themeMode = ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
+    final themeMode =
+        ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
     final walletState = ref.watch(walletControllerProvider).valueOrNull;
     final lockState = ref.watch(lockControllerProvider).valueOrNull;
     final backupConfirmed =
@@ -83,6 +84,10 @@ class SettingsPage extends ConsumerWidget {
                 Text(
                   walletState == null
                       ? 'Security posture and sync health will appear here when wallet data is ready.'
+                      : walletState.isSyncing
+                      ? 'Wallet data is syncing against the public testnet network.'
+                      : walletState.isOffline
+                      ? 'Offline mode active. Cached wallet data was last updated ${AppDateTime.updatedAgo(walletState.lastSyncedAt)}.'
                       : 'Last synced ${AppDateTime.updatedAgo(walletState.lastSyncedAt)}. Review privacy, backup, and support controls below.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.white.withValues(alpha: 0.82),
@@ -250,6 +255,20 @@ class SettingsPage extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.sm),
                 _SettingsTile(
                   icon: useCupertino
+                      ? CupertinoIcons.compass
+                      : Icons.explore_outlined,
+                  title: 'Public testnet explorer',
+                  subtitle:
+                      'Open mempool.space/testnet or copy the explorer URL.',
+                  onTap: () => _openExternalLink(
+                    context,
+                    AppConstants.testnetExplorerBaseUrl,
+                    copiedMessage: 'Explorer URL copied.',
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _SettingsTile(
+                  icon: useCupertino
                       ? CupertinoIcons.info_circle
                       : Icons.info_outline_rounded,
                   title: 'About',
@@ -265,19 +284,31 @@ class SettingsPage extends ConsumerWidget {
   }
 
   Future<void> _openSupport(BuildContext context) async {
-    final uri = Uri.parse(AppConstants.supportUrl);
+    await _openExternalLink(
+      context,
+      AppConstants.supportUrl,
+      copiedMessage: 'Support URL copied.',
+    );
+  }
+
+  Future<void> _openExternalLink(
+    BuildContext context,
+    String url, {
+    required String copiedMessage,
+  }) async {
+    final uri = Uri.parse(url);
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (launched || !context.mounted) {
       return;
     }
 
-    await Clipboard.setData(const ClipboardData(text: AppConstants.supportUrl));
+    await Clipboard.setData(ClipboardData(text: url));
     if (!context.mounted) {
       return;
     }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Support URL copied.')));
+    ).showSnackBar(SnackBar(content: Text(copiedMessage)));
   }
 }
 
@@ -305,11 +336,7 @@ class _SettingsPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: border),
         boxShadow: [
-          BoxShadow(
-            color: shadow,
-            blurRadius: 16,
-            offset: const Offset(0, 10),
-          ),
+          BoxShadow(color: shadow, blurRadius: 16, offset: const Offset(0, 10)),
         ],
       ),
       child: Column(

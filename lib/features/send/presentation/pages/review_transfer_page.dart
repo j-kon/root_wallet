@@ -11,6 +11,7 @@ import 'package:root_wallet/core/widgets/empty_state.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
+import 'package:root_wallet/features/send/presentation/pages/send_success_page.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
@@ -261,26 +262,31 @@ class ReviewTransferPage extends ConsumerWidget {
               onPressed: state.isSending
                   ? null
                   : () async {
+                      final amountSatsToSend = amountSats;
+                      final estimatedFeeSats = state.estimatedFeeSats;
                       final txId = await controller.send();
                       if (txId == null || !context.mounted) {
                         return;
                       }
 
-                      controller.resetAfterSuccess();
                       await ref
                           .read(walletHomeControllerProvider.notifier)
-                          .sync();
+                          .recordPendingSend(
+                            txId: txId,
+                            amountSats: amountSatsToSend,
+                            feeSats: estimatedFeeSats,
+                          );
+                      controller.resetAfterSuccess();
                       if (!context.mounted) {
                         return;
                       }
 
-                      Navigator.of(context).pushNamedAndRemoveUntil(
-                        AppRoutes.walletHome,
-                        (route) => false,
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Transaction broadcast successfully.'),
+                      Navigator.of(context).pushReplacementNamed(
+                        AppRoutes.sendSuccess,
+                        arguments: SendSuccessPageArgs(
+                          txId: txId,
+                          amountSats: amountSatsToSend,
+                          feeSats: estimatedFeeSats,
                         ),
                       );
                     },
@@ -324,11 +330,7 @@ class _ReviewPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: border),
         boxShadow: [
-          BoxShadow(
-            color: shadow,
-            blurRadius: 16,
-            offset: const Offset(0, 10),
-          ),
+          BoxShadow(color: shadow, blurRadius: 16, offset: const Offset(0, 10)),
         ],
       ),
       child: Column(

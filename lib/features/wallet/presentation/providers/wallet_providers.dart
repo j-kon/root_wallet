@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
+import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_sync_datasource.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_wallet_datasource.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
@@ -93,6 +94,7 @@ class WalletHomeState {
     required this.receiveAddress,
     required this.lastSyncedAt,
     required this.isOffline,
+    required this.isSyncing,
   });
 
   final Balance balance;
@@ -100,6 +102,7 @@ class WalletHomeState {
   final String receiveAddress;
   final DateTime lastSyncedAt;
   final bool isOffline;
+  final bool isSyncing;
 
   WalletHomeState copyWith({
     Balance? balance,
@@ -107,6 +110,7 @@ class WalletHomeState {
     String? receiveAddress,
     DateTime? lastSyncedAt,
     bool? isOffline,
+    bool? isSyncing,
   }) {
     return WalletHomeState(
       balance: balance ?? this.balance,
@@ -114,6 +118,7 @@ class WalletHomeState {
       receiveAddress: receiveAddress ?? this.receiveAddress,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       isOffline: isOffline ?? this.isOffline,
+      isSyncing: isSyncing ?? this.isSyncing,
     );
   }
 }
@@ -124,7 +129,7 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
     final cached = await _readCachedState();
     if (cached != null) {
       unawaited(sync());
-      return cached.copyWith(isOffline: true);
+      return cached.copyWith(isOffline: true, isSyncing: true);
     }
 
     final fresh = await _loadRemoteState();
@@ -138,24 +143,26 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
 
   Future<void> sync({bool showLoading = false}) async {
     final previous = state.valueOrNull;
-    if (showLoading || previous == null) {
+    if (previous != null) {
+      state = AsyncData(previous.copyWith(isSyncing: true));
+    } else if (showLoading || previous == null) {
       state = const AsyncLoading();
     }
 
     try {
       final fresh = await _loadRemoteState();
       await _writeCache(fresh);
-      state = AsyncData(fresh);
+      state = AsyncData(fresh.copyWith(isSyncing: false, isOffline: false));
       return;
     } catch (error, stackTrace) {
       final cached = await _readCachedState();
       if (cached != null) {
-        state = AsyncData(cached.copyWith(isOffline: true));
+        state = AsyncData(cached.copyWith(isOffline: true, isSyncing: false));
         return;
       }
 
       if (previous != null) {
-        state = AsyncData(previous.copyWith(isOffline: true));
+        state = AsyncData(previous.copyWith(isOffline: true, isSyncing: false));
         return;
       }
 
@@ -172,7 +179,44 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
       receiveAddress: overview.receiveAddress,
       lastSyncedAt: DateTime.now(),
       isOffline: false,
+      isSyncing: false,
     );
+  }
+
+  Future<void> recordPendingSend({
+    required String txId,
+    required int amountSats,
+    required int feeSats,
+  }) async {
+    final current = state.valueOrNull;
+    if (current == null) {
+      return;
+    }
+
+    final optimisticTx = TxItem(
+      txId: txId,
+      amountSats: amountSats,
+      timestamp: DateTime.now(),
+      isIncoming: false,
+      status: TxItemStatus.pending,
+      feeSats: feeSats,
+      confirmations: 0,
+    );
+
+    final updatedTransactions = <TxItem>[
+      optimisticTx,
+      ...current.transactions.where((tx) => tx.txId != txId),
+    ];
+
+    final updatedState = current.copyWith(
+      transactions: updatedTransactions,
+      lastSyncedAt: DateTime.now(),
+      isSyncing: true,
+    );
+
+    state = AsyncData(updatedState);
+    await _writeCache(updatedState);
+    unawaited(sync());
   }
 
   Future<WalletHomeState?> _readCachedState() async {
@@ -207,12 +251,14 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
         snapshot.lastSyncedAtMs,
       ),
       isOffline: true,
+      isSyncing: false,
     );
   }
 
   Future<void> _writeCache(WalletHomeState state) async {
     final cache = await ref.read(walletSnapshotCacheProvider.future);
     final snapshot = WalletSnapshot(
+      schemaVersion: AppConstants.walletSnapshotSchemaVersion,
       confirmedSats: state.balance.confirmedSats,
       pendingSats: state.balance.pendingSats,
       receiveAddress: state.receiveAddress,

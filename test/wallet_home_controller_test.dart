@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
@@ -18,6 +19,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await WalletSnapshotCache(prefs).write(
         WalletSnapshot(
+          schemaVersion: AppConstants.walletSnapshotSchemaVersion,
           confirmedSats: 12345,
           pendingSats: 200,
           receiveAddress: 'tb1qcachedaddress',
@@ -90,6 +92,7 @@ void main() {
       expect(state.balance.confirmedSats, 21000);
       expect(state.receiveAddress, 'tb1qfreshaddress');
       expect(state.transactions.single.txId, 'fresh_tx');
+      expect(state.isSyncing, isFalse);
     });
   });
 }

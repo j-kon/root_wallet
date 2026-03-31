@@ -49,6 +49,17 @@ class WalletHomePage extends ConsumerWidget {
     return AppScaffold(
       title: 'Wallet',
       actions: [
+        IconButton(
+          onPressed: walletState.valueOrNull?.isSyncing == true
+              ? null
+              : walletController.refresh,
+          tooltip: 'Refresh wallet',
+          icon: Icon(
+            walletState.valueOrNull?.isSyncing == true
+                ? Icons.sync_rounded
+                : Icons.refresh_rounded,
+          ),
+        ),
         Center(
           child: Container(
             margin: const EdgeInsets.only(right: AppSpacing.sm),
@@ -60,7 +71,9 @@ class WalletHomePage extends ConsumerWidget {
               color: AppColors.warning.withValues(alpha: isDark ? 0.18 : 0.14),
               borderRadius: BorderRadius.circular(AppRadius.pill),
               border: Border.all(
-                color: AppColors.warning.withValues(alpha: isDark ? 0.36 : 0.28),
+                color: AppColors.warning.withValues(
+                  alpha: isDark ? 0.36 : 0.28,
+                ),
               ),
             ),
             child: Text(
@@ -96,11 +109,12 @@ class WalletHomePage extends ConsumerWidget {
           );
         },
         data: (data) {
-          final headlineStyle = Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.9,
-            fontSize: context.isCompactWidth ? 26 : 30,
-          );
+          final headlineStyle = Theme.of(context).textTheme.headlineMedium
+              ?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.9,
+                fontSize: context.isCompactWidth ? 26 : 30,
+              );
           final fiatLabel = btcNgnRate.when(
             data: (rate) =>
                 '≈ ${AppFormatters.ngn(data.balance.btc * rate.value)}',
@@ -115,9 +129,14 @@ class WalletHomePage extends ConsumerWidget {
           final activitySummary = data.transactions.isEmpty
               ? 'Ready for your first transaction'
               : '${data.transactions.length} transaction${data.transactions.length == 1 ? '' : 's'} tracked';
+          final syncChipLabel = data.isSyncing
+              ? 'Syncing testnet...'
+              : data.isOffline
+              ? 'Cached data'
+              : AppDateTime.updatedAgo(data.lastSyncedAt);
 
           return RefreshIndicator(
-            onRefresh: () => walletController.sync(),
+            onRefresh: walletController.refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
@@ -146,7 +165,7 @@ class WalletHomePage extends ConsumerWidget {
                   children: [
                     _WalletStatusChip(
                       icon: Icons.sync_rounded,
-                      label: AppDateTime.updatedAgo(data.lastSyncedAt),
+                      label: syncChipLabel,
                     ),
                     const _WalletStatusChip(
                       icon: Icons.language_rounded,
@@ -231,6 +250,22 @@ class WalletHomePage extends ConsumerWidget {
                         'Offline mode. Showing cached wallet data from ${AppDateTime.ymdHm(data.lastSyncedAt)}.',
                     icon: Icons.wifi_off_rounded,
                   ),
+                ] else if (data.isSyncing) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  const InfoBanner(
+                    type: InfoBannerType.info,
+                    message:
+                        'Refreshing wallet data from the public testnet network.',
+                    icon: Icons.sync_rounded,
+                  ),
+                ] else ...[
+                  const SizedBox(height: AppSpacing.md),
+                  InfoBanner(
+                    type: InfoBannerType.success,
+                    message:
+                        'Live wallet data updated ${AppDateTime.updatedAgo(data.lastSyncedAt)}.',
+                    icon: Icons.cloud_done_rounded,
+                  ),
                 ],
                 const SizedBox(height: AppSpacing.lg),
                 SectionHeader(
@@ -275,7 +310,9 @@ class _WalletStatusChip extends StatelessWidget {
     final surface = AppColors.surfaceOf(context);
     final border = AppColors.borderOf(context);
     final textPrimary = AppColors.textPrimaryOf(context);
-    final maxWidth = context.isCompactWidth ? context.screenWidth * 0.72 : 260.0;
+    final maxWidth = context.isCompactWidth
+        ? context.screenWidth * 0.72
+        : 260.0;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -342,11 +379,7 @@ class _WalletAttentionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: tone.withValues(alpha: 0.20)),
         boxShadow: [
-          BoxShadow(
-            color: shadow,
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
+          BoxShadow(color: shadow, blurRadius: 18, offset: const Offset(0, 10)),
         ],
       ),
       child: Row(

@@ -10,6 +10,7 @@ abstract final class AppRoutes {
   static const send = '/send';
   static const reviewTransfer = '/send/review';
   static const confirmSend = '/send/confirm';
+  static const sendSuccess = '/send/success';
   static const receive = '/receive';
 
   static const settings = '/settings';

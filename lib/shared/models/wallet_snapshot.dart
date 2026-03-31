@@ -44,6 +44,7 @@ class WalletSnapshotTx {
 
 class WalletSnapshot {
   const WalletSnapshot({
+    required this.schemaVersion,
     required this.confirmedSats,
     required this.pendingSats,
     required this.receiveAddress,
@@ -54,6 +55,7 @@ class WalletSnapshot {
   factory WalletSnapshot.fromJson(Map<String, dynamic> json) {
     final rawTxs = (json['transactions'] as List<dynamic>? ?? <dynamic>[]);
     return WalletSnapshot(
+      schemaVersion: (json['schemaVersion'] as int?) ?? 1,
       confirmedSats: json['confirmedSats'] as int,
       pendingSats: json['pendingSats'] as int,
       receiveAddress: json['receiveAddress'] as String,
@@ -64,6 +66,7 @@ class WalletSnapshot {
     );
   }
 
+  final int schemaVersion;
   final int confirmedSats;
   final int pendingSats;
   final String receiveAddress;
@@ -72,6 +75,7 @@ class WalletSnapshot {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
+      'schemaVersion': schemaVersion,
       'confirmedSats': confirmedSats,
       'pendingSats': pendingSats,
       'receiveAddress': receiveAddress,

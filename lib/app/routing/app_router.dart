@@ -5,6 +5,7 @@ import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/features/onboarding/presentation/pages/confirm_seed_page.dart';
 import 'package:root_wallet/features/onboarding/presentation/pages/welcome_page.dart';
 import 'package:root_wallet/features/send/presentation/pages/review_transfer_page.dart';
+import 'package:root_wallet/features/send/presentation/pages/send_success_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/about_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/security_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
@@ -44,6 +45,8 @@ abstract final class AppRouter {
       case AppRoutes.reviewTransfer:
       case AppRoutes.confirmSend:
         return _page(settings, const ReviewTransferPage());
+      case AppRoutes.sendSuccess:
+        return _page(settings, const SendSuccessPage());
       case AppRoutes.receive:
         return _page(settings, const MainShell(initialIndex: 1));
       case AppRoutes.settings:

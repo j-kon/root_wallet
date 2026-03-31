@@ -267,16 +267,33 @@ class BdkWalletDatasource {
 
   Future<String> _databasePath() async {
     final walletDirectory = await _walletStoragePathLoader();
-    return '$walletDirectory/root_wallet_${_network.name}.sqlite';
+    final versionedPath =
+        '$walletDirectory/root_wallet_${_network.name}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite';
+    final legacyPath = '$walletDirectory/root_wallet_${_network.name}.sqlite';
+
+    if (await File(versionedPath).exists()) {
+      return versionedPath;
+    }
+    if (await File(legacyPath).exists()) {
+      return legacyPath;
+    }
+    return versionedPath;
   }
 
   Future<void> _deleteWalletDatabase() async {
-    final databasePath = await _databasePath();
-    final companionPaths = <String>[
-      databasePath,
-      '$databasePath-wal',
-      '$databasePath-shm',
+    final walletDirectory = await _walletStoragePathLoader();
+    final databasePaths = <String>[
+      '$walletDirectory/root_wallet_${_network.name}.sqlite',
+      '$walletDirectory/root_wallet_${_network.name}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite',
     ];
+    final companionPaths = <String>[];
+    for (final databasePath in databasePaths) {
+      companionPaths.addAll(<String>[
+        databasePath,
+        '$databasePath-wal',
+        '$databasePath-shm',
+      ]);
+    }
 
     for (final path in companionPaths) {
       final file = File(path);

@@ -34,9 +34,7 @@ class TransactionDetailsPage extends ConsumerWidget {
 
     final tx = args;
     final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
-    final explorerUri = Uri.parse(
-      'https://mempool.space/testnet/tx/${tx.txId}',
-    );
+    final explorerUri = Uri.parse(AppConstants.testnetExplorerTxUrl(tx.txId));
     final amountBtc = tx.amountSats / AppConstants.satoshisPerBitcoin;
     final amountLabel = hideBalances
         ? AppFormatters.obscuredBtc()
@@ -182,9 +180,9 @@ class TransactionDetailsPage extends ConsumerWidget {
                   ),
                   child: SelectableText(
                     tx.txId,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: textSecondary,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: textSecondary),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -264,15 +262,13 @@ class _DetailsPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: surface.withValues(alpha: AppColors.isDark(context) ? 0.94 : 0.92),
+        color: surface.withValues(
+          alpha: AppColors.isDark(context) ? 0.94 : 0.92,
+        ),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: border),
         boxShadow: [
-          BoxShadow(
-            color: shadow,
-            blurRadius: 16,
-            offset: Offset(0, 10),
-          ),
+          BoxShadow(color: shadow, blurRadius: 16, offset: Offset(0, 10)),
         ],
       ),
       child: Column(
