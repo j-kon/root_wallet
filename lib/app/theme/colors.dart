@@ -19,14 +19,14 @@ abstract final class AppColors {
   static const surfaceRaisedDark = Color(0xFF19312A);
   static const border = Color(0xFFD7E3DC);
   static const borderDark = Color(0xFF2A4A42);
-  static const glassWhite = Color(0xFFFFFFFF);
-  static const glassNight = Color(0xFF091512);
-  static const glassMint = Color(0xFFDCF5EC);
-  static const glassMintDark = Color(0xFF17322B);
-  static const glassBorderLight = Color(0x99FFFFFF);
-  static const glassBorderNight = Color(0x4DDBFFF2);
-  static const glassHighlightLight = Color(0xE6FFFFFF);
-  static const glassHighlightNight = Color(0x66F4FFF9);
+  static const glassWhite = Color(0xFFFCFEFD);
+  static const glassNight = Color(0xFF0C1714);
+  static const glassMint = Color(0xFFF1F8F5);
+  static const glassMintDark = Color(0xFF13211D);
+  static const glassBorderLight = Color(0xCCFFFFFF);
+  static const glassBorderNight = Color(0x40E4FFF6);
+  static const glassHighlightLight = Color(0xF7FFFFFF);
+  static const glassHighlightNight = Color(0x52F4FFF9);
   static const success = Color(0xFF17976F);
   static const warning = Color(0xFFF59E0B);
   static const danger = Color(0xFFD94A4A);
@@ -75,13 +75,13 @@ abstract final class AppColors {
 
   static Color glassSurfaceFor(Brightness brightness) =>
       brightness == Brightness.dark
-      ? glassNight.withValues(alpha: 0.62)
-      : glassWhite.withValues(alpha: 0.66);
+      ? glassNight.withValues(alpha: 0.70)
+      : glassWhite.withValues(alpha: 0.84);
 
   static Color glassSurfaceStrongFor(Brightness brightness) =>
       brightness == Brightness.dark
-      ? glassMintDark.withValues(alpha: 0.58)
-      : glassMint.withValues(alpha: 0.74);
+      ? glassMintDark.withValues(alpha: 0.64)
+      : glassMint.withValues(alpha: 0.88);
 
   static Color glassBorderFor(Brightness brightness) =>
       brightness == Brightness.dark ? glassBorderNight : glassBorderLight;
@@ -91,8 +91,8 @@ abstract final class AppColors {
 
   static Color glassGlowFor(Brightness brightness) =>
       brightness == Brightness.dark
-      ? primaryBright.withValues(alpha: 0.18)
-      : primary.withValues(alpha: 0.10);
+      ? primaryBright.withValues(alpha: 0.10)
+      : primary.withValues(alpha: 0.06);
 
   static Color primaryOf(BuildContext context) =>
       primaryFor(Theme.of(context).brightness);

@@ -70,18 +70,22 @@ class _MainShellState extends State<MainShell> {
       child: Scaffold(
         body: IndexedStack(index: _currentIndex, children: tabs),
         bottomNavigationBar: SafeArea(
-          top: true,
+          top: false,
           bottom: true,
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               horizontalPadding,
               0,
               horizontalPadding,
-              0,
+              AppSpacing.xs,
             ),
             child: GlassSurface(
               borderRadius: BorderRadius.circular(AppRadius.lg + 6),
-              blur: 28,
+              blur: 22,
+              tint: AppColors.glassSurfaceOf(
+                context,
+              ).withValues(alpha: AppColors.isDark(context) ? 0.76 : 0.92),
+              highlightOpacity: 0.08,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.lg + 6),
                 child: BottomNavigationBar(

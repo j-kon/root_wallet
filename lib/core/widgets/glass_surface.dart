@@ -16,6 +16,7 @@ class GlassSurface extends StatelessWidget {
     this.shadowColor,
     this.gradientColors,
     this.boxShadow,
+    this.highlightOpacity = 0.12,
   });
 
   final Widget child;
@@ -27,6 +28,7 @@ class GlassSurface extends StatelessWidget {
   final Color? shadowColor;
   final List<Color>? gradientColors;
   final List<BoxShadow>? boxShadow;
+  final double highlightOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -48,9 +50,9 @@ class GlassSurface extends StatelessWidget {
               colors:
                   gradientColors ??
                   <Color>[
-                    highlight.withValues(alpha: 0.28),
-                    backgroundTint,
-                    backgroundTint.withValues(alpha: 0.82),
+                    highlight.withValues(alpha: highlightOpacity),
+                    backgroundTint.withValues(alpha: 0.94),
+                    backgroundTint.withValues(alpha: 0.80),
                   ],
             ),
             borderRadius: radius,
@@ -60,8 +62,8 @@ class GlassSurface extends StatelessWidget {
                 <BoxShadow>[
                   BoxShadow(
                     color: glow,
-                    blurRadius: 28,
-                    offset: const Offset(0, 14),
+                    blurRadius: 18,
+                    offset: const Offset(0, 10),
                   ),
                 ],
           ),
@@ -79,7 +81,7 @@ class GlassSurface extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          highlight.withValues(alpha: 0.22),
+                          highlight.withValues(alpha: highlightOpacity + 0.04),
                           Colors.transparent,
                         ],
                       ),

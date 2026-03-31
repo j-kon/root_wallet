@@ -39,14 +39,14 @@ class AppScaffold extends StatelessWidget {
         Positioned(
           top: -90,
           right: -60,
-          child: _AmbientOrb(size: 240, color: glow.withValues(alpha: 0.28)),
+          child: _AmbientOrb(size: 240, color: glow.withValues(alpha: 0.12)),
         ),
         Positioned(
           top: 120,
           left: -70,
           child: _AmbientOrb(
             size: 220,
-            color: highlight.withValues(alpha: 0.16),
+            color: highlight.withValues(alpha: 0.08),
           ),
         ),
         Positioned(
@@ -54,7 +54,7 @@ class AppScaffold extends StatelessWidget {
           right: -20,
           child: _AmbientOrb(
             size: 280,
-            color: AppColors.primary.withValues(alpha: 0.10),
+            color: AppColors.primary.withValues(alpha: 0.05),
           ),
         ),
         Scaffold(
@@ -90,8 +90,8 @@ class _AmbientOrb extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.18),
-              blurRadius: size * 0.28,
+              color: color.withValues(alpha: 0.10),
+              blurRadius: size * 0.22,
               spreadRadius: AppSpacing.xs,
             ),
           ],

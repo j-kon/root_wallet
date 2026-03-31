@@ -62,26 +62,26 @@ class WalletHomePage extends ConsumerWidget {
           ),
         ),
         Center(
-          child: Container(
-            margin: const EdgeInsets.only(right: AppSpacing.sm),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: AppSpacing.xxs,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: isDark ? 0.18 : 0.14),
+          child: Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: GlassSurface(
               borderRadius: BorderRadius.circular(AppRadius.pill),
-              border: Border.all(
-                color: AppColors.warning.withValues(
-                  alpha: isDark ? 0.36 : 0.28,
-                ),
+              tint: AppColors.warning.withValues(alpha: isDark ? 0.10 : 0.08),
+              borderColor: AppColors.warning.withValues(
+                alpha: isDark ? 0.26 : 0.18,
               ),
-            ),
-            child: Text(
-              networkLabel,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: isDark ? const Color(0xFFFFD48B) : Colors.brown.shade800,
-                fontWeight: FontWeight.w700,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xxs,
+              ),
+              child: Text(
+                networkLabel,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: isDark
+                      ? const Color(0xFFFFD48B)
+                      : Colors.brown.shade800,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -135,6 +135,8 @@ class WalletHomePage extends ConsumerWidget {
               : data.isOffline
               ? 'Cached data'
               : AppDateTime.updatedAgo(data.lastSyncedAt);
+          final liveSyncMessage =
+              'Live wallet data refreshed ${AppDateTime.updatedAgo(data.lastSyncedAt).replaceFirst('Updated ', '').toLowerCase()}.';
 
           return RefreshIndicator(
             onRefresh: walletController.refresh,
@@ -263,8 +265,7 @@ class WalletHomePage extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.md),
                   InfoBanner(
                     type: InfoBannerType.success,
-                    message:
-                        'Live wallet data updated ${AppDateTime.updatedAgo(data.lastSyncedAt)}.',
+                    message: liveSyncMessage,
                     icon: Icons.cloud_done_rounded,
                   ),
                 ],
@@ -317,7 +318,9 @@ class _WalletStatusChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.pill),
       tint: AppColors.glassSurfaceOf(
         context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.46 : 0.68),
+      ).withValues(alpha: AppColors.isDark(context) ? 0.54 : 0.82),
+      shadowColor: Colors.transparent,
+      highlightOpacity: 0.05,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
@@ -370,11 +373,12 @@ class _WalletAttentionCard extends StatelessWidget {
 
     return GlassSurface(
       borderRadius: BorderRadius.circular(AppRadius.lg),
-      tint: AppColors.glassSurfaceStrongOf(
+      tint: AppColors.glassSurfaceOf(
         context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.50 : 0.70),
+      ).withValues(alpha: AppColors.isDark(context) ? 0.64 : 0.90),
       borderColor: tone.withValues(alpha: 0.22),
-      shadowColor: tone.withValues(alpha: 0.12),
+      shadowColor: tone.withValues(alpha: 0.05),
+      highlightOpacity: 0.06,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -81,11 +81,11 @@ void main() {
       ),
     );
     await tester.scrollUntilVisible(
-      find.textContaining('Live wallet data updated'),
+      find.textContaining('Live wallet data refreshed'),
       300,
     );
 
-    expect(find.textContaining('Live wallet data updated'), findsOneWidget);
+    expect(find.textContaining('Live wallet data refreshed'), findsOneWidget);
   });
 }
 
