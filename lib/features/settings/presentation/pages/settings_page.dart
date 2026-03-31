@@ -14,7 +14,6 @@ import 'package:root_wallet/features/settings/presentation/providers/security_pr
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -250,7 +249,7 @@ class SettingsPage extends ConsumerWidget {
                       : Icons.help_outline_rounded,
                   title: 'Help / Support',
                   subtitle: 'Open support or copy the support URL.',
-                  onTap: () => _openSupport(context),
+                  onTap: () => _openSupport(context, ref),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _SettingsTile(
@@ -262,6 +261,7 @@ class SettingsPage extends ConsumerWidget {
                       'Open mempool.space/testnet or copy the explorer URL.',
                   onTap: () => _openExternalLink(
                     context,
+                    ref,
                     AppConstants.testnetExplorerBaseUrl,
                     copiedMessage: 'Explorer URL copied.',
                   ),
@@ -283,9 +283,10 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _openSupport(BuildContext context) async {
+  Future<void> _openSupport(BuildContext context, WidgetRef ref) async {
     await _openExternalLink(
       context,
+      ref,
       AppConstants.supportUrl,
       copiedMessage: 'Support URL copied.',
     );
@@ -293,11 +294,14 @@ class SettingsPage extends ConsumerWidget {
 
   Future<void> _openExternalLink(
     BuildContext context,
+    WidgetRef ref,
     String url, {
     required String copiedMessage,
   }) async {
     final uri = Uri.parse(url);
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final launched = await ref
+        .read(urlLauncherServiceProvider)
+        .openExternalUrl(uri);
     if (launched || !context.mounted) {
       return;
     }

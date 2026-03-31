@@ -7,7 +7,6 @@ import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class AboutPage extends ConsumerWidget {
   const AboutPage({super.key});
@@ -144,7 +143,7 @@ class AboutPage extends ConsumerWidget {
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: FilledButton.icon(
-                        onPressed: () => _openSupport(context),
+                        onPressed: () => _openSupport(context, ref),
                         icon: const Icon(Icons.open_in_new_rounded),
                         label: const Text('Open support'),
                       ),
@@ -169,9 +168,11 @@ class AboutPage extends ConsumerWidget {
     ).showSnackBar(const SnackBar(content: Text('Support URL copied.')));
   }
 
-  Future<void> _openSupport(BuildContext context) async {
+  Future<void> _openSupport(BuildContext context, WidgetRef ref) async {
     final uri = Uri.parse(AppConstants.supportUrl);
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final launched = await ref
+        .read(urlLauncherServiceProvider)
+        .openExternalUrl(uri);
     if (launched || !context.mounted) {
       return;
     }

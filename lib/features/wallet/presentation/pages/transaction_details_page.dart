@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
@@ -11,7 +12,7 @@ import 'package:root_wallet/core/widgets/empty_state.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class TransactionDetailsPage extends ConsumerWidget {
   const TransactionDetailsPage({super.key});
@@ -35,6 +36,10 @@ class TransactionDetailsPage extends ConsumerWidget {
     final tx = args;
     final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
     final explorerUri = Uri.parse(AppConstants.testnetExplorerTxUrl(tx.txId));
+    final shareBody =
+        'Bitcoin testnet transaction\n'
+        'TXID: ${tx.txId}\n'
+        '${explorerUri.toString()}';
     final amountBtc = tx.amountSats / AppConstants.satoshisPerBitcoin;
     final amountLabel = hideBalances
         ? AppFormatters.obscuredBtc()
@@ -186,59 +191,124 @@ class TransactionDetailsPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          await Clipboard.setData(ClipboardData(text: tx.txId));
-                          if (!context.mounted) {
-                            return;
-                          }
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('TXID copied.')),
-                          );
-                        },
-                        icon: const Icon(Icons.copy_rounded),
-                        label: const Text('Copy TXID'),
-                      ),
+                if (context.isCompactWidth) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _copyTxId(context, tx.txId),
+                      icon: const Icon(Icons.copy_rounded),
+                      label: const Text('Copy TXID'),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () async {
-                          final launched = await launchUrl(
-                            explorerUri,
-                            mode: LaunchMode.externalApplication,
-                          );
-                          if (launched || !context.mounted) {
-                            return;
-                          }
-
-                          await Clipboard.setData(
-                            ClipboardData(text: explorerUri.toString()),
-                          );
-                          if (!context.mounted) {
-                            return;
-                          }
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Explorer link copied.'),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.open_in_new_rounded),
-                        label: const Text('Open explorer'),
-                      ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.tonalIcon(
+                      onPressed: () async {
+                        final shared = await ref
+                            .read(shareServiceProvider)
+                            .shareText(
+                              shareBody,
+                              subject: 'Root Wallet transaction',
+                            );
+                        if (shared || !context.mounted) {
+                          return;
+                        }
+                        await _copyExplorerLink(context, explorerUri);
+                      },
+                      icon: const Icon(Icons.share_outlined),
+                      label: const Text('Share transaction'),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _openExplorer(context, ref, explorerUri),
+                      icon: const Icon(Icons.open_in_new_rounded),
+                      label: const Text('Open explorer'),
+                    ),
+                  ),
+                ] else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _copyTxId(context, tx.txId),
+                          icon: const Icon(Icons.copy_rounded),
+                          label: const Text('Copy TXID'),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          onPressed: () async {
+                            final shared = await ref
+                                .read(shareServiceProvider)
+                                .shareText(
+                                  shareBody,
+                                  subject: 'Root Wallet transaction',
+                                );
+                            if (shared || !context.mounted) {
+                              return;
+                            }
+                            await _copyExplorerLink(context, explorerUri);
+                          },
+                          icon: const Icon(Icons.share_outlined),
+                          label: const Text('Share'),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () =>
+                              _openExplorer(context, ref, explorerUri),
+                          icon: const Icon(Icons.open_in_new_rounded),
+                          label: const Text('Open explorer'),
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _copyTxId(BuildContext context, String txId) async {
+    await Clipboard.setData(ClipboardData(text: txId));
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('TXID copied.')));
+  }
+
+  Future<void> _copyExplorerLink(BuildContext context, Uri explorerUri) async {
+    await Clipboard.setData(ClipboardData(text: explorerUri.toString()));
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Explorer link copied.')));
+  }
+
+  Future<void> _openExplorer(
+    BuildContext context,
+    WidgetRef ref,
+    Uri explorerUri,
+  ) async {
+    final launched = await ref
+        .read(urlLauncherServiceProvider)
+        .openExternalUrl(explorerUri);
+    if (launched || !context.mounted) {
+      return;
+    }
+    await _copyExplorerLink(context, explorerUri);
   }
 }
 

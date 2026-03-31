@@ -12,7 +12,6 @@ import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/features/receive/presentation/widgets/address_qr.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class ReceivePage extends ConsumerWidget {
   const ReceivePage({super.key});
@@ -375,10 +374,9 @@ class ReceivePage extends ConsumerWidget {
                 onTap: () async {
                   Navigator.of(context).pop();
                   final uri = Uri.parse(paymentUri);
-                  final launched = await launchUrl(
-                    uri,
-                    mode: LaunchMode.externalApplication,
-                  );
+                  final launched = await ref
+                      .read(urlLauncherServiceProvider)
+                      .openExternalUrl(uri);
                   if (launched || !parentContext.mounted) {
                     return;
                   }

@@ -7,6 +7,7 @@ import 'package:root_wallet/app/env/dev_env.dart';
 import 'package:root_wallet/core/logging/logger.dart';
 import 'package:root_wallet/core/network/api_client.dart';
 import 'package:root_wallet/core/platform/share_service.dart';
+import 'package:root_wallet/core/platform/url_launcher_service.dart';
 import 'package:root_wallet/core/security/biometric_service.dart';
 import 'package:root_wallet/core/security/lock_service.dart';
 import 'package:root_wallet/core/security/pin_lock_service.dart';
@@ -22,6 +23,10 @@ final loggerProvider = Provider<AppLogger>((ref) {
 
 final shareServiceProvider = Provider<ShareService>(
   (ref) => const SharePlusService(),
+);
+
+final urlLauncherServiceProvider = Provider<UrlLauncherService>(
+  (ref) => const UrlLauncherServiceImpl(),
 );
 
 final secureStorageProvider = Provider<SecureStorage>(
