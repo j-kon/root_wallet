@@ -52,10 +52,15 @@ class _AppSecurityGateState extends ConsumerState<AppSecurityGate>
       children: [
         widget.child,
         if (lockAsync.isLoading)
-          const Positioned.fill(
+          Positioned.fill(
             child: ColoredBox(
-              color: Colors.white,
-              child: Center(child: Text('Initializing security...')),
+              color: Theme.of(context).colorScheme.surface,
+              child: Center(
+                child: Text(
+                  'Initializing security...',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
             ),
           ),
         if (isLocked) const Positioned.fill(child: LockScreen()),

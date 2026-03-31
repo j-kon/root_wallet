@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bdk_flutter/bdk_flutter.dart';
 import 'package:crypto/crypto.dart';
@@ -7,11 +9,15 @@ import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 
 class BdkWalletDatasource {
-  BdkWalletDatasource({required SecureStorage secureStorage})
-    : _secureStorage = secureStorage;
+  BdkWalletDatasource({
+    required SecureStorage secureStorage,
+    required Future<String> Function() walletStoragePathLoader,
+  }) : _secureStorage = secureStorage,
+       _walletStoragePathLoader = walletStoragePathLoader;
 
   static const _mnemonicKey = 'wallet.mnemonic';
   final SecureStorage _secureStorage;
+  final Future<String> Function() _walletStoragePathLoader;
 
   Wallet? _wallet;
   Future<Wallet>? _walletFuture;
@@ -30,6 +36,7 @@ class BdkWalletDatasource {
     final phrase = mnemonic.toString();
     await _secureStorage.write(key: _mnemonicKey, value: phrase);
 
+    await _deleteWalletDatabase();
     await _resetSession();
     await _loadWallet();
 
@@ -60,6 +67,7 @@ class BdkWalletDatasource {
 
     await _secureStorage.write(key: _mnemonicKey, value: phrase);
 
+    await _deleteWalletDatabase();
     await _resetSession();
     await _loadWallet();
 
@@ -74,9 +82,7 @@ class BdkWalletDatasource {
   }
 
   Future<int> chainHeight() {
-    return _withBlockchainFailover<int>(
-      (blockchain) => blockchain.getHeight(),
-    );
+    return _withBlockchainFailover<int>((blockchain) => blockchain.getHeight());
   }
 
   Future<double> estimateFeeSatPerVbyte({int targetBlocks = 3}) async {
@@ -192,7 +198,10 @@ class BdkWalletDatasource {
     }
 
     if (lastError != null) {
-      Error.throwWithStackTrace(lastError, lastStackTrace ?? StackTrace.current);
+      Error.throwWithStackTrace(
+        lastError,
+        lastStackTrace ?? StackTrace.current,
+      );
     }
 
     throw StateError('Blockchain operation failed.');
@@ -227,7 +236,9 @@ class BdkWalletDatasource {
       throw StateError('Wallet not initialized. Create or restore first.');
     }
 
-    final parsedMnemonic = await Mnemonic.fromString(_normalizeMnemonic(mnemonic));
+    final parsedMnemonic = await Mnemonic.fromString(
+      _normalizeMnemonic(mnemonic),
+    );
     final descriptorSecretKey = await DescriptorSecretKey.create(
       network: _network,
       mnemonic: parsedMnemonic,
@@ -243,12 +254,36 @@ class BdkWalletDatasource {
       keychain: KeychainKind.internalChain,
     );
 
+    final databasePath = await _databasePath();
     return Wallet.create(
       descriptor: externalDescriptor,
       changeDescriptor: internalDescriptor,
       network: _network,
-      databaseConfig: const DatabaseConfig.memory(),
+      databaseConfig: DatabaseConfig.sqlite(
+        config: SqliteDbConfiguration(path: databasePath),
+      ),
     );
+  }
+
+  Future<String> _databasePath() async {
+    final walletDirectory = await _walletStoragePathLoader();
+    return '$walletDirectory/root_wallet_${_network.name}.sqlite';
+  }
+
+  Future<void> _deleteWalletDatabase() async {
+    final databasePath = await _databasePath();
+    final companionPaths = <String>[
+      databasePath,
+      '$databasePath-wal',
+      '$databasePath-shm',
+    ];
+
+    for (final path in companionPaths) {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
   }
 
   String _normalizeMnemonic(String mnemonic) {

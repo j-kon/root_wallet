@@ -43,6 +43,7 @@ dependencies:
   bdk_flutter: ^0.31.2
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.1.2
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

@@ -71,13 +71,15 @@ class _MainShellState extends State<MainShell> {
       child: Scaffold(
         body: IndexedStack(index: _currentIndex, children: tabs),
         bottomNavigationBar: SafeArea(
-          top: false,
+          top: true,
+          bottom: true,
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               horizontalPadding,
               0,
               horizontalPadding,
-              bottomSpacing,
+              0,
+              //bottomSpacing,
             ),
             child: DecoratedBox(
               decoration: BoxDecoration(

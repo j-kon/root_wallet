@@ -4,6 +4,7 @@ import 'package:root_wallet/features/wallet/data/mappers/tx_mapper.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
 
 class WalletRepositoryImpl implements WalletRepository {
@@ -64,6 +65,26 @@ class WalletRepositoryImpl implements WalletRepository {
     }
     final txs = await _syncDatasource.transactions();
     return txs.map(_txMapper.fromDto).toList(growable: false);
+  }
+
+  @override
+  Future<WalletOverview> getOverview() async {
+    try {
+      await _syncDatasource.sync();
+    } catch (_) {
+      // Keep the wallet usable offline by falling back to local state.
+    }
+
+    final confirmed = await _syncDatasource.confirmedBalance();
+    final pending = await _syncDatasource.pendingBalance();
+    final txs = await _syncDatasource.transactions();
+    final receiveAddress = await _walletDatasource.getAddress();
+
+    return WalletOverview(
+      balance: Balance(confirmedSats: confirmed, pendingSats: pending),
+      transactions: txs.map(_txMapper.fromDto).toList(growable: false),
+      receiveAddress: receiveAddress,
+    );
   }
 
   @override

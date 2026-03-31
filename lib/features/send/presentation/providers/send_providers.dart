@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/errors/error_mapper.dart';
 import 'package:root_wallet/features/send/data/datasources/broadcast_datasource.dart';
 import 'package:root_wallet/features/send/data/datasources/mempool_fee_datasource.dart';
@@ -11,6 +12,7 @@ import 'package:root_wallet/features/send/domain/repositories/send_repository.da
 import 'package:root_wallet/features/send/domain/usecases/broadcast_tx.dart';
 import 'package:root_wallet/features/send/domain/usecases/build_tx.dart';
 import 'package:root_wallet/features/send/domain/usecases/sign_tx.dart';
+import 'package:root_wallet/features/send/presentation/models/bitcoin_uri_parser.dart';
 import 'package:root_wallet/features/send/presentation/models/send_draft.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 
@@ -105,8 +107,17 @@ class SendController extends StateNotifier<SendState> {
   final Ref _ref;
 
   void setAddress(String value) {
+    final parsedInput = BitcoinUriParser.parse(value);
+    final nextAddress = parsedInput?.address ?? value;
+    final nextAmount = parsedInput?.amountBtc == null
+        ? state.draft.amountBtcText
+        : _normalizeBtcAmount(parsedInput!.amountBtc!);
+
     state = state.copyWith(
-      draft: state.draft.copyWith(address: value),
+      draft: state.draft.copyWith(
+        address: nextAddress,
+        amountBtcText: nextAmount,
+      ),
       clearError: true,
       clearTxId: true,
     );
@@ -132,14 +143,15 @@ class SendController extends StateNotifier<SendState> {
   }
 
   bool validateForReview() {
-    if (!state.draft.hasValidAddress) {
-      state = state.copyWith(errorMessage: 'Invalid address');
-      return false;
-    }
-
-    final amountSats = state.amountSats;
-    if (amountSats == null || amountSats <= 0) {
-      state = state.copyWith(errorMessage: 'Enter a valid amount');
+    final validationMessage = _validationMessage(
+      confirmedBalanceSats: _ref
+          .read(walletControllerProvider)
+          .valueOrNull
+          ?.balance
+          .confirmedSats,
+    );
+    if (validationMessage != null) {
+      state = state.copyWith(errorMessage: validationMessage);
       return false;
     }
 
@@ -159,11 +171,13 @@ class SendController extends StateNotifier<SendState> {
 
     try {
       final balance = await _ref.read(getBalanceUsecaseProvider).call();
-      final totalToSpend = amountSats + state.estimatedFeeSats;
-      if (totalToSpend > balance.totalSats) {
+      final validationMessage = _validationMessage(
+        confirmedBalanceSats: balance.confirmedSats,
+      );
+      if (validationMessage != null) {
         state = state.copyWith(
           isSending: false,
-          errorMessage: 'Insufficient balance',
+          errorMessage: validationMessage,
         );
         return null;
       }
@@ -216,6 +230,44 @@ class SendController extends StateNotifier<SendState> {
       FeePreset.standard => max(1, suggestedRate),
       FeePreset.fast => max(1, suggestedRate + 4),
     };
+  }
+
+  String? _validationMessage({required int? confirmedBalanceSats}) {
+    final draft = state.draft;
+    if (draft.normalizedAddress.isEmpty) {
+      return 'Enter a destination address.';
+    }
+    if (draft.looksLikeMainnetAddress) {
+      return 'Mainnet address detected. Use a Bitcoin testnet address.';
+    }
+    if (!draft.hasValidAddress) {
+      return 'Invalid address.';
+    }
+
+    final amountSats = state.amountSats;
+    if (amountSats == null || amountSats <= 0) {
+      return 'Enter a valid amount.';
+    }
+    if (amountSats < AppConstants.minSendAmountSats) {
+      return 'Amount is below the minimum spendable threshold.';
+    }
+
+    final totalToSpend = state.totalSats;
+    if (confirmedBalanceSats != null &&
+        totalToSpend != null &&
+        totalToSpend > confirmedBalanceSats) {
+      return 'Insufficient balance.';
+    }
+
+    return null;
+  }
+
+  String _normalizeBtcAmount(double value) {
+    final fixed = value.toStringAsFixed(8);
+    final trimmed = fixed
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+    return trimmed.isEmpty ? '0' : trimmed;
   }
 }
 

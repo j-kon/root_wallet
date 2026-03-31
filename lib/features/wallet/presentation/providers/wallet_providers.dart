@@ -15,6 +15,7 @@ import 'package:root_wallet/features/wallet/domain/usecases/get_address.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_balance.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_recovery_phrase.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_transactions.dart';
+import 'package:root_wallet/features/wallet/domain/usecases/get_wallet_overview.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/has_wallet.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/restore_wallet.dart';
 import 'package:root_wallet/shared/models/wallet_snapshot.dart';
@@ -22,6 +23,7 @@ import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 final bdkWalletDatasourceProvider = Provider<BdkWalletDatasource>(
   (ref) => BdkWalletDatasource(
     secureStorage: ref.watch(secureStorageProvider),
+    walletStoragePathLoader: () => ref.read(walletStoragePathProvider.future),
   ),
 );
 
@@ -63,6 +65,10 @@ final getBalanceUsecaseProvider = Provider<GetBalance>(
 
 final getTransactionsUsecaseProvider = Provider<GetTransactions>(
   (ref) => GetTransactions(ref.watch(walletRepositoryProvider)),
+);
+
+final getWalletOverviewUsecaseProvider = Provider<GetWalletOverview>(
+  (ref) => GetWalletOverview(ref.watch(walletRepositoryProvider)),
 );
 
 final getRecoveryPhraseUsecaseProvider = Provider<GetRecoveryPhrase>(
@@ -158,14 +164,12 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
   }
 
   Future<WalletHomeState> _loadRemoteState() async {
-    final balance = await ref.read(getBalanceUsecaseProvider).call();
-    final transactions = await ref.read(getTransactionsUsecaseProvider).call();
-    final receiveAddress = await ref.read(getAddressUsecaseProvider).call();
+    final overview = await ref.read(getWalletOverviewUsecaseProvider).call();
 
     return WalletHomeState(
-      balance: balance,
-      transactions: transactions,
-      receiveAddress: receiveAddress,
+      balance: overview.balance,
+      transactions: overview.transactions,
+      receiveAddress: overview.receiveAddress,
       lastSyncedAt: DateTime.now(),
       isOffline: false,
     );

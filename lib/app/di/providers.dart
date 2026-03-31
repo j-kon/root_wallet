@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:root_wallet/app/env/app_env.dart';
 import 'package:root_wallet/app/env/dev_env.dart';
 import 'package:root_wallet/core/logging/logger.dart';
@@ -39,6 +42,15 @@ final sharedPreferencesProvider = FutureProvider<SharedPreferences>((
   ref,
 ) async {
   return SharedPreferences.getInstance();
+});
+
+final walletStoragePathProvider = FutureProvider<String>((ref) async {
+  final supportDirectory = await getApplicationSupportDirectory();
+  final walletDirectory = Directory('${supportDirectory.path}/wallet');
+  if (!await walletDirectory.exists()) {
+    await walletDirectory.create(recursive: true);
+  }
+  return walletDirectory.path;
 });
 
 final apiClientProvider = Provider<ApiClient>((ref) {

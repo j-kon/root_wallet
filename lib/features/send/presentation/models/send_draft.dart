@@ -70,6 +70,8 @@ class SendDraft {
 
   double? get amountBtc => double.tryParse(amountBtcText.trim());
 
+  String get normalizedAddress => address.trim();
+
   int? get amountSats {
     final btc = amountBtc;
     if (btc == null || btc <= 0) {
@@ -79,7 +81,7 @@ class SendDraft {
   }
 
   bool get hasValidAddress {
-    final candidate = address.trim();
+    final candidate = normalizedAddress;
     if (candidate.isEmpty) {
       return false;
     }
@@ -90,6 +92,21 @@ class SendDraft {
     }
 
     final legacyPattern = RegExp(r'^[mn2][a-km-zA-HJ-NP-Z1-9]{25,34}$');
+    return legacyPattern.hasMatch(candidate);
+  }
+
+  bool get looksLikeMainnetAddress {
+    final candidate = normalizedAddress;
+    if (candidate.isEmpty) {
+      return false;
+    }
+
+    final normalized = candidate.toLowerCase();
+    if (normalized.startsWith('bc1')) {
+      return candidate.length >= 14;
+    }
+
+    final legacyPattern = RegExp(r'^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$');
     return legacyPattern.hasMatch(candidate);
   }
 
