@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
@@ -192,6 +193,7 @@ class ReceivePage extends ConsumerWidget {
                             child: FilledButton.tonalIcon(
                               onPressed: () => _showShareOptions(
                                 context,
+                                ref: ref,
                                 address: address,
                                 paymentUri: paymentUri,
                               ),
@@ -232,6 +234,7 @@ class ReceivePage extends ConsumerWidget {
                             child: FilledButton.tonalIcon(
                               onPressed: () => _showShareOptions(
                                 context,
+                                ref: ref,
                                 address: address,
                                 paymentUri: paymentUri,
                               ),
@@ -282,6 +285,7 @@ class ReceivePage extends ConsumerWidget {
 
   Future<void> _showShareOptions(
     BuildContext context, {
+    required WidgetRef ref,
     required String address,
     required String paymentUri,
   }) async {
@@ -294,6 +298,50 @@ class ReceivePage extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              ListTile(
+                leading: const Icon(Icons.share_outlined),
+                title: const Text('Share address'),
+                subtitle: const Text(
+                  'Open the native share sheet with the address.',
+                ),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final shared = await ref
+                      .read(shareServiceProvider)
+                      .shareText(
+                        address,
+                        subject: 'Root Wallet testnet address',
+                      );
+                  if (shared || !parentContext.mounted) {
+                    return;
+                  }
+                  await _copyValue(parentContext, address, 'Address copied.');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.ios_share_rounded),
+                title: const Text('Share payment request'),
+                subtitle: const Text(
+                  'Share the bitcoin: URI through the native share sheet.',
+                ),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final shared = await ref
+                      .read(shareServiceProvider)
+                      .shareText(
+                        paymentUri,
+                        subject: 'Root Wallet payment request',
+                      );
+                  if (shared || !parentContext.mounted) {
+                    return;
+                  }
+                  await _copyValue(
+                    parentContext,
+                    paymentUri,
+                    'Payment URI copied.',
+                  );
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.copy_rounded),
                 title: const Text('Copy address'),

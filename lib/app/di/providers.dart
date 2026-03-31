@@ -6,6 +6,7 @@ import 'package:root_wallet/app/env/app_env.dart';
 import 'package:root_wallet/app/env/dev_env.dart';
 import 'package:root_wallet/core/logging/logger.dart';
 import 'package:root_wallet/core/network/api_client.dart';
+import 'package:root_wallet/core/platform/share_service.dart';
 import 'package:root_wallet/core/security/biometric_service.dart';
 import 'package:root_wallet/core/security/lock_service.dart';
 import 'package:root_wallet/core/security/pin_lock_service.dart';
@@ -18,6 +19,10 @@ final loggerProvider = Provider<AppLogger>((ref) {
   final env = ref.watch(appEnvProvider);
   return ConsoleLogger(enabled: env.enableLogging);
 });
+
+final shareServiceProvider = Provider<ShareService>(
+  (ref) => const SharePlusService(),
+);
 
 final secureStorageProvider = Provider<SecureStorage>(
   (ref) => FlutterSecureStorageAdapter(),

@@ -94,6 +94,68 @@ void main() {
       expect(state.transactions.single.txId, 'fresh_tx');
       expect(state.isSyncing, isFalse);
     });
+
+    test(
+      'replaces a pending local send with confirmed remote transaction on sync',
+      () async {
+        SharedPreferences.setMockInitialValues(<String, Object>{});
+        final repository = _MutableWalletRepository(
+          overview: const WalletOverview(
+            balance: Balance(confirmedSats: 50000),
+            transactions: <TxItem>[],
+            receiveAddress: 'tb1qfreshaddress',
+          ),
+        );
+        final container = ProviderContainer(
+          overrides: [
+            getWalletOverviewUsecaseProvider.overrideWithValue(
+              GetWalletOverview(repository),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final notifier = container.read(walletHomeControllerProvider.notifier);
+        await container.read(walletHomeControllerProvider.future);
+
+        final sentAt = DateTime(2026, 3, 31, 10, 30);
+        await notifier.recordPendingSend(
+          txId: 'tx123',
+          amountSats: 12000,
+          feeSats: 300,
+          timestamp: sentAt,
+        );
+
+        var state = container.read(walletHomeControllerProvider).valueOrNull!;
+        expect(state.transactions.first.txId, 'tx123');
+        expect(state.transactions.first.status, TxItemStatus.pending);
+
+        repository.overview = WalletOverview(
+          balance: const Balance(confirmedSats: 37700),
+          transactions: <TxItem>[
+            TxItem(
+              txId: 'tx123',
+              amountSats: 12000,
+              timestamp: sentAt,
+              isIncoming: false,
+              status: TxItemStatus.confirmed,
+              feeSats: 300,
+              confirmations: 2,
+            ),
+          ],
+          receiveAddress: 'tb1qfreshaddress',
+        );
+
+        await notifier.sync();
+
+        state = container.read(walletHomeControllerProvider).valueOrNull!;
+        expect(state.transactions, hasLength(1));
+        expect(state.transactions.first.status, TxItemStatus.confirmed);
+        expect(state.transactions.first.confirmations, 2);
+        expect(state.isOffline, isFalse);
+        expect(state.isSyncing, isFalse);
+      },
+    );
   });
 }
 
@@ -147,4 +209,26 @@ class _ThrowingWalletRepository extends _StaticWalletRepository {
   Future<WalletOverview> getOverview() {
     throw Exception('network unavailable');
   }
+}
+
+class _MutableWalletRepository extends _StaticWalletRepository {
+  _MutableWalletRepository({required super.overview}) : _overview = overview;
+
+  WalletOverview _overview;
+
+  set overview(WalletOverview value) {
+    _overview = value;
+  }
+
+  @override
+  Future<String> getAddress() async => _overview.receiveAddress;
+
+  @override
+  Future<Balance> getBalance() async => _overview.balance;
+
+  @override
+  Future<WalletOverview> getOverview() async => _overview;
+
+  @override
+  Future<List<TxItem>> getTransactions() async => _overview.transactions;
 }
