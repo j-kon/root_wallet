@@ -6,6 +6,7 @@ import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
+import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SendSuccessPageArgs {
@@ -13,11 +14,13 @@ class SendSuccessPageArgs {
     required this.txId,
     required this.amountSats,
     required this.feeSats,
+    required this.sentAt,
   });
 
   final String txId;
   final int amountSats;
   final int feeSats;
+  final DateTime sentAt;
 }
 
 class SendSuccessPage extends StatelessWidget {
@@ -221,12 +224,22 @@ class SendSuccessPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => _goHome(context),
-                  child: const Text('Back to wallet'),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _openDetails(context, args),
+                      child: const Text('View transaction'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => _goHome(context),
+                      child: const Text('Back to wallet'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -253,6 +266,21 @@ class SendSuccessPage extends StatelessWidget {
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil(AppRoutes.walletHome, (route) => false);
+  }
+
+  void _openDetails(BuildContext context, SendSuccessPageArgs args) {
+    Navigator.of(context).pushNamed(
+      AppRoutes.transactionDetails,
+      arguments: TxItem(
+        txId: args.txId,
+        amountSats: args.amountSats,
+        timestamp: args.sentAt,
+        isIncoming: false,
+        status: TxItemStatus.pending,
+        feeSats: args.feeSats,
+        confirmations: 0,
+      ),
+    );
   }
 }
 

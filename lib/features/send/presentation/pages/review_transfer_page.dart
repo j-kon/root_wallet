@@ -264,6 +264,7 @@ class ReviewTransferPage extends ConsumerWidget {
                   : () async {
                       final amountSatsToSend = amountSats;
                       final estimatedFeeSats = state.estimatedFeeSats;
+                      final sentAt = DateTime.now();
                       final txId = await controller.send();
                       if (txId == null || !context.mounted) {
                         return;
@@ -275,6 +276,7 @@ class ReviewTransferPage extends ConsumerWidget {
                             txId: txId,
                             amountSats: amountSatsToSend,
                             feeSats: estimatedFeeSats,
+                            timestamp: sentAt,
                           );
                       controller.resetAfterSuccess();
                       if (!context.mounted) {
@@ -287,6 +289,7 @@ class ReviewTransferPage extends ConsumerWidget {
                           txId: txId,
                           amountSats: amountSatsToSend,
                           feeSats: estimatedFeeSats,
+                          sentAt: sentAt,
                         ),
                       );
                     },

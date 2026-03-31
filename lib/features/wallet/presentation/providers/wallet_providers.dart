@@ -187,6 +187,7 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
     required String txId,
     required int amountSats,
     required int feeSats,
+    required DateTime timestamp,
   }) async {
     final current = state.valueOrNull;
     if (current == null) {
@@ -196,7 +197,7 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
     final optimisticTx = TxItem(
       txId: txId,
       amountSats: amountSats,
-      timestamp: DateTime.now(),
+      timestamp: timestamp,
       isIncoming: false,
       status: TxItemStatus.pending,
       feeSats: feeSats,
@@ -210,7 +211,7 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
 
     final updatedState = current.copyWith(
       transactions: updatedTransactions,
-      lastSyncedAt: DateTime.now(),
+      lastSyncedAt: timestamp,
       isSyncing: true,
     );
 
