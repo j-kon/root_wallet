@@ -49,7 +49,8 @@ class ReceivePage extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 tint: AppColors.glassSurfaceStrongOf(
                   context,
-                ).withValues(alpha: AppColors.isDark(context) ? 0.50 : 0.72),
+                ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.92),
+                highlightOpacity: 0.05,
                 padding: EdgeInsets.all(
                   context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
                 ),
@@ -98,7 +99,8 @@ class ReceivePage extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 tint: AppColors.glassSurfaceOf(
                   context,
-                ).withValues(alpha: AppColors.isDark(context) ? 0.48 : 0.78),
+                ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.94),
+                highlightOpacity: 0.05,
                 padding: const EdgeInsets.all(AppSpacing.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,92 +143,147 @@ class ReceivePage extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    if (context.isCompactWidth) ...[
-                      Column(
-                        children: [
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: () => _copyValue(
-                                context,
-                                address,
-                                'Address copied.',
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final useSingleColumn = constraints.maxWidth < 360;
+                        final useTwoRowLayout = constraints.maxWidth < 430;
+
+                        if (useSingleColumn) {
+                          return Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _copyValue(
+                                    context,
+                                    address,
+                                    'Address copied.',
+                                  ),
+                                  icon: const Icon(Icons.copy_rounded),
+                                  label: const Text('Copy address'),
+                                ),
                               ),
-                              icon: const Icon(Icons.copy_rounded),
-                              label: const Text('Copy address'),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton.icon(
-                              onPressed: () => _copyValue(
-                                context,
-                                paymentUri,
-                                'Payment URI copied.',
+                              const SizedBox(height: AppSpacing.sm),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  onPressed: () => _copyValue(
+                                    context,
+                                    paymentUri,
+                                    'Payment URI copied.',
+                                  ),
+                                  icon: const Icon(Icons.link_rounded),
+                                  label: const Text('Copy URI'),
+                                ),
                               ),
-                              icon: const Icon(Icons.link_rounded),
-                              label: const Text('Copy URI'),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton.tonalIcon(
-                              onPressed: () => _showShareOptions(
-                                context,
-                                ref: ref,
-                                address: address,
-                                paymentUri: paymentUri,
+                              const SizedBox(height: AppSpacing.sm),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () => _showShareOptions(
+                                    context,
+                                    ref: ref,
+                                    address: address,
+                                    paymentUri: paymentUri,
+                                  ),
+                                  icon: const Icon(Icons.share_outlined),
+                                  label: const Text('Share address'),
+                                ),
                               ),
-                              icon: const Icon(Icons.share_outlined),
-                              label: const Text('Share options'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ] else ...[
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => _copyValue(
-                                context,
-                                address,
-                                'Address copied.',
+                            ],
+                          );
+                        }
+
+                        if (!useTwoRowLayout) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _copyValue(
+                                    context,
+                                    address,
+                                    'Address copied.',
+                                  ),
+                                  icon: const Icon(Icons.copy_rounded),
+                                  label: const Text('Copy address'),
+                                ),
                               ),
-                              icon: const Icon(Icons.copy_rounded),
-                              label: const Text('Copy address'),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: () => _copyValue(
-                                context,
-                                paymentUri,
-                                'Payment URI copied.',
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: () => _copyValue(
+                                    context,
+                                    paymentUri,
+                                    'Payment URI copied.',
+                                  ),
+                                  icon: const Icon(Icons.link_rounded),
+                                  label: const Text('Copy URI'),
+                                ),
                               ),
-                              icon: const Icon(Icons.link_rounded),
-                              label: const Text('Copy URI'),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: FilledButton.tonalIcon(
-                              onPressed: () => _showShareOptions(
-                                context,
-                                ref: ref,
-                                address: address,
-                                paymentUri: paymentUri,
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () => _showShareOptions(
+                                    context,
+                                    ref: ref,
+                                    address: address,
+                                    paymentUri: paymentUri,
+                                  ),
+                                  icon: const Icon(Icons.share_outlined),
+                                  label: const Text('Share'),
+                                ),
                               ),
-                              icon: const Icon(Icons.share_outlined),
-                              label: const Text('Share options'),
+                            ],
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _copyValue(
+                                      context,
+                                      address,
+                                      'Address copied.',
+                                    ),
+                                    icon: const Icon(Icons.copy_rounded),
+                                    label: const Text('Copy address'),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: FilledButton.icon(
+                                    onPressed: () => _copyValue(
+                                      context,
+                                      paymentUri,
+                                      'Payment URI copied.',
+                                    ),
+                                    icon: const Icon(Icons.link_rounded),
+                                    label: const Text('Copy URI'),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(height: AppSpacing.sm),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.tonalIcon(
+                                onPressed: () => _showShareOptions(
+                                  context,
+                                  ref: ref,
+                                  address: address,
+                                  paymentUri: paymentUri,
+                                ),
+                                icon: const Icon(Icons.share_outlined),
+                                label: const Text('Share address'),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -386,33 +443,44 @@ class _ReceiveBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surfaceRaised = AppColors.surfaceRaisedOf(context);
-    final border = AppColors.borderOf(context);
     final textPrimary = AppColors.textPrimaryOf(context);
+    final maxWidth = context.isVeryCompactWidth
+        ? 184.0
+        : context.isCompactWidth
+        ? 224.0
+        : 260.0;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: surfaceRaised,
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: GlassSurface(
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.primary),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: textPrimary,
-              fontWeight: FontWeight.w600,
+        tint: AppColors.glassSurfaceOf(
+          context,
+        ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.88),
+        highlightOpacity: 0.03,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

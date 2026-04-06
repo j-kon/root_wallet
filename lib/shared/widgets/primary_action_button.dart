@@ -26,7 +26,7 @@ class PrimaryActionButton extends StatelessWidget {
     final isCompact = context.isCompactWidth;
     final textSecondary = AppColors.textSecondaryOf(context);
     final iconSize = isCompact ? 42.0 : 46.0;
-    final height = isCompact ? 124.0 : 132.0;
+    final height = isCompact ? 136.0 : 144.0;
 
     return Material(
       color: Colors.transparent,
@@ -68,6 +68,7 @@ class PrimaryActionButton extends StatelessWidget {
                     isCompact ? AppSpacing.sm : AppSpacing.md,
                   ),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
@@ -106,25 +107,29 @@ class PrimaryActionButton extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const Spacer(),
-                      Text(
-                        label,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (subtitle != null) ...[
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              subtitle!,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: textSecondary),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
                       ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          subtitle!,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodySmall?.copyWith(color: textSecondary),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
                     ],
                   ),
                 ),

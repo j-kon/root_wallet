@@ -63,6 +63,10 @@ class FeeSelector extends ConsumerWidget {
         const SizedBox(height: AppSpacing.sm),
         GlassSurface(
           borderRadius: BorderRadius.circular(AppRadius.md),
+          tint: AppColors.glassSurfaceOf(
+            context,
+          ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.94),
+          highlightOpacity: 0.05,
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,30 +114,43 @@ class _FeeMetricChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textPrimary = AppColors.textPrimaryOf(context);
+    final maxWidth = context.isVeryCompactWidth
+        ? 176.0
+        : context.isCompactWidth
+        ? 206.0
+        : 240.0;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.glassSurfaceOf(context),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: AppColors.glassBorderOf(context)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.primary),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: textPrimary,
-              fontWeight: FontWeight.w600,
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.glassSurfaceOf(context),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: AppColors.glassBorderOf(context)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -166,13 +183,15 @@ class _FeePresetButton extends StatelessWidget {
         onTap: onTap,
         child: Ink(
           padding: EdgeInsets.symmetric(
-            horizontal: compact ? AppSpacing.xs : AppSpacing.sm,
+            horizontal: compact ? AppSpacing.sm : AppSpacing.sm,
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.accent.withValues(alpha: 0.22)
-                : AppColors.glassSurfaceOf(context),
+                ? AppColors.accent.withValues(alpha: 0.20)
+                : AppColors.glassSurfaceOf(
+                    context,
+                  ).withValues(alpha: AppColors.isDark(context) ? 0.56 : 0.92),
             borderRadius: BorderRadius.circular(AppRadius.pill),
             border: Border.all(
               color: selected ? AppColors.accent : border,
@@ -182,18 +201,21 @@ class _FeePresetButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                _iconFor(preset),
-                size: compact ? 15 : 16,
-                color: selected ? primary : textPrimary,
-              ),
-              const SizedBox(width: AppSpacing.xs),
+              if (!compact) ...[
+                Icon(
+                  _iconFor(preset),
+                  size: 16,
+                  color: selected ? primary : textPrimary,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+              ],
               Flexible(
                 child: Text(
                   preset.label,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: selected ? textPrimary : textSecondary,
                     fontWeight: FontWeight.w700,
+                    fontSize: compact ? 12.5 : 13,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

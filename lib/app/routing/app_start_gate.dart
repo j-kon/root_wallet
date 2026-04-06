@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/core/widgets/app_scaffold.dart';
+import 'package:root_wallet/core/widgets/empty_state.dart';
+import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/app/routing/main_shell.dart';
 import 'package:root_wallet/features/onboarding/presentation/pages/welcome_page.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/app_start_providers.dart';
@@ -13,28 +16,15 @@ class AppStartGate extends ConsumerWidget {
     final controller = ref.read(appStartControllerProvider.notifier);
 
     return startState.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (error, _) => Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Unable to initialize app state.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: controller.refresh,
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+      loading: () =>
+          const AppScaffold(body: Loading(label: 'Preparing wallet...')),
+      error: (error, _) => AppScaffold(
+        body: EmptyState(
+          title: 'Unable to initialize app state',
+          message: 'Try loading the wallet again.',
+          actionLabel: 'Retry',
+          onAction: controller.refresh,
+          icon: Icons.refresh_rounded,
         ),
       ),
       data: (state) {

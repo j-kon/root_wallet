@@ -25,9 +25,9 @@ void main() {
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Share options'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Share address'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Share address'));
+    await tester.tap(find.text('Share address').last);
     await tester.pumpAndSettle();
 
     expect(shareService.sharedTexts, ['tb1qreceiveaddress']);
@@ -48,7 +48,7 @@ void main() {
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Share options'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Share address'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Share payment request'));
     await tester.pumpAndSettle();

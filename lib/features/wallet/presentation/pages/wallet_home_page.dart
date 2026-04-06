@@ -190,36 +190,59 @@ class WalletHomePage extends ConsumerWidget {
                   obscureValues: hideBalances,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: PrimaryActionButton(
-                        icon: Icons.call_received_rounded,
-                        label: 'Receive',
-                        subtitle: 'Share an address',
-                        accentColor: AppColors.success,
-                        onTap:
-                            onReceiveRequested ??
-                            () => Navigator.of(
-                              context,
-                            ).pushNamed(AppRoutes.receive),
+                if (context.isVeryCompactWidth) ...[
+                  PrimaryActionButton(
+                    icon: Icons.call_received_rounded,
+                    label: 'Receive',
+                    subtitle: 'Share an address',
+                    accentColor: AppColors.success,
+                    onTap:
+                        onReceiveRequested ??
+                        () =>
+                            Navigator.of(context).pushNamed(AppRoutes.receive),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  PrimaryActionButton(
+                    icon: Icons.send_rounded,
+                    label: 'Send',
+                    subtitle: 'Move funds out',
+                    accentColor: AppColors.warning,
+                    onTap:
+                        onSendRequested ??
+                        () => Navigator.of(context).pushNamed(AppRoutes.send),
+                  ),
+                ] else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: PrimaryActionButton(
+                          icon: Icons.call_received_rounded,
+                          label: 'Receive',
+                          subtitle: 'Share an address',
+                          accentColor: AppColors.success,
+                          onTap:
+                              onReceiveRequested ??
+                              () => Navigator.of(
+                                context,
+                              ).pushNamed(AppRoutes.receive),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: PrimaryActionButton(
-                        icon: Icons.send_rounded,
-                        label: 'Send',
-                        subtitle: 'Move funds out',
-                        accentColor: AppColors.warning,
-                        onTap:
-                            onSendRequested ??
-                            () =>
-                                Navigator.of(context).pushNamed(AppRoutes.send),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: PrimaryActionButton(
+                          icon: Icons.send_rounded,
+                          label: 'Send',
+                          subtitle: 'Move funds out',
+                          accentColor: AppColors.warning,
+                          onTap:
+                              onSendRequested ??
+                              () => Navigator.of(
+                                context,
+                              ).pushNamed(AppRoutes.send),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 const SizedBox(height: AppSpacing.md),
                 _WalletAttentionCard(
                   icon: isBackupConfirmed

@@ -62,7 +62,9 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: glassStrong,
+      fillColor: brightness == Brightness.dark
+          ? AppColors.surfaceRaisedDark.withValues(alpha: 0.86)
+          : AppColors.surface.withValues(alpha: 0.96),
       labelStyle: TextStyle(
         color: isDark ? textPrimary.withValues(alpha: 0.90) : textSecondary,
         fontWeight: FontWeight.w600,
@@ -79,11 +81,15 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(color: glassBorder),
+        borderSide: BorderSide(
+          color: glassBorder.withValues(alpha: isDark ? 0.54 : 0.82),
+        ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(color: glassBorder),
+        borderSide: BorderSide(
+          color: glassBorder.withValues(alpha: isDark ? 0.54 : 0.82),
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -98,10 +104,17 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       style: FilledButton.styleFrom(
         backgroundColor: secondary,
         foregroundColor: Colors.white,
-        disabledBackgroundColor: glassStrong,
-        disabledForegroundColor: textSecondary.withValues(alpha: 0.72),
-        minimumSize: const Size.fromHeight(54),
+        disabledBackgroundColor: brightness == Brightness.dark
+            ? AppColors.surfaceMutedDark.withValues(alpha: 0.92)
+            : AppColors.surfaceMuted.withValues(alpha: 0.98),
+        disabledForegroundColor: textSecondary.withValues(alpha: 0.82),
+        minimumSize: const Size(0, 54),
         elevation: 0,
+        side: BorderSide(
+          color: brightness == Brightness.dark
+              ? AppColors.borderDark.withValues(alpha: 0.56)
+              : AppColors.border.withValues(alpha: 0.72),
+        ),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
@@ -118,7 +131,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(52),
+        minimumSize: const Size(0, 52),
         side: BorderSide(color: glassBorder),
         foregroundColor: textPrimary,
         backgroundColor: glassSurface,

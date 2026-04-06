@@ -12,10 +12,12 @@ extension BuildContextX on BuildContext {
   EdgeInsets get viewPadding => MediaQuery.viewPaddingOf(this);
 
   bool get isCompactWidth => screenWidth < 390;
+  bool get isVeryCompactWidth => screenWidth < 360;
   bool get isRegularWidth => screenWidth >= 680;
   bool get isShortHeight => screenHeight < 760;
 
-  double get pageHorizontalPadding => isCompactWidth ? AppSpacing.sm : AppSpacing.md;
+  double get pageHorizontalPadding =>
+      isCompactWidth ? AppSpacing.sm : AppSpacing.md;
 
   double get pageContentMaxWidth {
     if (screenWidth >= 1120) {
@@ -27,8 +29,11 @@ extension BuildContextX on BuildContext {
     return screenWidth;
   }
 
-  double get navBarBottomSpacing => (viewPadding.bottom > 0 ? 6 : AppSpacing.xs);
+  double get navBarBottomSpacing =>
+      (viewPadding.bottom > 0 ? 6 : AppSpacing.xs);
 
   double get contentBottomSpacing =>
-      108 + viewPadding.bottom + (isShortHeight ? AppSpacing.sm : AppSpacing.md);
+      108 +
+      viewPadding.bottom +
+      (isShortHeight ? AppSpacing.sm : AppSpacing.md);
 }

@@ -9,6 +9,7 @@ import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
@@ -60,72 +61,77 @@ class TransactionDetailsPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          Container(
+          GlassSurface(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            tint: AppColors.glassSurfaceStrongOf(
+              context,
+            ).withValues(alpha: AppColors.isDark(context) ? 0.62 : 0.95),
+            highlightOpacity: 0.05,
             padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: tx.isPending
-                    ? [Colors.brown.shade700, AppColors.warning]
-                    : [AppColors.secondary, AppColors.primary],
-              ),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadow,
-                  blurRadius: 24,
-                  offset: Offset(0, 14),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
+                Positioned(
+                  top: -34,
+                  right: -20,
+                  child: _DetailsOrb(
+                    size: 140,
+                    color:
+                        (tx.isPending ? AppColors.warning : AppColors.primary)
+                            .withValues(alpha: 0.20),
+                  ),
+                ),
+                Positioned(
+                  bottom: -40,
+                  left: -32,
+                  child: _DetailsOrb(
+                    size: 112,
+                    color: AppColors.accent.withValues(alpha: 0.12),
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _TxHeroBadge(
-                      icon: tx.isIncoming
-                          ? Icons.south_west_rounded
-                          : Icons.north_east_rounded,
-                      label: directionLabel,
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        _TxHeroBadge(
+                          icon: tx.isIncoming
+                              ? Icons.south_west_rounded
+                              : Icons.north_east_rounded,
+                          label: directionLabel,
+                        ),
+                        _TxHeroBadge(
+                          icon: tx.isPending
+                              ? Icons.timelapse_rounded
+                              : Icons.verified_rounded,
+                          label: statusLabel,
+                        ),
+                        const _TxHeroBadge(
+                          icon: Icons.language_rounded,
+                          label: 'Testnet',
+                        ),
+                      ],
                     ),
-                    _TxHeroBadge(
-                      icon: tx.isPending
-                          ? Icons.timelapse_rounded
-                          : Icons.verified_rounded,
-                      label: statusLabel,
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      amountLabel,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                    _TxHeroBadge(
-                      icon: Icons.language_rounded,
-                      label: 'Testnet',
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      satsLabel,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      AppDateTime.ymdHm(tx.timestamp),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  amountLabel,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  satsLabel,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.82),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  AppDateTime.ymdHm(tx.timestamp),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.78),
-                  ),
                 ),
               ],
             ),
@@ -325,22 +331,13 @@ class _DetailsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final border = AppColors.borderOf(context);
-    final shadow = AppColors.shadowOf(context);
-
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      tint: AppColors.glassSurfaceOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.95),
+      highlightOpacity: 0.05,
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: surface.withValues(
-          alpha: AppColors.isDark(context) ? 0.94 : 0.92,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: border),
-        boxShadow: [
-          BoxShadow(color: shadow, blurRadius: 16, offset: Offset(0, 10)),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -368,28 +365,66 @@ class _TxHeroBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+    final maxWidth = context.isVeryCompactWidth
+        ? 184.0
+        : context.isCompactWidth
+        ? 224.0
+        : 260.0;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: GlassSurface(
         borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.white),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+        tint: AppColors.glassSurfaceOf(
+          context,
+        ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.88),
+        borderColor: AppColors.glassBorderOf(context).withValues(alpha: 0.72),
+        shadowColor: Colors.transparent,
+        highlightOpacity: 0.03,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.primaryOf(context)),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textPrimaryOf(context),
+                  fontWeight: FontWeight.w600,
+                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailsOrb extends StatelessWidget {
+  const _DetailsOrb({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+        ),
       ),
     );
   }

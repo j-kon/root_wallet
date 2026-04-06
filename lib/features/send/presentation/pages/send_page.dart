@@ -99,8 +99,9 @@ class _SendPageState extends ConsumerState<SendPage> {
                   GlassSurface(
                     borderRadius: BorderRadius.circular(AppRadius.lg),
                     tint: AppColors.glassSurfaceStrongOf(context).withValues(
-                      alpha: AppColors.isDark(context) ? 0.52 : 0.72,
+                      alpha: AppColors.isDark(context) ? 0.58 : 0.92,
                     ),
+                    highlightOpacity: 0.05,
                     padding: EdgeInsets.all(
                       context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
                     ),
@@ -136,7 +137,11 @@ class _SendPageState extends ConsumerState<SendPage> {
                               ?.copyWith(
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.5,
-                                fontSize: context.isCompactWidth ? 22 : 24,
+                                fontSize: context.isVeryCompactWidth
+                                    ? 20
+                                    : context.isCompactWidth
+                                    ? 22
+                                    : 24,
                               ),
                         ),
                         const SizedBox(height: AppSpacing.xs),
@@ -476,7 +481,8 @@ class _FormSection extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.lg),
       tint: AppColors.glassSurfaceOf(
         context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.50 : 0.78),
+      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.94),
+      highlightOpacity: 0.05,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,7 +517,8 @@ class _StageChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.pill),
       tint: AppColors.glassSurfaceOf(
         context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.46 : 0.66),
+      ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.84),
+      highlightOpacity: 0.04,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,

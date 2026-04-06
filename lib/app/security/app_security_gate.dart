@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/theme/colors.dart';
+import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/features/settings/presentation/pages/lock_screen.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 
@@ -54,11 +57,24 @@ class _AppSecurityGateState extends ConsumerState<AppSecurityGate>
         if (lockAsync.isLoading)
           Positioned.fill(
             child: ColoredBox(
-              color: Theme.of(context).colorScheme.surface,
+              color: AppColors.backgroundOf(context).withValues(alpha: 0.84),
               child: Center(
-                child: Text(
-                  'Initializing security...',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                child: GlassSurface(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  tint: AppColors.glassSurfaceStrongOf(
+                    context,
+                  ).withValues(alpha: AppColors.isDark(context) ? 0.68 : 0.96),
+                  highlightOpacity: 0.05,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.md,
+                  ),
+                  child: Text(
+                    'Initializing security...',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ),

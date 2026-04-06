@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/routing/routes.dart';
+import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
+import 'package:root_wallet/core/widgets/pin_entry_dialog.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
-import 'package:root_wallet/shared/widgets/copy_row.dart';
+import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class BackupSeedPageArgs {
   const BackupSeedPageArgs({
@@ -55,15 +58,65 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
     final onboarding = ref.watch(onboardingControllerProvider);
 
     return AppScaffold(
-      title: 'Backup Seed',
+      title: 'Back up phrase',
       body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: EdgeInsets.fromLTRB(
+          context.pageHorizontalPadding,
+          AppSpacing.md,
+          context.pageHorizontalPadding,
+          AppSpacing.sm,
+        ),
+        child: ListView(
           children: [
-            Text(
-              'Store this recovery phrase offline. Never share it online.',
-              style: Theme.of(context).textTheme.bodyMedium,
+            GlassSurface(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              tint: AppColors.glassSurfaceStrongOf(
+                context,
+              ).withValues(alpha: AppColors.isDark(context) ? 0.62 : 0.95),
+              highlightOpacity: 0.05,
+              padding: EdgeInsets.all(
+                context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: -34,
+                    right: -20,
+                    child: _BackupOrb(
+                      size: 136,
+                      color: AppColors.primary.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -40,
+                    left: -34,
+                    child: _BackupOrb(
+                      size: 108,
+                      color: AppColors.accent.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _BackupBadge(
+                        icon: Icons.shield_outlined,
+                        label: 'Recovery backup',
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'Store this recovery phrase offline. Never share it online.',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'These words are the master key to your wallet. Back them up before you continue.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             const InfoBanner(
@@ -80,13 +133,23 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
                   message:
                       'Could not load recovery phrase. Create or restore a wallet first.',
                 ),
-                data: (phrase) => CopyRow(value: phrase, label: 'Recovery phrase'),
+                data: (phrase) => _SeedPhraseCard(
+                  phrase: phrase,
+                  onCopy: () async {
+                    await Clipboard.setData(ClipboardData(text: phrase));
+                    if (!context.mounted) {
+                      return;
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Recovery phrase copied.')),
+                    );
+                  },
+                ),
               )
             else
               const InfoBanner(
                 type: InfoBannerType.warning,
-                message:
-                    'Re-authenticate to view your recovery phrase.',
+                message: 'Re-authenticate to view your recovery phrase.',
               ),
             if (!_isAuthorized) ...[
               const SizedBox(height: AppSpacing.md),
@@ -102,7 +165,7 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
                 message: onboarding.errorMessage!,
               ),
             ],
-            const Spacer(),
+            const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
               label: 'I wrote it down',
               onPressed: !_isAuthorized
@@ -117,6 +180,7 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
                       Navigator.of(context).pushNamed(AppRoutes.confirmSeed);
                     },
             ),
+            SizedBox(height: context.navBarBottomSpacing),
           ],
         ),
       ),
@@ -179,40 +243,187 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
   }
 
   Future<String?> _promptPin(BuildContext context) async {
-    final controller = TextEditingController();
-    final value = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Enter PIN'),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            obscureText: true,
-            maxLength: 6,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(labelText: 'PIN'),
+    return showPinEntryDialog(
+      context,
+      title: 'Enter PIN',
+      subtitle: 'Verify your PIN before revealing the recovery phrase.',
+      confirmLabel: 'Verify',
+    );
+  }
+}
+
+class _SeedPhraseCard extends StatelessWidget {
+  const _SeedPhraseCard({required this.phrase, required this.onCopy});
+
+  final String phrase;
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final words = phrase
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      tint: AppColors.glassSurfaceOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.95),
+      highlightOpacity: 0.05,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Recovery phrase',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onCopy,
+                icon: const Icon(Icons.copy_rounded),
+                label: const Text('Copy'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Write these words down in order and keep them offline.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              for (var i = 0; i < words.length; i++)
+                _SeedWordChip(index: i + 1, word: words[i]),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SeedWordChip extends StatelessWidget {
+  const _SeedWordChip({required this.index, required this.word});
+
+  final int index;
+  final String word;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 112),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceRaisedOf(context),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.borderOf(context)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$index.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.primaryOf(context),
+              fontWeight: FontWeight.w700,
             ),
-            FilledButton(
-              onPressed: () {
-                final pin = controller.text.trim();
-                if (pin.length != 6) {
-                  return;
-                }
-                Navigator.of(context).pop(pin);
-              },
-              child: const Text('Verify'),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            word,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackupBadge extends StatelessWidget {
+  const _BackupBadge({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxWidth = context.isVeryCompactWidth
+        ? 184.0
+        : context.isCompactWidth
+        ? 224.0
+        : 260.0;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: GlassSurface(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        tint: AppColors.glassSurfaceOf(
+          context,
+        ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.88),
+        borderColor: AppColors.glassBorderOf(context).withValues(alpha: 0.72),
+        shadowColor: Colors.transparent,
+        highlightOpacity: 0.03,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.primaryOf(context)),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textPrimaryOf(context),
+                  fontWeight: FontWeight.w700,
+                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                ),
+              ),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
-    controller.dispose();
-    return value;
+  }
+}
+
+class _BackupOrb extends StatelessWidget {
+  const _BackupOrb({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+        ),
+      ),
+    );
   }
 }

@@ -10,6 +10,7 @@ import 'package:root_wallet/app/theme/theme_mode_provider.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
@@ -128,19 +129,31 @@ class SettingsPage extends ConsumerWidget {
           _SettingsPanel(
             title: 'Appearance',
             subtitle: 'Choose how the wallet should look on this device.',
-            child: Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                for (final option in ThemeMode.values)
-                  _ThemeModeOption(
-                    mode: option,
-                    selected: option == themeMode,
-                    onTap: () => ref
-                        .read(themeModeProvider.notifier)
-                        .setThemeMode(option),
-                  ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 420 ? 3 : 2;
+                final gap = AppSpacing.sm;
+                final optionWidth =
+                    (constraints.maxWidth - (gap * (columns - 1))) / columns;
+
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: [
+                    for (final option in ThemeMode.values)
+                      SizedBox(
+                        width: optionWidth,
+                        child: _ThemeModeOption(
+                          mode: option,
+                          selected: option == themeMode,
+                          onTap: () => ref
+                              .read(themeModeProvider.notifier)
+                              .setThemeMode(option),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -176,12 +189,12 @@ class SettingsPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Hide balances'),
-                  subtitle: const Text(
-                    'Mask amounts on overview and transaction screens.',
-                  ),
+                _SettingsToggleTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.eye_slash
+                      : Icons.visibility_off_outlined,
+                  title: 'Hide balances',
+                  subtitle: 'Mask amounts on overview and transaction screens.',
                   value: hideBalances,
                   onChanged: (value) => ref
                       .read(balancePrivacyProvider.notifier)
@@ -239,7 +252,7 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           _SettingsPanel(
-            title: 'Help and product info',
+            title: 'Help and app info',
             subtitle: 'Support, app information, and technical context.',
             child: Column(
               children: [
@@ -329,20 +342,13 @@ class _SettingsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final border = AppColors.borderOf(context);
-    final shadow = AppColors.shadowOf(context);
-
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      tint: AppColors.glassSurfaceOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.60 : 0.95),
+      highlightOpacity: 0.05,
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: surface.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: border),
-        boxShadow: [
-          BoxShadow(color: shadow, blurRadius: 16, offset: const Offset(0, 10)),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -377,49 +383,121 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surfaceRaised = AppColors.surfaceRaisedOf(context);
-    final border = AppColors.borderOf(context);
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      onTap: onTap,
-      child: Ink(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: surfaceRaised,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: onTap,
+        child: GlassSurface(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: border),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadius.md),
+          tint: AppColors.glassSurfaceOf(
+            context,
+          ).withValues(alpha: AppColors.isDark(context) ? 0.48 : 0.92),
+          highlightOpacity: 0.04,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(icon, color: AppColors.primary),
               ),
-              child: Icon(icon, color: AppColors.primary),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.xxs),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-                ],
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            const Icon(Icons.chevron_right_rounded),
-          ],
+              const SizedBox(width: AppSpacing.sm),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsToggleTile extends StatelessWidget {
+  const _SettingsToggleTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: () => onChanged(!value),
+        child: GlassSurface(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          tint: AppColors.glassSurfaceOf(
+            context,
+          ).withValues(alpha: AppColors.isDark(context) ? 0.48 : 0.92),
+          highlightOpacity: 0.04,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(icon, color: AppColors.primary),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Switch.adaptive(value: value, onChanged: onChanged),
+            ],
+          ),
         ),
       ),
     );
@@ -440,41 +518,52 @@ class _ThemeModeOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = AppColors.primaryOf(context);
-    final surface = AppColors.surfaceOf(context);
-    final border = AppColors.borderOf(context);
     final textPrimary = AppColors.textPrimaryOf(context);
     final textSecondary = AppColors.textSecondaryOf(context);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      onTap: onTap,
-      child: Ink(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: selected ? primary.withValues(alpha: 0.14) : surface,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: onTap,
+        child: GlassSurface(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: selected ? primary : border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              mode.icon,
-              color: selected ? primary : textSecondary,
-              size: 18,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              mode.label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: selected ? textPrimary : textSecondary,
-                fontWeight: FontWeight.w700,
+          tint: selected
+              ? primary.withValues(
+                  alpha: AppColors.isDark(context) ? 0.20 : 0.12,
+                )
+              : AppColors.glassSurfaceOf(
+                  context,
+                ).withValues(alpha: AppColors.isDark(context) ? 0.48 : 0.92),
+          borderColor: selected
+              ? primary.withValues(alpha: 0.42)
+              : AppColors.glassBorderOf(context),
+          highlightOpacity: 0.04,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                mode.icon,
+                color: selected ? primary : textSecondary,
+                size: 18,
               ),
-            ),
-          ],
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  mode.label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected ? textPrimary : textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -489,14 +578,15 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      tint: Colors.white.withValues(alpha: 0.12),
+      borderColor: Colors.white.withValues(alpha: 0.10),
+      shadowColor: Colors.transparent,
+      highlightOpacity: 0.03,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

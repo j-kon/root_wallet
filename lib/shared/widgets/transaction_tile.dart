@@ -27,6 +27,7 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.sizeOf(context).width < 390;
     final textSecondary = AppColors.textSecondaryOf(context);
     final statusTextColor = isPending
         ? (AppColors.isDark(context)
@@ -42,6 +43,18 @@ class TransactionTile extends StatelessWidget {
     final amountPrefix = isIncoming ? '+' : '-';
     final directionLabel = isIncoming ? 'Received BTC' : 'Sent BTC';
     final statusLabel = isPending ? 'Pending' : 'Confirmed';
+    final amountText = Text(
+      obscureAmount
+          ? AppFormatters.obscuredSats()
+          : '$amountPrefix$amountSats sats',
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+        color: accent,
+        fontWeight: FontWeight.w700,
+      ),
+      textAlign: isCompact ? TextAlign.left : TextAlign.right,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -74,10 +87,21 @@ class TransactionTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        directionLabel,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              directionLabel,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          if (!isCompact) ...[
+                            const SizedBox(width: AppSpacing.sm),
+                            Flexible(child: amountText),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: AppSpacing.xxs),
                       Text(
@@ -89,23 +113,41 @@ class TransactionTile extends StatelessWidget {
                         ).textTheme.bodySmall?.copyWith(letterSpacing: 0.15),
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      Row(
+                      if (isCompact) ...[
+                        amountText,
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
+                      Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xs,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Icon(
-                            Icons.schedule_rounded,
-                            size: 14,
-                            color: textSecondary,
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          Expanded(
-                            child: Text(
-                              AppDateTime.ymdHm(timestamp),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall,
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: isCompact ? 148 : 220,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.schedule_rounded,
+                                  size: 14,
+                                  color: textSecondary,
+                                ),
+                                const SizedBox(width: AppSpacing.xs),
+                                Flexible(
+                                  child: Text(
+                                    AppDateTime.ymdHm(timestamp),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.xs),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.xs,
@@ -132,17 +174,6 @@ class TransactionTile extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  obscureAmount
-                      ? AppFormatters.obscuredSats()
-                      : '$amountPrefix$amountSats sats',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  textAlign: TextAlign.right,
                 ),
               ],
             ),

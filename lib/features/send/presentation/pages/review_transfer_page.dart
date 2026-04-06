@@ -8,6 +8,7 @@ import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
@@ -21,7 +22,6 @@ class ReviewTransferPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final shadow = AppColors.shadowOf(context);
     final textPrimary = AppColors.textPrimaryOf(context);
     final state = ref.watch(sendControllerProvider);
     final controller = ref.read(sendControllerProvider.notifier);
@@ -65,84 +65,70 @@ class ReviewTransferPage extends ConsumerWidget {
             Expanded(
               child: ListView(
                 children: [
-                  Container(
+                  GlassSurface(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    tint: AppColors.glassSurfaceStrongOf(context).withValues(
+                      alpha: AppColors.isDark(context) ? 0.62 : 0.95,
+                    ),
+                    highlightOpacity: 0.05,
                     padding: EdgeInsets.all(
                       context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
                     ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.secondary,
-                          AppColors.primaryDeep,
-                          AppColors.primary,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: shadow,
-                          blurRadius: 24,
-                          offset: const Offset(0, 14),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Stack(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: AppSpacing.xs,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(AppRadius.pill),
-                          ),
-                          child: Text(
-                            'Final confirmation',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                        Positioned(
+                          top: -34,
+                          right: -22,
+                          child: _HeroOrb(
+                            size: 140,
+                            color: AppColors.primary.withValues(alpha: 0.20),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          'You are about to send ${AppFormatters.btc(amountBtc)}.',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                              ),
+                        Positioned(
+                          bottom: -44,
+                          left: -38,
+                          child: _HeroOrb(
+                            size: 120,
+                            color: AppColors.accent.withValues(alpha: 0.12),
+                          ),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Double-check the address, amount, and fee before broadcasting.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.78),
-                              ),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        Wrap(
-                          spacing: AppSpacing.sm,
-                          runSpacing: AppSpacing.sm,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _ReviewBadge(
-                              icon: Icons.currency_exchange_rounded,
-                              label: fiatText,
-                            ),
-                            _ReviewBadge(
-                              icon: Icons.speed_rounded,
-                              label:
-                                  '${state.draft.feeRate.satsPerVByte} sat/vB',
-                            ),
                             const _ReviewBadge(
-                              icon: Icons.language_rounded,
-                              label: 'Testnet',
+                              icon: Icons.verified_user_outlined,
+                              label: 'Final confirmation',
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              'You are about to send ${AppFormatters.btc(amountBtc)}.',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'Double-check the address, amount, and fee before broadcasting.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            Wrap(
+                              spacing: AppSpacing.sm,
+                              runSpacing: AppSpacing.sm,
+                              children: [
+                                _ReviewBadge(
+                                  icon: Icons.currency_exchange_rounded,
+                                  label: fiatText,
+                                ),
+                                _ReviewBadge(
+                                  icon: Icons.speed_rounded,
+                                  label:
+                                      '${state.draft.feeRate.satsPerVByte} sat/vB',
+                                ),
+                                const _ReviewBadge(
+                                  icon: Icons.language_rounded,
+                                  label: 'Testnet',
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -322,20 +308,13 @@ class _ReviewPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final border = AppColors.borderOf(context);
-    final shadow = AppColors.shadowOf(context);
-
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      tint: AppColors.glassSurfaceOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.95),
+      highlightOpacity: 0.05,
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: surface.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: border),
-        boxShadow: [
-          BoxShadow(color: shadow, blurRadius: 16, offset: const Offset(0, 10)),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -363,28 +342,66 @@ class _ReviewBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+    final maxWidth = context.isVeryCompactWidth
+        ? 184.0
+        : context.isCompactWidth
+        ? 224.0
+        : 260.0;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: GlassSurface(
         borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.white),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+        tint: AppColors.glassSurfaceOf(
+          context,
+        ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.88),
+        borderColor: AppColors.glassBorderOf(context).withValues(alpha: 0.72),
+        shadowColor: Colors.transparent,
+        highlightOpacity: 0.03,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.primaryOf(context)),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textPrimaryOf(context),
+                  fontWeight: FontWeight.w600,
+                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroOrb extends StatelessWidget {
+  const _HeroOrb({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+        ),
       ),
     );
   }

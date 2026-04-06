@@ -8,6 +8,7 @@ import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
@@ -30,9 +31,9 @@ class SendSuccessPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final shadow = AppColors.shadowOf(context);
-    final surface = AppColors.surfaceOf(context);
+    final surfaceRaised = AppColors.surfaceRaisedOf(context);
     final border = AppColors.borderOf(context);
+    final textSecondary = AppColors.textSecondaryOf(context);
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is! SendSuccessPageArgs) {
       return const AppScaffold(
@@ -65,83 +66,67 @@ class SendSuccessPage extends ConsumerWidget {
               Expanded(
                 child: ListView(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AppColors.secondary,
-                            AppColors.primaryDeep,
-                            AppColors.primary,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        boxShadow: [
-                          BoxShadow(
-                            color: shadow,
-                            blurRadius: 24,
-                            offset: const Offset(0, 14),
-                          ),
-                        ],
+                    GlassSurface(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      tint: AppColors.glassSurfaceStrongOf(context).withValues(
+                        alpha: AppColors.isDark(context) ? 0.62 : 0.95,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      highlightOpacity: 0.05,
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      child: Stack(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm,
-                              vertical: AppSpacing.xs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.pill,
-                              ),
-                            ),
-                            child: Text(
-                              'Broadcast complete',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          Positioned(
+                            top: -32,
+                            right: -18,
+                            child: _SuccessOrb(
+                              size: 140,
+                              color: AppColors.primary.withValues(alpha: 0.20),
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.md),
-                          Text(
-                            'Your transfer is now pending on Bitcoin testnet.',
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                          Positioned(
+                            bottom: -42,
+                            left: -34,
+                            child: _SuccessOrb(
+                              size: 110,
+                              color: AppColors.accent.withValues(alpha: 0.12),
+                            ),
                           ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            'You can track the TXID below or open it in the public explorer.',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.82),
-                                ),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Wrap(
-                            spacing: AppSpacing.sm,
-                            runSpacing: AppSpacing.sm,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _SuccessBadge(
-                                icon: Icons.schedule_rounded,
-                                label: 'Pending',
-                              ),
-                              _SuccessBadge(
-                                icon: Icons.payments_outlined,
-                                label: AppFormatters.sats(totalSats),
-                              ),
                               const _SuccessBadge(
-                                icon: Icons.language_rounded,
-                                label: 'Testnet',
+                                icon: Icons.check_circle_outline_rounded,
+                                label: 'Broadcast complete',
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Text(
+                                'Your transfer is now pending on Bitcoin testnet.',
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                'You can track the TXID below or open it in the public explorer.',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+                              Wrap(
+                                spacing: AppSpacing.sm,
+                                runSpacing: AppSpacing.sm,
+                                children: [
+                                  const _SuccessBadge(
+                                    icon: Icons.schedule_rounded,
+                                    label: 'Pending',
+                                  ),
+                                  _SuccessBadge(
+                                    icon: Icons.payments_outlined,
+                                    label: AppFormatters.sats(totalSats),
+                                  ),
+                                  const _SuccessBadge(
+                                    icon: Icons.language_rounded,
+                                    label: 'Testnet',
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -184,11 +169,15 @@ class SendSuccessPage extends ConsumerWidget {
                             width: double.infinity,
                             padding: const EdgeInsets.all(AppSpacing.md),
                             decoration: BoxDecoration(
-                              color: surface,
+                              color: surfaceRaised,
                               borderRadius: BorderRadius.circular(AppRadius.md),
                               border: Border.all(color: border),
                             ),
-                            child: SelectableText(args.txId),
+                            child: SelectableText(
+                              args.txId,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: textSecondary),
+                            ),
                           ),
                           const SizedBox(height: AppSpacing.md),
                           if (context.isCompactWidth) ...[
@@ -227,7 +216,7 @@ class SendSuccessPage extends ConsumerWidget {
                                 onPressed: () =>
                                     _openExplorer(context, ref, explorerUri),
                                 icon: const Icon(Icons.open_in_new_rounded),
-                                label: const Text('View explorer'),
+                                label: const Text('View on explorer'),
                               ),
                             ),
                           ] else
@@ -272,7 +261,7 @@ class SendSuccessPage extends ConsumerWidget {
                                       explorerUri,
                                     ),
                                     icon: const Icon(Icons.open_in_new_rounded),
-                                    label: const Text('View explorer'),
+                                    label: const Text('View on explorer'),
                                   ),
                                 ),
                               ],
@@ -377,20 +366,13 @@ class _SuccessPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final border = AppColors.borderOf(context);
-    final shadow = AppColors.shadowOf(context);
-
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      tint: AppColors.glassSurfaceOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.95),
+      highlightOpacity: 0.05,
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: surface.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: border),
-        boxShadow: [
-          BoxShadow(color: shadow, blurRadius: 16, offset: const Offset(0, 10)),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -440,7 +422,7 @@ class _SuccessRow extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: textPrimary,
+            color: emphasized ? textPrimary : textSecondary,
             fontWeight: emphasized ? FontWeight.w700 : FontWeight.w600,
           ),
         ),
@@ -457,28 +439,66 @@ class _SuccessBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+    final maxWidth = context.isVeryCompactWidth
+        ? 184.0
+        : context.isCompactWidth
+        ? 224.0
+        : 260.0;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: GlassSurface(
         borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.white),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
+        tint: AppColors.glassSurfaceOf(
+          context,
+        ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.88),
+        borderColor: AppColors.glassBorderOf(context).withValues(alpha: 0.72),
+        shadowColor: Colors.transparent,
+        highlightOpacity: 0.03,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.primaryOf(context)),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textPrimaryOf(context),
+                  fontWeight: FontWeight.w700,
+                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SuccessOrb extends StatelessWidget {
+  const _SuccessOrb({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
+import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
@@ -30,10 +31,9 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(onboardingControllerProvider);
     final controller = ref.read(onboardingControllerProvider.notifier);
-    final shadow = AppColors.shadowOf(context);
 
     return AppScaffold(
-      title: 'Restore Wallet',
+      title: 'Restore wallet',
       body: Padding(
         padding: EdgeInsets.fromLTRB(
           context.pageHorizontalPadding,
@@ -46,52 +46,52 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
             Expanded(
               child: ListView(
                 children: [
-                  Container(
+                  GlassSurface(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    tint: AppColors.glassSurfaceStrongOf(context).withValues(
+                      alpha: AppColors.isDark(context) ? 0.62 : 0.95,
+                    ),
+                    highlightOpacity: 0.05,
                     padding: EdgeInsets.all(
                       context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
                     ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.secondary,
-                          AppColors.primaryDeep,
-                          AppColors.primary,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: shadow,
-                          blurRadius: 24,
-                          offset: const Offset(0, 14),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Stack(
                       children: [
-                        const _FlowBadge(
-                          icon: Icons.restore_rounded,
-                          label: 'Recovery flow',
+                        Positioned(
+                          top: -34,
+                          right: -20,
+                          child: _FlowOrb(
+                            size: 140,
+                            color: AppColors.primary.withValues(alpha: 0.18),
+                          ),
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          'Restore an existing wallet with a careful import flow.',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                              ),
+                        Positioned(
+                          bottom: -40,
+                          left: -34,
+                          child: _FlowOrb(
+                            size: 110,
+                            color: AppColors.accent.withValues(alpha: 0.12),
+                          ),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Paste your recovery phrase exactly as written. This app will validate it locally before resuming wallet access.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.82),
-                              ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _FlowBadge(
+                              icon: Icons.restore_rounded,
+                              label: 'Recovery flow',
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              'Restore an existing wallet with a careful import flow.',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'Paste your recovery phrase exactly as written. This app will validate it locally before resuming wallet access.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -175,24 +175,13 @@ class _RestorePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final border = AppColors.borderOf(context);
-    final shadow = AppColors.shadowOf(context);
-
-    return Container(
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      tint: AppColors.glassSurfaceOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.95),
+      highlightOpacity: 0.05,
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: surface.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: border),
-        boxShadow: [
-          BoxShadow(
-            color: shadow,
-            blurRadius: 16,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -220,28 +209,66 @@ class _FlowBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+    final maxWidth = context.isVeryCompactWidth
+        ? 184.0
+        : context.isCompactWidth
+        ? 224.0
+        : 260.0;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: GlassSurface(
         borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.white),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
+        tint: AppColors.glassSurfaceOf(
+          context,
+        ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.88),
+        borderColor: AppColors.glassBorderOf(context).withValues(alpha: 0.72),
+        shadowColor: Colors.transparent,
+        highlightOpacity: 0.03,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.primaryOf(context)),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textPrimaryOf(context),
+                  fontWeight: FontWeight.w700,
+                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FlowOrb extends StatelessWidget {
+  const _FlowOrb({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+        ),
       ),
     );
   }
