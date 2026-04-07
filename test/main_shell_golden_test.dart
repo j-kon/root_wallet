@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/routing/main_shell.dart';
 import 'package:root_wallet/app/theme/app_theme.dart';
 import 'package:root_wallet/features/rates/domain/entities/fx_rate.dart';
@@ -131,6 +132,10 @@ List<Override> _shellOverrides() {
           message: null,
         ),
       ),
+    ),
+    dateTimeNowProvider.overrideWith(
+      (ref) =>
+          () => DateTime(2026, 4, 6, 9),
     ),
     suggestedFeeProvider.overrideWith(
       (ref) async => const FeeRate(satsPerVByte: 26),

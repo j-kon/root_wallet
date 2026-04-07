@@ -43,6 +43,7 @@ class WalletHomePage extends ConsumerWidget {
     final backupConfirmed = ref.watch(backupReminderProvider);
     final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
     final env = ref.watch(appEnvProvider);
+    final now = ref.watch(dateTimeNowProvider)();
     final btcNgnRate = ref.watch(btcNgnRateProvider);
     final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
     const networkLabel = 'Testnet';
@@ -134,9 +135,9 @@ class WalletHomePage extends ConsumerWidget {
               ? 'Syncing testnet...'
               : data.isOffline
               ? 'Cached data'
-              : AppDateTime.updatedAgo(data.lastSyncedAt);
+              : AppDateTime.updatedAgo(data.lastSyncedAt, now: now);
           final liveSyncMessage =
-              'Live wallet data refreshed ${AppDateTime.updatedAgo(data.lastSyncedAt).replaceFirst('Updated ', '').toLowerCase()}.';
+              'Live wallet data refreshed ${AppDateTime.updatedAgo(data.lastSyncedAt, now: now).replaceFirst('Updated ', '').toLowerCase()}.';
 
           return RefreshIndicator(
             onRefresh: walletController.refresh,

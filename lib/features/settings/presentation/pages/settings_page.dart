@@ -32,6 +32,7 @@ class SettingsPage extends ConsumerWidget {
         ref.watch(backupReminderProvider).valueOrNull ?? false;
     final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
     final env = ref.watch(appEnvProvider);
+    final now = ref.watch(dateTimeNowProvider)();
     final healthReady =
         backupConfirmed &&
         (lockState?.isLockEnabled ?? false) &&
@@ -87,8 +88,8 @@ class SettingsPage extends ConsumerWidget {
                       : walletState.isSyncing
                       ? 'Wallet data is syncing against the public testnet network.'
                       : walletState.isOffline
-                      ? 'Offline mode active. Cached wallet data was last updated ${AppDateTime.updatedAgo(walletState.lastSyncedAt)}.'
-                      : 'Last synced ${AppDateTime.updatedAgo(walletState.lastSyncedAt)}. Review privacy, backup, and support controls below.',
+                      ? 'Offline mode active. Cached wallet data was last updated ${AppDateTime.updatedAgo(walletState.lastSyncedAt, now: now)}.'
+                      : 'Last synced ${AppDateTime.updatedAgo(walletState.lastSyncedAt, now: now)}. Review privacy, backup, and support controls below.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.white.withValues(alpha: 0.82),
                   ),

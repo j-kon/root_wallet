@@ -16,6 +16,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final appEnvProvider = Provider<AppEnv>((ref) => const DevEnv());
 
+final dateTimeNowProvider = Provider<DateTime Function()>(
+  (ref) => DateTime.now,
+);
+
 final loggerProvider = Provider<AppLogger>((ref) {
   final env = ref.watch(appEnvProvider);
   return ConsoleLogger(enabled: env.enableLogging);
