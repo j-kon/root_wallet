@@ -197,84 +197,147 @@ class TransactionDetailsPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                if (context.isCompactWidth) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _copyTxId(context, tx.txId),
-                      icon: const Icon(Icons.copy_rounded),
-                      label: const Text('Copy TXID'),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.tonalIcon(
-                      onPressed: () async {
-                        final shared = await ref
-                            .read(shareServiceProvider)
-                            .shareText(
-                              shareBody,
-                              subject: 'Root Wallet transaction',
-                            );
-                        if (shared || !context.mounted) {
-                          return;
-                        }
-                        await _copyExplorerLink(context, explorerUri);
-                      },
-                      icon: const Icon(Icons.share_outlined),
-                      label: const Text('Share transaction'),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => _openExplorer(context, ref, explorerUri),
-                      icon: const Icon(Icons.open_in_new_rounded),
-                      label: const Text('Open explorer'),
-                    ),
-                  ),
-                ] else
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _copyTxId(context, tx.txId),
-                          icon: const Icon(Icons.copy_rounded),
-                          label: const Text('Copy TXID'),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final narrow = constraints.maxWidth < 520;
+                    final medium = constraints.maxWidth < 700;
+
+                    if (narrow) {
+                      return Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _copyTxId(context, tx.txId),
+                              icon: const Icon(Icons.copy_rounded),
+                              label: const Text('Copy TXID'),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.tonalIcon(
+                              onPressed: () async {
+                                final shared = await ref
+                                    .read(shareServiceProvider)
+                                    .shareText(
+                                      shareBody,
+                                      subject: 'Root Wallet transaction',
+                                    );
+                                if (shared || !context.mounted) {
+                                  return;
+                                }
+                                await _copyExplorerLink(context, explorerUri);
+                              },
+                              icon: const Icon(Icons.share_outlined),
+                              label: const Text('Share'),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () =>
+                                  _openExplorer(context, ref, explorerUri),
+                              icon: const Icon(Icons.open_in_new_rounded),
+                              label: const Text('View on explorer'),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+
+                    if (medium) {
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _copyTxId(context, tx.txId),
+                                  icon: const Icon(Icons.copy_rounded),
+                                  label: const Text('Copy TXID'),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () async {
+                                    final shared = await ref
+                                        .read(shareServiceProvider)
+                                        .shareText(
+                                          shareBody,
+                                          subject: 'Root Wallet transaction',
+                                        );
+                                    if (shared || !context.mounted) {
+                                      return;
+                                    }
+                                    await _copyExplorerLink(
+                                      context,
+                                      explorerUri,
+                                    );
+                                  },
+                                  icon: const Icon(Icons.share_outlined),
+                                  label: const Text('Share'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () =>
+                                  _openExplorer(context, ref, explorerUri),
+                              icon: const Icon(Icons.open_in_new_rounded),
+                              label: const Text('View on explorer'),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _copyTxId(context, tx.txId),
+                            icon: const Icon(Icons.copy_rounded),
+                            label: const Text('Copy TXID'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: FilledButton.tonalIcon(
-                          onPressed: () async {
-                            final shared = await ref
-                                .read(shareServiceProvider)
-                                .shareText(
-                                  shareBody,
-                                  subject: 'Root Wallet transaction',
-                                );
-                            if (shared || !context.mounted) {
-                              return;
-                            }
-                            await _copyExplorerLink(context, explorerUri);
-                          },
-                          icon: const Icon(Icons.share_outlined),
-                          label: const Text('Share'),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: FilledButton.tonalIcon(
+                            onPressed: () async {
+                              final shared = await ref
+                                  .read(shareServiceProvider)
+                                  .shareText(
+                                    shareBody,
+                                    subject: 'Root Wallet transaction',
+                                  );
+                              if (shared || !context.mounted) {
+                                return;
+                              }
+                              await _copyExplorerLink(context, explorerUri);
+                            },
+                            icon: const Icon(Icons.share_outlined),
+                            label: const Text('Share'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () =>
-                              _openExplorer(context, ref, explorerUri),
-                          icon: const Icon(Icons.open_in_new_rounded),
-                          label: const Text('Open explorer'),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () =>
+                                _openExplorer(context, ref, explorerUri),
+                            icon: const Icon(Icons.open_in_new_rounded),
+                            label: const Text('View on explorer'),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -335,7 +398,7 @@ class _DetailsPanel extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.lg),
       tint: AppColors.glassSurfaceOf(
         context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.95),
+      ).withValues(alpha: AppColors.isDark(context) ? 0.68 : 0.97),
       highlightOpacity: 0.05,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(

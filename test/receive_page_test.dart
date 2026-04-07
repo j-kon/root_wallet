@@ -25,7 +25,7 @@ void main() {
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Share address'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Share'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Share address').last);
     await tester.pumpAndSettle();
@@ -48,7 +48,7 @@ void main() {
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Share address'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Share'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Share payment request'));
     await tester.pumpAndSettle();

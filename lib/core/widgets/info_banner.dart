@@ -61,26 +61,26 @@ class InfoBanner extends StatelessWidget {
     switch (type) {
       case InfoBannerType.info:
         return (
-          AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.08),
-          isDark ? const Color(0xFFB7F2DE) : const Color(0xFF0F6A52),
+          isDark ? const Color(0xFF123A31) : const Color(0xFFE8F6F1),
+          isDark ? const Color(0xFFAEECD7) : const Color(0xFF0F614B),
           Icons.info_outline_rounded,
         );
       case InfoBannerType.warning:
         return (
-          AppColors.warning.withValues(alpha: isDark ? 0.14 : 0.10),
-          isDark ? const Color(0xFFFFD48B) : Colors.brown.shade800,
+          isDark ? const Color(0xFF412B08) : const Color(0xFFFFF2DB),
+          isDark ? const Color(0xFFFFD48B) : const Color(0xFF8A5306),
           Icons.warning_amber_rounded,
         );
       case InfoBannerType.success:
         return (
-          AppColors.success.withValues(alpha: isDark ? 0.12 : 0.08),
-          isDark ? const Color(0xFFADF0D6) : const Color(0xFF126A52),
+          isDark ? const Color(0xFF11352B) : const Color(0xFFE8F7F0),
+          isDark ? const Color(0xFFADF0D6) : const Color(0xFF12644D),
           Icons.check_circle_outline_rounded,
         );
       case InfoBannerType.error:
         return (
-          AppColors.danger.withValues(alpha: isDark ? 0.14 : 0.08),
-          isDark ? const Color(0xFFFFC1C1) : AppColors.danger,
+          isDark ? const Color(0xFF432020) : const Color(0xFFFFEDEC),
+          isDark ? const Color(0xFFFFC1C1) : const Color(0xFFAE3434),
           Icons.error_outline_rounded,
         );
     }

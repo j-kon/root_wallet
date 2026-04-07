@@ -145,8 +145,8 @@ class ReceivePage extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.md),
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final useSingleColumn = constraints.maxWidth < 360;
-                        final useTwoRowLayout = constraints.maxWidth < 430;
+                        final useSingleColumn = constraints.maxWidth < 340;
+                        final useTwoRowLayout = constraints.maxWidth < 560;
 
                         if (useSingleColumn) {
                           return Column(
@@ -187,7 +187,7 @@ class ReceivePage extends ConsumerWidget {
                                     paymentUri: paymentUri,
                                   ),
                                   icon: const Icon(Icons.share_outlined),
-                                  label: const Text('Share address'),
+                                  label: const Text('Share'),
                                 ),
                               ),
                             ],
@@ -277,7 +277,7 @@ class ReceivePage extends ConsumerWidget {
                                   paymentUri: paymentUri,
                                 ),
                                 icon: const Icon(Icons.share_outlined),
-                                label: const Text('Share address'),
+                                label: const Text('Share'),
                               ),
                             ),
                           ],

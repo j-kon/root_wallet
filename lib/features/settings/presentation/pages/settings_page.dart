@@ -33,6 +33,12 @@ class SettingsPage extends ConsumerWidget {
     final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
     final env = ref.watch(appEnvProvider);
     final now = ref.watch(dateTimeNowProvider)();
+    final updatedAgo = walletState?.lastSyncedAt == null
+        ? null
+        : AppDateTime.updatedAgo(
+            walletState!.lastSyncedAt,
+            now: now,
+          ).replaceFirst('Updated ', '');
     final healthReady =
         backupConfirmed &&
         (lockState?.isLockEnabled ?? false) &&
@@ -57,8 +63,8 @@ class SettingsPage extends ConsumerWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: healthReady
-                    ? [AppColors.secondary, AppColors.primary]
-                    : [Colors.brown.shade700, AppColors.warning],
+                    ? [const Color(0xFF0D3E31), AppColors.primary]
+                    : [const Color(0xFF8A5713), const Color(0xFFF0A225)],
               ),
               borderRadius: BorderRadius.circular(AppRadius.lg),
               boxShadow: [
@@ -88,10 +94,10 @@ class SettingsPage extends ConsumerWidget {
                       : walletState.isSyncing
                       ? 'Wallet data is syncing against the public testnet network.'
                       : walletState.isOffline
-                      ? 'Offline mode active. Cached wallet data was last updated ${AppDateTime.updatedAgo(walletState.lastSyncedAt, now: now)}.'
-                      : 'Last synced ${AppDateTime.updatedAgo(walletState.lastSyncedAt, now: now)}. Review privacy, backup, and support controls below.',
+                      ? 'Offline mode active. Cached wallet data was refreshed ${updatedAgo ?? 'recently'}.'
+                      : 'Updated ${updatedAgo ?? 'just now'}. Review privacy, backup, and support controls below.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.82),
+                    color: Colors.white.withValues(alpha: 0.86),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -347,7 +353,7 @@ class _SettingsPanel extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.lg),
       tint: AppColors.glassSurfaceOf(
         context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.60 : 0.95),
+      ).withValues(alpha: AppColors.isDark(context) ? 0.70 : 0.97),
       highlightOpacity: 0.05,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
@@ -360,7 +366,14 @@ class _SettingsPanel extends StatelessWidget {
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondaryOf(
+                context,
+              ).withValues(alpha: AppColors.isDark(context) ? 0.92 : 0.98),
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
           child,
         ],
@@ -393,7 +406,7 @@ class _SettingsTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.md),
           tint: AppColors.glassSurfaceOf(
             context,
-          ).withValues(alpha: AppColors.isDark(context) ? 0.48 : 0.92),
+          ).withValues(alpha: AppColors.isDark(context) ? 0.66 : 0.96),
           highlightOpacity: 0.04,
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
@@ -402,8 +415,13 @@ class _SettingsTile extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.10),
+                  color: AppColors.primary.withValues(
+                    alpha: AppColors.isDark(context) ? 0.16 : 0.12,
+                  ),
                   borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.18),
+                  ),
                 ),
                 child: Icon(icon, color: AppColors.primary),
               ),
@@ -421,13 +439,22 @@ class _SettingsTile extends StatelessWidget {
                     const SizedBox(height: AppSpacing.xxs),
                     Text(
                       subtitle,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondaryOf(context).withValues(
+                          alpha: AppColors.isDark(context) ? 0.92 : 0.98,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              const Icon(Icons.chevron_right_rounded),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textSecondaryOf(
+                  context,
+                ).withValues(alpha: 0.86),
+              ),
             ],
           ),
         ),
@@ -462,7 +489,7 @@ class _SettingsToggleTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.md),
           tint: AppColors.glassSurfaceOf(
             context,
-          ).withValues(alpha: AppColors.isDark(context) ? 0.48 : 0.92),
+          ).withValues(alpha: AppColors.isDark(context) ? 0.66 : 0.96),
           highlightOpacity: 0.04,
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
@@ -471,8 +498,13 @@ class _SettingsToggleTile extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.10),
+                  color: AppColors.primary.withValues(
+                    alpha: AppColors.isDark(context) ? 0.16 : 0.12,
+                  ),
                   borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.18),
+                  ),
                 ),
                 child: Icon(icon, color: AppColors.primary),
               ),
@@ -490,7 +522,11 @@ class _SettingsToggleTile extends StatelessWidget {
                     const SizedBox(height: AppSpacing.xxs),
                     Text(
                       subtitle,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondaryOf(context).withValues(
+                          alpha: AppColors.isDark(context) ? 0.92 : 0.98,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -519,7 +555,6 @@ class _ThemeModeOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = AppColors.primaryOf(context);
-    final textPrimary = AppColors.textPrimaryOf(context);
     final textSecondary = AppColors.textSecondaryOf(context);
 
     return Material(
@@ -531,14 +566,23 @@ class _ThemeModeOption extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.md),
           tint: selected
               ? primary.withValues(
-                  alpha: AppColors.isDark(context) ? 0.20 : 0.12,
+                  alpha: AppColors.isDark(context) ? 0.30 : 0.16,
                 )
               : AppColors.glassSurfaceOf(
                   context,
-                ).withValues(alpha: AppColors.isDark(context) ? 0.48 : 0.92),
+                ).withValues(alpha: AppColors.isDark(context) ? 0.66 : 0.96),
           borderColor: selected
-              ? primary.withValues(alpha: 0.42)
-              : AppColors.glassBorderOf(context),
+              ? primary.withValues(
+                  alpha: AppColors.isDark(context) ? 0.58 : 0.28,
+                )
+              : AppColors.glassBorderOf(
+                  context,
+                ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.80),
+          shadowColor: selected
+              ? primary.withValues(
+                  alpha: AppColors.isDark(context) ? 0.12 : 0.06,
+                )
+              : Colors.transparent,
           highlightOpacity: 0.04,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.sm,
@@ -549,7 +593,11 @@ class _ThemeModeOption extends StatelessWidget {
             children: [
               Icon(
                 mode.icon,
-                color: selected ? primary : textSecondary,
+                color: selected
+                    ? (AppColors.isDark(context)
+                          ? Colors.white
+                          : AppColors.primaryDeep)
+                    : textSecondary,
                 size: 18,
               ),
               const SizedBox(width: AppSpacing.xs),
@@ -557,7 +605,11 @@ class _ThemeModeOption extends StatelessWidget {
                 child: Text(
                   mode.label,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected ? textPrimary : textSecondary,
+                    color: selected
+                        ? (AppColors.isDark(context)
+                              ? Colors.white
+                              : AppColors.primaryDeep)
+                        : textSecondary,
                     fontWeight: FontWeight.w700,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -581,8 +633,8 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassSurface(
       borderRadius: BorderRadius.circular(AppRadius.pill),
-      tint: Colors.white.withValues(alpha: 0.12),
-      borderColor: Colors.white.withValues(alpha: 0.10),
+      tint: Colors.black.withValues(alpha: 0.12),
+      borderColor: Colors.white.withValues(alpha: 0.12),
       shadowColor: Colors.transparent,
       highlightOpacity: 0.03,
       padding: const EdgeInsets.symmetric(

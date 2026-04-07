@@ -18,8 +18,13 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
     final background = AppColors.backgroundOf(context);
-    final backgroundTint = AppColors.backgroundTintOf(context);
+    final backgroundTint = Color.lerp(
+      background,
+      AppColors.backgroundTintOf(context),
+      isDark ? 0.42 : 0.58,
+    )!;
     final glow = AppColors.glassGlowOf(context);
     final highlight = AppColors.glassHighlightOf(context);
 
@@ -32,21 +37,24 @@ class AppScaffold extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [background, backgroundTint, background],
-              stops: const [0, 0.42, 1],
+              stops: const [0, 0.48, 1],
             ),
           ),
         ),
         Positioned(
           top: -90,
           right: -60,
-          child: _AmbientOrb(size: 240, color: glow.withValues(alpha: 0.12)),
+          child: _AmbientOrb(
+            size: 240,
+            color: glow.withValues(alpha: isDark ? 0.09 : 0.07),
+          ),
         ),
         Positioned(
           top: 120,
           left: -70,
           child: _AmbientOrb(
             size: 220,
-            color: highlight.withValues(alpha: 0.08),
+            color: highlight.withValues(alpha: isDark ? 0.04 : 0.05),
           ),
         ),
         Positioned(
@@ -54,7 +62,7 @@ class AppScaffold extends StatelessWidget {
           right: -20,
           child: _AmbientOrb(
             size: 280,
-            color: AppColors.primary.withValues(alpha: 0.05),
+            color: AppColors.primary.withValues(alpha: isDark ? 0.05 : 0.035),
           ),
         ),
         Scaffold(

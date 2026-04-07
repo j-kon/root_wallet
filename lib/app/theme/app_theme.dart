@@ -176,6 +176,28 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       showUnselectedLabels: true,
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(color: primary),
+    switchTheme: SwitchThemeData(
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return primary.withValues(alpha: isDark ? 0.68 : 0.54);
+        }
+        return isDark
+            ? AppColors.surfaceRaisedDark.withValues(alpha: 0.92)
+            : AppColors.surfaceMuted.withValues(alpha: 0.96);
+      }),
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return Colors.white;
+        }
+        return isDark ? AppColors.textPrimaryDark : Colors.white;
+      }),
+      trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return primary.withValues(alpha: isDark ? 0.42 : 0.28);
+        }
+        return border.withValues(alpha: isDark ? 0.74 : 0.90);
+      }),
+    ),
     chipTheme: base.chipTheme.copyWith(
       backgroundColor: glassStrong,
       shape: RoundedRectangleBorder(

@@ -24,7 +24,7 @@ void main() {
     await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Open explorer'));
+    await tester.tap(find.text('View on explorer'));
     await tester.pumpAndSettle();
 
     expect(

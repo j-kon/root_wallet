@@ -32,11 +32,22 @@ class GlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
     final radius = borderRadius ?? BorderRadius.circular(AppRadius.lg);
     final backgroundTint = tint ?? AppColors.glassSurfaceOf(context);
     final outline = borderColor ?? AppColors.glassBorderOf(context);
     final glow = shadowColor ?? AppColors.glassGlowOf(context);
     final highlight = AppColors.glassHighlightOf(context);
+    final softenedHighlight = Color.lerp(
+      backgroundTint,
+      highlight,
+      isDark ? 0.08 : 0.16,
+    )!;
+    final softenedBase = Color.lerp(
+      backgroundTint,
+      AppColors.surfaceRaisedOf(context),
+      isDark ? 0.04 : 0.10,
+    )!;
 
     return ClipRRect(
       borderRadius: radius,
@@ -50,9 +61,9 @@ class GlassSurface extends StatelessWidget {
               colors:
                   gradientColors ??
                   <Color>[
-                    highlight.withValues(alpha: highlightOpacity),
-                    backgroundTint.withValues(alpha: 0.94),
-                    backgroundTint.withValues(alpha: 0.80),
+                    softenedHighlight.withValues(alpha: isDark ? 0.90 : 0.97),
+                    backgroundTint.withValues(alpha: isDark ? 0.84 : 0.94),
+                    softenedBase.withValues(alpha: isDark ? 0.80 : 0.92),
                   ],
             ),
             borderRadius: radius,
@@ -62,8 +73,8 @@ class GlassSurface extends StatelessWidget {
                 <BoxShadow>[
                   BoxShadow(
                     color: glow,
-                    blurRadius: 18,
-                    offset: const Offset(0, 10),
+                    blurRadius: isDark ? 16 : 14,
+                    offset: const Offset(0, 8),
                   ),
                 ],
           ),
