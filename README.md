@@ -28,6 +28,7 @@ Root Wallet is intentionally opinionated:
 - Testing and QA: [docs/testing_and_qa.md](docs/testing_and_qa.md)
 - Troubleshooting: [docs/troubleshooting.md](docs/troubleshooting.md)
 - Device sign-off checklist: [docs/device_qa_checklist.md](docs/device_qa_checklist.md)
+- Release notes: [docs/release_notes.md](docs/release_notes.md)
 
 ## Feature Overview
 
