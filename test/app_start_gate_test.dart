@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/app/routing/app_start_gate.dart';
 import 'package:root_wallet/app/theme/app_theme.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/app_start_providers.dart';
@@ -31,6 +32,7 @@ void main() {
           ),
         ),
       );
+      await tester.pump(AppConstants.splashMinimumDuration);
       await tester.pumpAndSettle();
 
       expect(find.text('Create wallet'), findsOneWidget);
@@ -38,7 +40,7 @@ void main() {
     },
   );
 
-  testWidgets('app start gate shows branded loading state while resolving', (
+  testWidgets('app start gate shows animated splash while resolving', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -57,7 +59,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Preparing wallet...'), findsOneWidget);
+    expect(find.text('Root Wallet'), findsOneWidget);
+    expect(find.text('Preparing secure wallet...'), findsOneWidget);
   });
 
   testWidgets('app start gate shows retry state on error', (
@@ -79,6 +82,7 @@ void main() {
         ),
       ),
     );
+    await tester.pump(AppConstants.splashMinimumDuration);
     await tester.pumpAndSettle();
 
     expect(find.text('Unable to initialize app state'), findsOneWidget);

@@ -1,9 +1,11 @@
 abstract final class AppConstants {
   static const appName = 'Root Wallet';
+  static const appTagline = 'Secure self-custody, without the noise.';
   static const defaultCurrency = 'BTC';
   static const satoshisPerBitcoin = 100000000;
   static const minPinLength = 6;
   static const minSendAmountSats = 546;
+  static const splashMinimumDuration = Duration(milliseconds: 1800);
   static const supportUrl = 'https://support.rootwallet.app';
   static const walletDatabaseSchemaVersion = 1;
   static const walletSnapshotSchemaVersion = 1;
