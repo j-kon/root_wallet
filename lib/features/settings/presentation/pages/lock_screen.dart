@@ -83,7 +83,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       child: AppScaffold(
         body: lockAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => const Center(child: Text('Unable to unlock app')),
+          error: (error, stackTrace) =>
+              const Center(child: Text('Unable to unlock app')),
           data: (data) {
             if (!data.isLocked) {
               return const SizedBox.shrink();
@@ -130,7 +131,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                         const SizedBox(height: AppSpacing.lg),
                         Text(
                           'Unlock Root Wallet',
-                          style: Theme.of(context).textTheme.headlineSmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: AppSpacing.sm),
@@ -169,8 +172,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                                   shape: BoxShape.circle,
                                   color: filled
                                       ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context).colorScheme.outline
-                                            .withValues(alpha: 0.4),
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .outline
+                                          .withValues(alpha: 0.4),
                                 ),
                               );
                             }),
@@ -188,8 +193,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                           _PinPad(
                             onDigitTap: (digit) => _onDigitTap(digit, data),
                             onBackspace: () => _onBackspace(data),
-                            onBiometricTap:
-                                data.isBiometricAvailable &&
+                            onBiometricTap: data.isBiometricAvailable &&
                                     data.isBiometricsEnabled
                                 ? _tryBiometricUnlock
                                 : null,
@@ -245,9 +249,8 @@ class _PinPad extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final horizontalGap = constraints.maxWidth < 280
-            ? AppSpacing.sm
-            : AppSpacing.md;
+        final horizontalGap =
+            constraints.maxWidth < 280 ? AppSpacing.sm : AppSpacing.md;
         final keyWidth = math.min(
           84.0,
           (constraints.maxWidth - (horizontalGap * 2)) / 3,
@@ -265,8 +268,7 @@ class _PinPad extends StatelessWidget {
                       width: keyWidth,
                       label: key.label,
                       icon: key.icon,
-                      onTap:
-                          key.onTap ??
+                      onTap: key.onTap ??
                           (key.label == null
                               ? null
                               : () => onDigitTap(key.label!)),

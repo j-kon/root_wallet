@@ -22,7 +22,7 @@ class SecurityPage extends ConsumerWidget {
       title: 'Security',
       body: lockAsync.when(
         loading: () => const Loading(label: 'Loading security settings...'),
-        error: (_, _) =>
+        error: (error, stackTrace) =>
             const Center(child: Text('Unable to load security settings.')),
         data: (lock) {
           final statusLabel = lock.isLockEnabled

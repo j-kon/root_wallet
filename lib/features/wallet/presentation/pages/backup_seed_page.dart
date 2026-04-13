@@ -105,7 +105,9 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
                       const SizedBox(height: AppSpacing.md),
                       Text(
                         'Store this recovery phrase offline. Never share it online.',
-                        style: Theme.of(context).textTheme.headlineSmall
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: AppSpacing.xs),
@@ -128,7 +130,7 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
             if (_isAuthorized)
               phraseAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, _) => const InfoBanner(
+                error: (error, stackTrace) => const InfoBanner(
                   type: InfoBannerType.error,
                   message:
                       'Could not load recovery phrase. Create or restore a wallet first.',
@@ -282,8 +284,8 @@ class _SeedPhraseCard extends StatelessWidget {
                 child: Text(
                   'Recovery phrase',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
               OutlinedButton.icon(
@@ -338,9 +340,9 @@ class _SeedWordChip extends StatelessWidget {
           Text(
             '$index.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.primaryOf(context),
-              fontWeight: FontWeight.w700,
-            ),
+                  color: AppColors.primaryOf(context),
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(width: AppSpacing.xs),
           Text(
@@ -366,8 +368,8 @@ class _BackupBadge extends StatelessWidget {
     final maxWidth = context.isVeryCompactWidth
         ? 184.0
         : context.isCompactWidth
-        ? 224.0
-        : 260.0;
+            ? 224.0
+            : 260.0;
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth),
@@ -394,10 +396,10 @@ class _BackupBadge extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textPrimaryOf(context),
-                  fontWeight: FontWeight.w700,
-                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
-                ),
+                      color: AppColors.textPrimaryOf(context),
+                      fontWeight: FontWeight.w700,
+                      fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                    ),
               ),
             ),
           ],
