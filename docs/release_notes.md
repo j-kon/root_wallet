@@ -4,6 +4,30 @@
 
 This release turns Root Wallet into a substantially more complete public-testnet wallet experience, with a stronger product surface, cleaner developer workflow, and better release confidence.
 
+## At a glance
+
+### Best for
+
+- engineers onboarding to the current wallet milestone
+- testers validating public testnet behavior
+- stakeholders reviewing what is actually ready in the app
+
+### What matters most
+
+- the app now supports a coherent end-to-end testnet journey:
+  - onboarding
+  - backup
+  - receive
+  - send
+  - review
+  - transaction follow-through
+- security is no longer a placeholder surface:
+  - PIN
+  - biometrics
+  - app lock
+  - recovery phrase re-auth
+- the UI now has a unified system across light and dark mode, backed by regression coverage
+
 ## Highlights
 
 ### Wallet foundation
@@ -75,6 +99,19 @@ This release turns Root Wallet into a substantially more complete public-testnet
 - golden refresh and verification for:
   - `test/main_shell_golden_test.dart`
   - `test/onboarding_security_golden_test.dart`
+- simulator sanity launch on `iPhone 16e`
+
+## 5-minute tester walkthrough
+
+Use this if you want the fastest path to confidence:
+
+1. Launch the app and confirm onboarding opens instead of a broken wallet shell
+2. Create a wallet and complete backup confirmation
+3. Open `Receive` and verify the QR and address copy/share actions
+4. Open `Send`, paste or scan a testnet destination, and verify fee/review states
+5. Confirm the success screen and transaction details flow
+6. Open `Settings` and `Security`, then verify app lock controls and recovery reveal protection
+7. Switch between light and dark mode and confirm the shell still reads cleanly
 
 ## Known constraints
 
@@ -92,6 +129,14 @@ Before cutting or promoting a build, run the checklist in [device_qa_checklist.m
 - send review and success flow
 - app lock resume behavior
 - light and dark mode contrast on compact screens
+
+## Handoff references
+
+- repo overview: [../README.md](../README.md)
+- architecture: [architecture.md](architecture.md)
+- development workflow: [development_guide.md](development_guide.md)
+- testing and QA: [testing_and_qa.md](testing_and_qa.md)
+- troubleshooting: [troubleshooting.md](troubleshooting.md)
 
 ## Suggested release summary
 
