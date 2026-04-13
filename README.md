@@ -21,6 +21,59 @@ Root Wallet is intentionally opinionated:
 - no SDK or network calls inside widgets
 - UI regression coverage for the main app shell and onboarding/security flows
 
+## Screenshot Gallery
+
+The README screenshot assets live in [`docs/screenshots`](docs/screenshots/README.md). The current gallery is sourced from the app's verified golden baselines so the visuals stay aligned with the shipped UI.
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/welcome-light.png" alt="Welcome screen" width="220" />
+      <br />
+      <strong>Welcome</strong>
+      <br />
+      First-run onboarding
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/wallet-home-light.png" alt="Wallet home screen" width="220" />
+      <br />
+      <strong>Wallet Home</strong>
+      <br />
+      Portfolio overview and activity
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/receive-dark.png" alt="Receive screen" width="220" />
+      <br />
+      <strong>Receive</strong>
+      <br />
+      Testnet address and QR handoff
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/send-dark.png" alt="Send screen" width="220" />
+      <br />
+      <strong>Send</strong>
+      <br />
+      Amount, fee, and review flow
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/settings-dark.png" alt="Settings screen" width="220" />
+      <br />
+      <strong>Settings</strong>
+      <br />
+      App controls and wallet operations
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/security-light.png" alt="Security screen" width="220" />
+      <br />
+      <strong>Security</strong>
+      <br />
+      App lock, biometrics, and re-auth
+    </td>
+  </tr>
+</table>
+
 ## Documentation Map
 
 - Project architecture: [docs/architecture.md](docs/architecture.md)
