@@ -48,7 +48,7 @@ class ReviewTransferPage extends ConsumerWidget {
     final fiatText = btcNgnRate.when(
       data: (rate) => AppFormatters.ngn(amountBtc * rate.value),
       loading: () => 'Loading...',
-      error: (_, _) => 'Unavailable',
+      error: (error, stackTrace) => 'Unavailable',
     );
 
     return AppScaffold(
@@ -102,7 +102,9 @@ class ReviewTransferPage extends ConsumerWidget {
                             const SizedBox(height: AppSpacing.md),
                             Text(
                               'You are about to send ${AppFormatters.btc(amountBtc)}.',
-                              style: Theme.of(context).textTheme.headlineSmall
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
                                   ?.copyWith(fontWeight: FontWeight.w800),
                             ),
                             const SizedBox(height: AppSpacing.xs),
@@ -147,7 +149,9 @@ class ReviewTransferPage extends ConsumerWidget {
                             Expanded(
                               child: Text(
                                 state.draft.address,
-                                style: Theme.of(context).textTheme.bodyMedium
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
                                     ?.copyWith(
                                       color: textPrimary,
                                       fontWeight: FontWeight.w600,
@@ -242,9 +246,8 @@ class ReviewTransferPage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             PrimaryButton(
-              label: state.isSending
-                  ? 'Broadcasting...'
-                  : 'Confirm & broadcast',
+              label:
+                  state.isSending ? 'Broadcasting...' : 'Confirm & broadcast',
               onPressed: state.isSending
                   ? null
                   : () async {
@@ -282,9 +285,8 @@ class ReviewTransferPage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             OutlinedButton(
-              onPressed: state.isSending
-                  ? null
-                  : () => Navigator.of(context).pop(),
+              onPressed:
+                  state.isSending ? null : () => Navigator.of(context).pop(),
               child: const Text('Edit details'),
             ),
             SizedBox(height: context.navBarBottomSpacing),
@@ -345,8 +347,8 @@ class _ReviewBadge extends StatelessWidget {
     final maxWidth = context.isVeryCompactWidth
         ? 184.0
         : context.isCompactWidth
-        ? 224.0
-        : 260.0;
+            ? 224.0
+            : 260.0;
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth),
@@ -373,10 +375,10 @@ class _ReviewBadge extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textPrimaryOf(context),
-                  fontWeight: FontWeight.w600,
-                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
-                ),
+                      color: AppColors.textPrimaryOf(context),
+                      fontWeight: FontWeight.w600,
+                      fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                    ),
               ),
             ),
           ],
@@ -440,11 +442,10 @@ class _ReviewRow extends StatelessWidget {
             textAlign: TextAlign.right,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style:
-                (emphasized
-                        ? Theme.of(context).textTheme.titleMedium
-                        : Theme.of(context).textTheme.titleSmall)
-                    ?.copyWith(fontWeight: FontWeight.w700),
+            style: (emphasized
+                    ? Theme.of(context).textTheme.titleMedium
+                    : Theme.of(context).textTheme.titleSmall)
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
       ],

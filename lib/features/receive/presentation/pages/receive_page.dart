@@ -28,7 +28,7 @@ class ReceivePage extends ConsumerWidget {
       title: 'Receive',
       body: walletState.when(
         loading: () => const Loading(label: 'Preparing receive address...'),
-        error: (_, _) => const EmptyState(
+        error: (error, stackTrace) => const EmptyState(
           title: 'Address unavailable',
           message: 'We could not load a receive address right now.',
           icon: Icons.qr_code_2_outlined,
@@ -78,11 +78,11 @@ class ReceivePage extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.md),
                     Text(
                       'Request bitcoin with a cleaner handoff.',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                              ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
@@ -108,8 +108,8 @@ class ReceivePage extends ConsumerWidget {
                     Text(
                       'Receive address',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
@@ -130,13 +130,17 @@ class ReceivePage extends ConsumerWidget {
                         children: [
                           Text(
                             AppFormatters.maskAddress(address),
-                            style: Theme.of(context).textTheme.titleSmall
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           SelectableText(
                             address,
-                            style: Theme.of(context).textTheme.bodySmall
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
                                 ?.copyWith(color: textSecondary),
                           ),
                         ],
@@ -345,9 +349,7 @@ class ReceivePage extends ConsumerWidget {
                 ),
                 onTap: () async {
                   Navigator.of(context).pop();
-                  final shared = await ref
-                      .read(shareServiceProvider)
-                      .shareText(
+                  final shared = await ref.read(shareServiceProvider).shareText(
                         address,
                         subject: 'Root Wallet testnet address',
                       );
@@ -365,9 +367,7 @@ class ReceivePage extends ConsumerWidget {
                 ),
                 onTap: () async {
                   Navigator.of(context).pop();
-                  final shared = await ref
-                      .read(shareServiceProvider)
-                      .shareText(
+                  final shared = await ref.read(shareServiceProvider).shareText(
                         paymentUri,
                         subject: 'Root Wallet payment request',
                       );
@@ -447,8 +447,8 @@ class _ReceiveBadge extends StatelessWidget {
     final maxWidth = context.isVeryCompactWidth
         ? 184.0
         : context.isCompactWidth
-        ? 224.0
-        : 260.0;
+            ? 224.0
+            : 260.0;
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth),
@@ -473,10 +473,10 @@ class _ReceiveBadge extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: textPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
-                ),
+                      color: textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                    ),
               ),
             ),
           ],

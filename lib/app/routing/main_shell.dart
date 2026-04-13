@@ -64,12 +64,18 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
     final primary = AppColors.primaryOf(context);
+    final navRadius = BorderRadius.circular(AppRadius.lg + 8);
+    final navOutline = isDark
+        ? Colors.white.withValues(alpha: 0.48)
+        : AppColors.secondary.withValues(alpha: 0.34);
+    final navTopHighlight = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.white.withValues(alpha: 0.72);
     final inactiveColor = AppColors.textSecondaryOf(
       context,
     ).withValues(alpha: isDark ? 0.88 : 0.84);
-    final horizontalPadding = context.isCompactWidth
-        ? AppSpacing.sm
-        : AppSpacing.md;
+    final horizontalPadding =
+        context.isCompactWidth ? AppSpacing.sm : AppSpacing.md;
     final tabs = <Widget>[
       WalletHomePage(
         onReceiveRequested: () => _onTap(1),
@@ -92,58 +98,99 @@ class _MainShellState extends State<MainShell> {
         });
       },
       child: Scaffold(
-        body: IndexedStack(index: _currentIndex, children: tabs),
-        bottomNavigationBar: SafeArea(
-          top: false,
-          bottom: true,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              horizontalPadding,
-              0,
-              horizontalPadding,
-              AppSpacing.xs,
+        extendBody: true,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: IndexedStack(index: _currentIndex, children: tabs),
             ),
-            child: GlassSurface(
-              borderRadius: BorderRadius.circular(AppRadius.lg + 6),
-              blur: 18,
-              tint: AppColors.glassSurfaceOf(
-                context,
-              ).withValues(alpha: isDark ? 0.84 : 0.90),
-              borderColor: AppColors.glassBorderOf(
-                context,
-              ).withValues(alpha: isDark ? 0.44 : 0.78),
-              highlightOpacity: isDark ? 0.04 : 0.06,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.shadowOf(
-                    context,
-                  ).withValues(alpha: isDark ? 0.44 : 0.10),
-                  blurRadius: 22,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xs,
-                  vertical: AppSpacing.xs,
-                ),
-                child: Row(
+            Positioned(
+              left: horizontalPadding,
+              right: horizontalPadding,
+              bottom: (context.viewPadding.bottom > 0 ? 20.0 : AppSpacing.lg),
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                child: Stack(
                   children: [
-                    for (var index = 0; index < _destinations.length; index++)
-                      Expanded(
-                        child: _ShellNavItem(
-                          destination: _destinations[index],
-                          selected: index == _currentIndex,
-                          onTap: () => _onTap(index),
-                          activeColor: primary,
-                          inactiveColor: inactiveColor,
+                    GlassSurface(
+                      borderRadius: navRadius,
+                      blur: 18,
+                      tint: AppColors.glassSurfaceOf(
+                        context,
+                      ).withValues(alpha: isDark ? 0.58 : 0.72),
+                      borderColor: Colors.transparent,
+                      highlightOpacity: isDark ? 0.03 : 0.05,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.shadowOf(
+                            context,
+                          ).withValues(alpha: isDark ? 0.28 : 0.08),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xs,
+                          vertical: AppSpacing.xs,
+                        ),
+                        child: Row(
+                          children: [
+                            for (var index = 0;
+                                index < _destinations.length;
+                                index++)
+                              Expanded(
+                                child: _ShellNavItem(
+                                  destination: _destinations[index],
+                                  selected: index == _currentIndex,
+                                  onTap: () => _onTap(index),
+                                  activeColor: primary,
+                                  inactiveColor: inactiveColor,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
+                    ),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: navRadius,
+                            border: Border.all(color: navOutline, width: 1.8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: navOutline.withValues(
+                                  alpha: isDark ? 0.12 : 0.06,
+                                ),
+                                blurRadius: 2,
+                                spreadRadius: 0.4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 1,
+                      left: 14,
+                      right: 14,
+                      child: IgnorePointer(
+                        child: Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            color: navTopHighlight,
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -224,10 +271,10 @@ class _ShellNavItem extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: selected ? activeColor : inactiveColor,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  letterSpacing: 0.1,
-                ),
+                      color: selected ? activeColor : inactiveColor,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                      letterSpacing: 0.1,
+                    ),
               ),
             ],
           ),
