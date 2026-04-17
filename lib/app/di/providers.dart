@@ -11,6 +11,7 @@ import 'package:root_wallet/core/platform/url_launcher_service.dart';
 import 'package:root_wallet/core/security/biometric_service.dart';
 import 'package:root_wallet/core/security/lock_service.dart';
 import 'package:root_wallet/core/security/pin_lock_service.dart';
+import 'package:root_wallet/core/security/screen_protection_service.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -50,6 +51,10 @@ final lockServiceProvider = Provider<LockService>(
     pinLockService: ref.watch(pinLockServiceProvider),
     biometricService: ref.watch(biometricServiceProvider),
   ),
+);
+
+final screenProtectionServiceProvider = Provider<ScreenProtectionService>(
+  (ref) => const ScreenProtectionService(),
 );
 
 final sharedPreferencesProvider = FutureProvider<SharedPreferences>((

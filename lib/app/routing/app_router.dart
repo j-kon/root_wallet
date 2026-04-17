@@ -8,6 +8,7 @@ import 'package:root_wallet/features/send/presentation/pages/review_transfer_pag
 import 'package:root_wallet/features/send/presentation/pages/send_success_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/about_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/security_page.dart';
+import 'package:root_wallet/features/settings/presentation/pages/wallet_diagnostics_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/create_wallet_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/restore_wallet_page.dart';
@@ -53,6 +54,8 @@ abstract final class AppRouter {
         return _page(settings, const MainShell(initialIndex: 3));
       case AppRoutes.security:
         return _page(settings, const SecurityPage());
+      case AppRoutes.diagnostics:
+        return _page(settings, const WalletDiagnosticsPage());
       case AppRoutes.about:
         return _page(settings, const AboutPage());
       default:

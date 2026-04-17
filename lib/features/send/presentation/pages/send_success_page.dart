@@ -44,7 +44,7 @@ class SendSuccessPage extends ConsumerWidget {
 
     final explorerUri = Uri.parse(AppConstants.testnetExplorerTxUrl(args.txId));
     final shareBody =
-        'Bitcoin testnet transfer\n'
+        '${AppConstants.bitcoinNetworkDisplayName} transfer\n'
         'TXID: ${args.txId}\n'
         '${explorerUri.toString()}';
     final totalSats = args.amountSats + args.feeSats;
@@ -100,7 +100,7 @@ class SendSuccessPage extends ConsumerWidget {
                               ),
                               const SizedBox(height: AppSpacing.md),
                               Text(
-                                'Your transfer is now pending on Bitcoin testnet.',
+                                'Your transfer is now pending on ${AppConstants.bitcoinNetworkDisplayName}.',
                                 style: Theme.of(context).textTheme.headlineSmall
                                     ?.copyWith(fontWeight: FontWeight.w800),
                               ),
@@ -124,7 +124,7 @@ class SendSuccessPage extends ConsumerWidget {
                                   ),
                                   const _SuccessBadge(
                                     icon: Icons.language_rounded,
-                                    label: 'Testnet',
+                                    label: AppConstants.networkDisplayName,
                                   ),
                                 ],
                               ),

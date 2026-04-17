@@ -85,7 +85,7 @@ class _ScanAddressPageState extends State<ScanAddressPage> {
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        'Point the camera at a testnet payment QR and we will fill the send form for review.',
+                        'Point the camera at a testnet4 payment QR and we will fill the send form for review.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
@@ -159,7 +159,7 @@ class _ScanAddressPageState extends State<ScanAddressPage> {
                     const InfoBanner(
                       type: InfoBannerType.info,
                       message:
-                          'Supported formats: raw testnet address and bitcoin: URI payment requests.',
+                          'Supported formats: raw testnet4 address and bitcoin: URI payment requests.',
                       icon: Icons.info_outline_rounded,
                     ),
                   ],

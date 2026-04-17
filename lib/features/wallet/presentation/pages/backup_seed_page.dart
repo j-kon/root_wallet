@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
@@ -9,6 +12,7 @@ import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/pin_entry_dialog.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
+import 'package:root_wallet/core/security/screen_protection_service.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
@@ -39,17 +43,33 @@ class BackupSeedPage extends ConsumerStatefulWidget {
 }
 
 class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
+  late final ScreenProtectionService _screenProtection;
   late bool _isAuthorized;
+  bool _storedOffline = false;
+  bool _understandsRecoveryRisk = false;
+
+  bool get _canContinue =>
+      _isAuthorized && _storedOffline && _understandsRecoveryRisk;
 
   @override
   void initState() {
     super.initState();
     _isAuthorized = !widget.requireReauth;
+    _screenProtection = ref.read(screenProtectionServiceProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_screenProtection.setProtected(true));
+    });
     if (widget.requireReauth) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _authenticateToView();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_screenProtection.setProtected(false));
+    super.dispose();
   }
 
   @override
@@ -105,9 +125,7 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
                       const SizedBox(height: AppSpacing.md),
                       Text(
                         'Store this recovery phrase offline. Never share it online.',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
+                        style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: AppSpacing.xs),
@@ -160,6 +178,22 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
                 onPressed: _authenticateToView,
               ),
             ],
+            const SizedBox(height: AppSpacing.md),
+            _BackupAcknowledgementCard(
+              enabled: _isAuthorized,
+              storedOffline: _storedOffline,
+              understandsRecoveryRisk: _understandsRecoveryRisk,
+              onStoredOfflineChanged: (value) {
+                setState(() {
+                  _storedOffline = value;
+                });
+              },
+              onUnderstandsRecoveryRiskChanged: (value) {
+                setState(() {
+                  _understandsRecoveryRisk = value;
+                });
+              },
+            ),
             if (onboarding.errorMessage != null) ...[
               const SizedBox(height: AppSpacing.md),
               InfoBanner(
@@ -170,7 +204,7 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
               label: 'I wrote it down',
-              onPressed: !_isAuthorized
+              onPressed: !_canContinue
                   ? null
                   : () async {
                       await ref
@@ -284,8 +318,8 @@ class _SeedPhraseCard extends StatelessWidget {
                 child: Text(
                   'Recovery phrase',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               OutlinedButton.icon(
@@ -297,7 +331,7 @@ class _SeedPhraseCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Write these words down in order and keep them offline.',
+            '${words.length}-word recovery phrase. Write these words down in order and keep them offline.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: AppSpacing.md),
@@ -310,6 +344,122 @@ class _SeedPhraseCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BackupAcknowledgementCard extends StatelessWidget {
+  const _BackupAcknowledgementCard({
+    required this.enabled,
+    required this.storedOffline,
+    required this.understandsRecoveryRisk,
+    required this.onStoredOfflineChanged,
+    required this.onUnderstandsRecoveryRiskChanged,
+  });
+
+  final bool enabled;
+  final bool storedOffline;
+  final bool understandsRecoveryRisk;
+  final ValueChanged<bool> onStoredOfflineChanged;
+  final ValueChanged<bool> onUnderstandsRecoveryRiskChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final textSecondary = AppColors.textSecondaryOf(context);
+
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      tint: AppColors.glassSurfaceOf(
+        context,
+      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.94),
+      borderColor: AppColors.warning.withValues(
+        alpha: AppColors.isDark(context) ? 0.20 : 0.14,
+      ),
+      shadowColor: Colors.transparent,
+      highlightOpacity: 0.04,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Before you continue',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Root Wallet cannot recover this phrase for you. Confirm these two checks after writing it down.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: textSecondary, height: 1.4),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _BackupCheckRow(
+            enabled: enabled,
+            value: storedOffline,
+            label: 'I wrote the phrase down offline.',
+            onChanged: onStoredOfflineChanged,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _BackupCheckRow(
+            enabled: enabled,
+            value: understandsRecoveryRisk,
+            label: 'I understand Root Wallet cannot recover it for me.',
+            onChanged: onUnderstandsRecoveryRiskChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackupCheckRow extends StatelessWidget {
+  const _BackupCheckRow({
+    required this.enabled,
+    required this.value,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final bool value;
+  final String label;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final textPrimary = AppColors.textPrimaryOf(context);
+    final textSecondary = AppColors.textSecondaryOf(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      onTap: enabled ? () => onChanged(!value) : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: Row(
+          children: [
+            Checkbox(
+              value: value,
+              onChanged: enabled
+                  ? (checked) => onChanged(checked ?? false)
+                  : null,
+              visualDensity: VisualDensity.compact,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: enabled ? textPrimary : textSecondary,
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -340,9 +490,9 @@ class _SeedWordChip extends StatelessWidget {
           Text(
             '$index.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.primaryOf(context),
-                  fontWeight: FontWeight.w700,
-                ),
+              color: AppColors.primaryOf(context),
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(width: AppSpacing.xs),
           Text(
@@ -368,8 +518,8 @@ class _BackupBadge extends StatelessWidget {
     final maxWidth = context.isVeryCompactWidth
         ? 184.0
         : context.isCompactWidth
-            ? 224.0
-            : 260.0;
+        ? 224.0
+        : 260.0;
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth),
@@ -396,10 +546,10 @@ class _BackupBadge extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textPrimaryOf(context),
-                      fontWeight: FontWeight.w700,
-                      fontSize: context.isVeryCompactWidth ? 11.5 : null,
-                    ),
+                  color: AppColors.textPrimaryOf(context),
+                  fontWeight: FontWeight.w700,
+                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                ),
               ),
             ),
           ],

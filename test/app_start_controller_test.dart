@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/app_start_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
@@ -94,6 +95,11 @@ class _FakeWalletRepository implements WalletRepository {
   }
 
   @override
+  Future<WalletDiagnostics> getDiagnostics() {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<WalletOverview> getOverview() {
     throw UnimplementedError();
   }
@@ -113,6 +119,11 @@ class _FakeWalletRepository implements WalletRepository {
 
   @override
   Future<WalletIdentity> restoreWallet({required String mnemonic}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> rotateBackend() {
     throw UnimplementedError();
   }
 }

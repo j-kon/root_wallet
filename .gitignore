@@ -44,3 +44,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Gradle generated artifacts, including buildSrc plugin caches.
+android/**/.gradle/
+android/**/build/

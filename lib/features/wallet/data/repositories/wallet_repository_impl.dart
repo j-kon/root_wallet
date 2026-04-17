@@ -3,6 +3,7 @@ import 'package:root_wallet/features/wallet/data/datasources/bdk_wallet_datasour
 import 'package:root_wallet/features/wallet/data/mappers/tx_mapper.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
@@ -85,6 +86,16 @@ class WalletRepositoryImpl implements WalletRepository {
       transactions: txs.map(_txMapper.fromDto).toList(growable: false),
       receiveAddress: receiveAddress,
     );
+  }
+
+  @override
+  Future<WalletDiagnostics> getDiagnostics() {
+    return _walletDatasource.diagnostics();
+  }
+
+  @override
+  Future<void> rotateBackend() {
+    return _walletDatasource.rotateBackend();
   }
 
   @override

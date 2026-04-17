@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
@@ -36,6 +37,8 @@ class ReceivePage extends ConsumerWidget {
         data: (data) {
           final address = data.receiveAddress;
           final paymentUri = 'bitcoin:$address';
+          final networkName = AppConstants.networkDisplayName;
+          final networkSlug = networkName.toLowerCase();
 
           return ListView(
             padding: EdgeInsets.fromLTRB(
@@ -60,16 +63,16 @@ class ReceivePage extends ConsumerWidget {
                     Wrap(
                       spacing: AppSpacing.sm,
                       runSpacing: AppSpacing.sm,
-                      children: const [
+                      children: [
                         _ReceiveBadge(
                           icon: Icons.language_rounded,
-                          label: 'Testnet',
+                          label: networkName,
                         ),
-                        _ReceiveBadge(
+                        const _ReceiveBadge(
                           icon: Icons.qr_code_2_rounded,
                           label: 'QR ready',
                         ),
-                        _ReceiveBadge(
+                        const _ReceiveBadge(
                           icon: Icons.lock_outline_rounded,
                           label: 'Self-custody',
                         ),
@@ -78,15 +81,15 @@ class ReceivePage extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.md),
                     Text(
                       'Request bitcoin with a cleaner handoff.',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                              ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      'Share the QR code or copy the address. Only testnet BTC should be sent here.',
+                      'Share the QR code or copy the address. Only $networkSlug BTC should be sent here.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
@@ -108,8 +111,8 @@ class ReceivePage extends ConsumerWidget {
                     Text(
                       'Receive address',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
@@ -130,17 +133,13 @@ class ReceivePage extends ConsumerWidget {
                         children: [
                           Text(
                             AppFormatters.maskAddress(address),
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
+                            style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           SelectableText(
                             address,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: textSecondary),
                           ),
                         ],
@@ -292,10 +291,10 @@ class ReceivePage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              const InfoBanner(
+              InfoBanner(
                 type: InfoBannerType.warning,
                 message:
-                    'Only send BTC on testnet to this address. Mainnet transactions are not recoverable here.',
+                    'Only send BTC on ${AppConstants.networkDisplayName} to this address. Mainnet transactions are not recoverable here.',
                 icon: Icons.warning_amber_rounded,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -349,9 +348,11 @@ class ReceivePage extends ConsumerWidget {
                 ),
                 onTap: () async {
                   Navigator.of(context).pop();
-                  final shared = await ref.read(shareServiceProvider).shareText(
+                  final shared = await ref
+                      .read(shareServiceProvider)
+                      .shareText(
                         address,
-                        subject: 'Root Wallet testnet address',
+                        subject: 'Root Wallet testnet4 address',
                       );
                   if (shared || !parentContext.mounted) {
                     return;
@@ -367,7 +368,9 @@ class ReceivePage extends ConsumerWidget {
                 ),
                 onTap: () async {
                   Navigator.of(context).pop();
-                  final shared = await ref.read(shareServiceProvider).shareText(
+                  final shared = await ref
+                      .read(shareServiceProvider)
+                      .shareText(
                         paymentUri,
                         subject: 'Root Wallet payment request',
                       );
@@ -384,7 +387,7 @@ class ReceivePage extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.copy_rounded),
                 title: const Text('Copy address'),
-                subtitle: const Text('Share the raw testnet address.'),
+                subtitle: const Text('Share the raw testnet4 address.'),
                 onTap: () async {
                   Navigator.of(context).pop();
                   await _copyValue(parentContext, address, 'Address copied.');
@@ -447,8 +450,8 @@ class _ReceiveBadge extends StatelessWidget {
     final maxWidth = context.isVeryCompactWidth
         ? 184.0
         : context.isCompactWidth
-            ? 224.0
-            : 260.0;
+        ? 224.0
+        : 260.0;
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth),
@@ -473,10 +476,10 @@ class _ReceiveBadge extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: context.isVeryCompactWidth ? 11.5 : null,
-                    ),
+                  color: textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                ),
               ),
             ),
           ],

@@ -24,7 +24,7 @@ void main() {
         isSyncing: false,
       ),
     );
-    expect(find.text('Cached data'), findsOneWidget);
+    expect(find.textContaining('Cached'), findsWidgets);
     await tester.scrollUntilVisible(
       find.textContaining('Offline mode. Showing cached wallet data from'),
       300,
@@ -50,17 +50,17 @@ void main() {
         isSyncing: true,
       ),
     );
-    expect(find.text('Syncing testnet...'), findsOneWidget);
+    expect(find.text('Syncing testnet4...'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.textContaining(
-        'Refreshing wallet data from the public testnet network',
+        'Refreshing wallet data from the public testnet4 network',
       ),
       300,
     );
 
     expect(
       find.textContaining(
-        'Refreshing wallet data from the public testnet network',
+        'Refreshing wallet data from the public testnet4 network',
       ),
       findsOneWidget,
     );

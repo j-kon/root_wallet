@@ -4,6 +4,7 @@ import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
@@ -176,6 +177,11 @@ class _StaticWalletRepository implements WalletRepository {
   Future<Balance> getBalance() async => overview.balance;
 
   @override
+  Future<WalletDiagnostics> getDiagnostics() {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<WalletOverview> getOverview() async => overview;
 
   @override
@@ -191,6 +197,11 @@ class _StaticWalletRepository implements WalletRepository {
 
   @override
   Future<WalletIdentity> restoreWallet({required String mnemonic}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> rotateBackend() {
     throw UnimplementedError();
   }
 }

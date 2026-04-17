@@ -6,6 +6,7 @@ import 'package:bdk_flutter/bdk_flutter.dart';
 import 'package:crypto/crypto.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 
 class BdkWalletDatasource {
@@ -29,6 +30,10 @@ class BdkWalletDatasource {
     AppConstants.testnetEsploraFallbackUrls,
   );
 
+  // bdk_flutter 0.31.3 exposes the testnet address family as Network.testnet.
+  // Root Wallet points this wallet at the public testnet4 Esplora backend via
+  // AppConstants, so addresses remain testnet-prefixed while chain data comes
+  // from testnet4 infrastructure.
   static const Network _network = Network.testnet;
 
   Future<WalletIdentity> createWallet() async {
@@ -108,6 +113,26 @@ class BdkWalletDatasource {
 
   Future<Network> resolveNetwork() async {
     return _network;
+  }
+
+  Future<WalletDiagnostics> diagnostics() async {
+    return WalletDiagnostics(
+      networkLabel: AppConstants.networkDisplayName,
+      bdkNetwork: _network.name,
+      activeEsploraEndpoint: _currentEsploraEndpoint,
+      configuredEsploraEndpoints: _esploraEndpoints,
+      activeEsploraIndex: _activeEsploraIndex,
+      walletDatabasePath: await _databasePath(),
+      walletExists: await hasWallet(),
+    );
+  }
+
+  Future<void> rotateBackend() async {
+    if (_esploraEndpoints.length <= 1) {
+      return;
+    }
+    _activeEsploraIndex = (_activeEsploraIndex + 1) % _esploraEndpoints.length;
+    await _resetBlockchainState();
   }
 
   WalletIdentity _identityFromMnemonic(String mnemonic) {

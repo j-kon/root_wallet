@@ -77,10 +77,10 @@ class _SendPageState extends ConsumerState<SendPage> {
     final addressStatusLabel = !hasAddress
         ? 'No address entered yet'
         : state.draft.looksLikeMainnetAddress
-            ? 'Mainnet address detected. Testnet only.'
-            : state.draft.hasValidAddress
-                ? 'Looks like a valid testnet address'
-                : 'Address format needs review';
+        ? 'Mainnet address detected. Testnet4 only.'
+        : state.draft.hasValidAddress
+        ? 'Looks like a valid testnet4 address'
+        : 'Address format needs review';
 
     return AppScaffold(
       title: 'Send BTC',
@@ -133,17 +133,15 @@ class _SendPageState extends ConsumerState<SendPage> {
                         const SizedBox(height: AppSpacing.md),
                         Text(
                           'Move funds with more confidence.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
+                          style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.5,
                                 fontSize: context.isVeryCompactWidth
                                     ? 20
                                     : context.isCompactWidth
-                                        ? 22
-                                        : 24,
+                                    ? 22
+                                    : 24,
                               ),
                         ),
                         const SizedBox(height: AppSpacing.xs),
@@ -157,7 +155,7 @@ class _SendPageState extends ConsumerState<SendPage> {
                   const SizedBox(height: AppSpacing.md),
                   _FormSection(
                     title: 'Recipient',
-                    subtitle: 'Paste a testnet address or scan a QR code.',
+                    subtitle: 'Paste a testnet4 address or scan a QR code.',
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -200,16 +198,15 @@ class _SendPageState extends ConsumerState<SendPage> {
                             color: hasAddress && state.draft.hasValidAddress
                                 ? AppColors.success.withValues(alpha: 0.10)
                                 : state.draft.looksLikeMainnetAddress
-                                    ? AppColors.warning.withValues(alpha: 0.10)
-                                    : surfaceRaised,
+                                ? AppColors.warning.withValues(alpha: 0.10)
+                                : surfaceRaised,
                             borderRadius: BorderRadius.circular(AppRadius.md),
                             border: Border.all(
                               color: hasAddress && state.draft.hasValidAddress
                                   ? AppColors.success.withValues(alpha: 0.22)
                                   : state.draft.looksLikeMainnetAddress
-                                      ? AppColors.warning
-                                          .withValues(alpha: 0.22)
-                                      : border,
+                                  ? AppColors.warning.withValues(alpha: 0.22)
+                                  : border,
                             ),
                           ),
                           child: Row(
@@ -218,22 +215,20 @@ class _SendPageState extends ConsumerState<SendPage> {
                                 hasAddress && state.draft.hasValidAddress
                                     ? Icons.verified_rounded
                                     : state.draft.looksLikeMainnetAddress
-                                        ? Icons.warning_amber_rounded
-                                        : Icons.info_outline_rounded,
+                                    ? Icons.warning_amber_rounded
+                                    : Icons.info_outline_rounded,
                                 size: 18,
                                 color: hasAddress && state.draft.hasValidAddress
                                     ? AppColors.success
                                     : state.draft.looksLikeMainnetAddress
-                                        ? AppColors.warning
-                                        : textSecondary,
+                                    ? AppColors.warning
+                                    : textSecondary,
                               ),
                               const SizedBox(width: AppSpacing.xs),
                               Expanded(
                                 child: Text(
                                   addressStatusLabel,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
+                                  style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: textPrimary,
                                         fontWeight: FontWeight.w600,
@@ -281,31 +276,31 @@ class _SendPageState extends ConsumerState<SendPage> {
                               onTap: spendableSats <= 0
                                   ? null
                                   : () => _applyAmountSats(
-                                        ((spendableSats * 0.25).floor())
-                                            .clamp(0, spendableSats)
-                                            .toInt(),
-                                        controller,
-                                      ),
+                                      ((spendableSats * 0.25).floor())
+                                          .clamp(0, spendableSats)
+                                          .toInt(),
+                                      controller,
+                                    ),
                             ),
                             _QuickAmountButton(
                               label: '50%',
                               onTap: spendableSats <= 0
                                   ? null
                                   : () => _applyAmountSats(
-                                        ((spendableSats * 0.5).floor())
-                                            .clamp(0, spendableSats)
-                                            .toInt(),
-                                        controller,
-                                      ),
+                                      ((spendableSats * 0.5).floor())
+                                          .clamp(0, spendableSats)
+                                          .toInt(),
+                                      controller,
+                                    ),
                             ),
                             _QuickAmountButton(
                               label: 'Max',
                               onTap: spendableSats <= state.estimatedFeeSats
                                   ? null
                                   : () => _applyAmountSats(
-                                        spendableSats - state.estimatedFeeSats,
-                                        controller,
-                                      ),
+                                      spendableSats - state.estimatedFeeSats,
+                                      controller,
+                                    ),
                             ),
                           ],
                         ),
@@ -372,8 +367,8 @@ class _SendPageState extends ConsumerState<SendPage> {
                           value: remainingSats == null
                               ? '—'
                               : remainingSats >= 0
-                                  ? AppFormatters.btcFromSats(remainingSats)
-                                  : 'Insufficient balance',
+                              ? AppFormatters.btcFromSats(remainingSats)
+                              : 'Insufficient balance',
                         ),
                       ],
                     ),
@@ -462,8 +457,9 @@ class _SendPageState extends ConsumerState<SendPage> {
 
   String _normalizeBtcAmount(double value) {
     final fixed = value.toStringAsFixed(8);
-    final trimmed =
-        fixed.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+    final trimmed = fixed
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
     return trimmed.isEmpty ? '0' : trimmed;
   }
 }
@@ -535,9 +531,9 @@ class _StageChip extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -597,10 +593,11 @@ class _MetricRow extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: (emphasized
-                    ? Theme.of(context).textTheme.titleMedium
-                    : Theme.of(context).textTheme.titleSmall)
-                ?.copyWith(fontWeight: FontWeight.w700),
+            style:
+                (emphasized
+                        ? Theme.of(context).textTheme.titleMedium
+                        : Theme.of(context).textTheme.titleSmall)
+                    ?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
       ],

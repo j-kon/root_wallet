@@ -1,8 +1,8 @@
 # Root Wallet
 
-Root Wallet is a self-custody Bitcoin wallet focused on public testnet flows, clean architecture, and a polished Flutter user experience.
+Root Wallet is a self-custody Bitcoin wallet focused on public testnet4 flows, clean architecture, and a polished Flutter user experience.
 
-It is built for real wallet behavior on testnet:
+It is built for real wallet behavior on testnet4:
 - create and restore wallet flows
 - recovery phrase backup and confirmation
 - receive address + QR
@@ -15,7 +15,7 @@ It is built for real wallet behavior on testnet:
 
 Root Wallet is intentionally opinionated:
 - self-custody first
-- public Bitcoin testnet by default
+- public Bitcoin testnet4 by default
 - Riverpod for app orchestration
 - feature-first clean architecture
 - no SDK or network calls inside widgets
@@ -46,7 +46,7 @@ The README screenshot assets live in [`docs/screenshots`](docs/screenshots/READM
       <br />
       <strong>Receive</strong>
       <br />
-      Testnet address and QR handoff
+      Testnet4 address and QR handoff
     </td>
   </tr>
   <tr>
@@ -72,6 +72,29 @@ The README screenshot assets live in [`docs/screenshots`](docs/screenshots/READM
       App lock, biometrics, and re-auth
     </td>
   </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/create-wallet-light.png" alt="Create wallet screen" width="220" />
+      <br />
+      <strong>Create Wallet</strong>
+      <br />
+      First wallet setup
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/backup-phrase-dark.png" alt="Backup phrase screen" width="220" />
+      <br />
+      <strong>Backup Phrase</strong>
+      <br />
+      Recovery phrase protection
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/lock-screen-dark.png" alt="Lock screen" width="220" />
+      <br />
+      <strong>App Lock</strong>
+      <br />
+      PIN and biometric gate
+    </td>
+  </tr>
 </table>
 
 ## Documentation Map
@@ -86,13 +109,13 @@ The README screenshot assets live in [`docs/screenshots`](docs/screenshots/READM
 ## Feature Overview
 
 ### Wallet
-- Create or restore a Bitcoin testnet wallet
+- Create or restore a Bitcoin testnet4 wallet
 - Sync balance and recent activity
 - Persist wallet data and cache wallet snapshots
 - View transaction details and open explorer links
 
 ### Receive
-- Generate a testnet receive address
+- Generate a testnet4 receive address
 - Display QR code with `qr_flutter`
 - Copy raw address or `bitcoin:` URI
 - Native share integration via `share_plus`
@@ -101,13 +124,20 @@ The README screenshot assets live in [`docs/screenshots`](docs/screenshots/READM
 - Manual paste or QR scan via `mobile_scanner`
 - Parse raw addresses and `bitcoin:` URIs
 - Fee selection and transfer review
-- Broadcast on public testnet
+- Broadcast on public testnet4
 
 ### Security
 - PIN hashing and secure storage
 - App lock and re-auth
 - Optional biometrics via `local_auth`
 - Recovery phrase reveal protection
+- Android screen capture protection while viewing recovery words
+
+### Diagnostics
+- Inspect active Testnet4 Esplora backend
+- Inspect BDK network family and wallet database path
+- Inspect cached wallet snapshot age and transaction count
+- Copy debug context without exposing recovery words or private keys
 
 ## Architecture at a Glance
 
@@ -152,6 +182,7 @@ Key routes currently defined in [routes.dart](lib/app/routing/routes.dart):
 - `/send/success`
 - `/settings`
 - `/settings/security`
+- `/settings/diagnostics`
 - `/settings/about`
 
 ## Toolchain Requirements
@@ -222,10 +253,10 @@ Before shipping UI-heavy changes:
 
 ## Network Assumption
 
-Root Wallet is currently configured around public Bitcoin testnet infrastructure:
+Root Wallet is currently configured around public Bitcoin testnet4 infrastructure:
 
-- testnet Esplora base: `https://mempool.space/testnet/api`
-- testnet explorer base: `https://mempool.space/testnet`
+- testnet4 Esplora base: `https://mempool.space/testnet4/api`
+- testnet4 explorer base: `https://mempool.space/testnet4`
 
 This app is not configured for mainnet by default.
 

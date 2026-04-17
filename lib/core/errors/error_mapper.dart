@@ -15,7 +15,7 @@ String mapErrorToMessage(
   if (normalized.contains('invalid address')) {
     message = 'Invalid address.';
   } else if (normalized.contains('mainnet address detected')) {
-    message = 'Mainnet address detected. Use a Bitcoin testnet address.';
+    message = 'Mainnet address detected. Use a Bitcoin testnet4 address.';
   } else if (normalized.contains('minimum spendable threshold') ||
       normalized.contains('below the minimum')) {
     message = 'Amount is too small to send.';

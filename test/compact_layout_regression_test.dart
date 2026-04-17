@@ -154,7 +154,7 @@ void main() {
 
       await _scrollUntilVisible(
         tester,
-        find.textContaining('Only send BTC on testnet'),
+        find.textContaining('Only send BTC on Testnet4'),
       );
 
       _expectNoFrameworkErrors(tester);

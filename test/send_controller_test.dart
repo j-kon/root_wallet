@@ -9,6 +9,7 @@ import 'package:root_wallet/features/send/domain/usecases/sign_tx.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
@@ -61,7 +62,7 @@ void main() {
       expect(notifier.validateForReview(), isFalse);
       expect(
         container.read(sendControllerProvider).errorMessage,
-        'Mainnet address detected. Use a Bitcoin testnet address.',
+        'Mainnet address detected. Use a Bitcoin testnet4 address.',
       );
     });
 
@@ -149,6 +150,11 @@ class _FakeWalletRepository implements WalletRepository {
   Future<Balance> getBalance() async => balance;
 
   @override
+  Future<WalletDiagnostics> getDiagnostics() {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<String> getRecoveryPhrase() {
     throw UnimplementedError();
   }
@@ -170,6 +176,11 @@ class _FakeWalletRepository implements WalletRepository {
 
   @override
   Future<WalletIdentity> restoreWallet({required String mnemonic}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> rotateBackend() {
     throw UnimplementedError();
   }
 }

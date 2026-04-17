@@ -4,6 +4,7 @@ import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/errors/error_mapper.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
@@ -46,7 +47,7 @@ class WalletHomePage extends ConsumerWidget {
     final now = ref.watch(dateTimeNowProvider)();
     final btcNgnRate = ref.watch(btcNgnRateProvider);
     final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
-    const networkLabel = 'Testnet';
+    const networkLabel = AppConstants.networkDisplayName;
 
     return AppScaffold(
       title: 'Wallet',
@@ -78,17 +79,18 @@ class WalletHomePage extends ConsumerWidget {
               child: Text(
                 networkLabel,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: isDark
-                          ? const Color(0xFFFFD48B)
-                          : Colors.brown.shade800,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: isDark
+                      ? const Color(0xFFFFD48B)
+                      : Colors.brown.shade800,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
         ),
         IconButton(
-          onPressed: onSettingsRequested ??
+          onPressed:
+              onSettingsRequested ??
               () => Navigator.of(context).pushNamed(AppRoutes.settings),
           icon: const Icon(Icons.settings_outlined),
         ),
@@ -125,10 +127,10 @@ class WalletHomePage extends ConsumerWidget {
               ? 'Ready for your first transaction'
               : '${data.transactions.length} transaction${data.transactions.length == 1 ? '' : 's'} tracked';
           final syncChipLabel = data.isSyncing
-              ? 'Syncing testnet...'
+              ? 'Syncing testnet4...'
               : data.isOffline
-                  ? 'Cached data'
-                  : AppDateTime.updatedAgo(data.lastSyncedAt, now: now);
+              ? 'Cached ${AppDateTime.updatedAgo(data.lastSyncedAt, now: now).replaceFirst('Updated ', '').toLowerCase()}'
+              : AppDateTime.updatedAgo(data.lastSyncedAt, now: now);
           final liveSyncMessage =
               'Live wallet data refreshed ${AppDateTime.updatedAgo(data.lastSyncedAt, now: now).replaceFirst('Updated ', '').toLowerCase()}.';
 
@@ -146,16 +148,21 @@ class WalletHomePage extends ConsumerWidget {
                 Text(
                   'Self-custody dashboard',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: textSecondary,
-                        letterSpacing: 0.2,
-                      ),
+                    color: textSecondary,
+                    letterSpacing: 0.2,
+                  ),
                 ),
-                // const SizedBox(height: AppSpacing.xs),
-                // Text(
-                //   'Your bitcoin, clear and in control.',
-                //   style: headlineStyle,
-                // ),
-                 const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Your bitcoin, clear and in control.',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.9,
+                    height: 1.05,
+                    fontSize: context.isCompactWidth ? 26 : 30,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
                 Wrap(
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.sm,
@@ -190,7 +197,8 @@ class WalletHomePage extends ConsumerWidget {
                     label: 'Receive',
                     subtitle: 'Share an address',
                     accentColor: AppColors.success,
-                    onTap: onReceiveRequested ??
+                    onTap:
+                        onReceiveRequested ??
                         () =>
                             Navigator.of(context).pushNamed(AppRoutes.receive),
                   ),
@@ -200,7 +208,8 @@ class WalletHomePage extends ConsumerWidget {
                     label: 'Send',
                     subtitle: 'Move funds out',
                     accentColor: AppColors.warning,
-                    onTap: onSendRequested ??
+                    onTap:
+                        onSendRequested ??
                         () => Navigator.of(context).pushNamed(AppRoutes.send),
                   ),
                 ] else
@@ -212,10 +221,11 @@ class WalletHomePage extends ConsumerWidget {
                           label: 'Receive',
                           subtitle: 'Share an address',
                           accentColor: AppColors.success,
-                          onTap: onReceiveRequested ??
+                          onTap:
+                              onReceiveRequested ??
                               () => Navigator.of(
-                                    context,
-                                  ).pushNamed(AppRoutes.receive),
+                                context,
+                              ).pushNamed(AppRoutes.receive),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
@@ -225,10 +235,11 @@ class WalletHomePage extends ConsumerWidget {
                           label: 'Send',
                           subtitle: 'Move funds out',
                           accentColor: AppColors.warning,
-                          onTap: onSendRequested ??
+                          onTap:
+                              onSendRequested ??
                               () => Navigator.of(
-                                    context,
-                                  ).pushNamed(AppRoutes.send),
+                                context,
+                              ).pushNamed(AppRoutes.send),
                         ),
                       ),
                     ],
@@ -244,8 +255,9 @@ class WalletHomePage extends ConsumerWidget {
                   message: isBackupConfirmed
                       ? 'Your backup reminder is complete. Keep your phrase stored offline and private.'
                       : 'A backup is still outstanding. Completing it now is the single best way to protect access to your wallet.',
-                  actionLabel:
-                      isBackupConfirmed ? 'Review phrase' : 'Back up now',
+                  actionLabel: isBackupConfirmed
+                      ? 'Review phrase'
+                      : 'Back up now',
                   action: () => Navigator.of(context).pushNamed(
                     AppRoutes.backupSeed,
                     arguments: const BackupSeedPageArgs(
@@ -253,8 +265,9 @@ class WalletHomePage extends ConsumerWidget {
                       isOnboardingFlow: false,
                     ),
                   ),
-                  tone:
-                      isBackupConfirmed ? AppColors.success : AppColors.warning,
+                  tone: isBackupConfirmed
+                      ? AppColors.success
+                      : AppColors.warning,
                 ),
                 if (data.isOffline) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -269,7 +282,7 @@ class WalletHomePage extends ConsumerWidget {
                   const InfoBanner(
                     type: InfoBannerType.info,
                     message:
-                        'Refreshing wallet data from the public testnet network.',
+                        'Refreshing wallet data from the public testnet4 network.',
                     icon: Icons.sync_rounded,
                   ),
                 ] else ...[
@@ -286,9 +299,9 @@ class WalletHomePage extends ConsumerWidget {
                   trailing: Text(
                     activitySummary,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
@@ -321,8 +334,9 @@ class _WalletStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textPrimary = AppColors.textPrimaryOf(context);
-    final maxWidth =
-        context.isCompactWidth ? context.screenWidth * 0.72 : 260.0;
+    final maxWidth = context.isCompactWidth
+        ? context.screenWidth * 0.72
+        : 260.0;
 
     return GlassSurface(
       borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -346,9 +360,9 @@ class _WalletStatusChip extends StatelessWidget {
               child: Text(
                 label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: textPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -410,16 +424,16 @@ class _WalletAttentionCard extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   message,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: textSecondary,
-                        height: 1.45,
-                      ),
+                    color: textSecondary,
+                    height: 1.45,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 OutlinedButton(onPressed: action, child: Text(actionLabel)),

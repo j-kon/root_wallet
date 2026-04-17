@@ -92,7 +92,7 @@ class SettingsPage extends ConsumerWidget {
                   walletState == null
                       ? 'Security posture and sync health will appear here when wallet data is ready.'
                       : walletState.isSyncing
-                      ? 'Wallet data is syncing against the public testnet network.'
+                      ? 'Wallet data is syncing against the public testnet4 network.'
                       : walletState.isOffline
                       ? 'Offline mode active. Cached wallet data was refreshed ${updatedAgo ?? 'recently'}.'
                       : 'Updated ${updatedAgo ?? 'just now'}. Review privacy, backup, and support controls below.',
@@ -276,15 +276,26 @@ class SettingsPage extends ConsumerWidget {
                   icon: useCupertino
                       ? CupertinoIcons.compass
                       : Icons.explore_outlined,
-                  title: 'Public testnet explorer',
+                  title: 'Public testnet4 explorer',
                   subtitle:
-                      'Open mempool.space/testnet or copy the explorer URL.',
+                      'Open mempool.space/testnet4 or copy the explorer URL.',
                   onTap: () => _openExternalLink(
                     context,
                     ref,
                     AppConstants.testnetExplorerBaseUrl,
                     copiedMessage: 'Explorer URL copied.',
                   ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.wrench
+                      : Icons.health_and_safety_outlined,
+                  title: 'Wallet diagnostics',
+                  subtitle:
+                      'Inspect backend, cache, network, and wallet health.',
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.diagnostics),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _SettingsTile(

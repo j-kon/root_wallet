@@ -1,5 +1,6 @@
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
 
@@ -12,4 +13,6 @@ abstract class WalletRepository {
   Future<Balance> getBalance();
   Future<List<TxItem>> getTransactions();
   Future<WalletOverview> getOverview();
+  Future<WalletDiagnostics> getDiagnostics();
+  Future<void> rotateBackend();
 }

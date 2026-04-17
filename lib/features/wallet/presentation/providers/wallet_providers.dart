@@ -10,15 +10,18 @@ import 'package:root_wallet/features/wallet/data/mappers/tx_mapper.dart';
 import 'package:root_wallet/features/wallet/data/repositories/wallet_repository_impl.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/create_wallet.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_address.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_balance.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_recovery_phrase.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_transactions.dart';
+import 'package:root_wallet/features/wallet/domain/usecases/get_wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_wallet_overview.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/has_wallet.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/restore_wallet.dart';
+import 'package:root_wallet/features/wallet/domain/usecases/rotate_wallet_backend.dart';
 import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 
 final bdkWalletDatasourceProvider = Provider<BdkWalletDatasource>(
@@ -74,6 +77,14 @@ final getWalletOverviewUsecaseProvider = Provider<GetWalletOverview>(
 
 final getRecoveryPhraseUsecaseProvider = Provider<GetRecoveryPhrase>(
   (ref) => GetRecoveryPhrase(ref.watch(walletRepositoryProvider)),
+);
+
+final getWalletDiagnosticsUsecaseProvider = Provider<GetWalletDiagnostics>(
+  (ref) => GetWalletDiagnostics(ref.watch(walletRepositoryProvider)),
+);
+
+final rotateWalletBackendUsecaseProvider = Provider<RotateWalletBackend>(
+  (ref) => RotateWalletBackend(ref.watch(walletRepositoryProvider)),
 );
 
 final recoveryPhraseProvider = FutureProvider<String>((ref) {
@@ -292,3 +303,78 @@ final walletHomeControllerProvider =
     );
 
 final walletControllerProvider = walletHomeControllerProvider;
+
+class WalletDiagnosticsState {
+  const WalletDiagnosticsState({
+    required this.diagnostics,
+    required this.cacheUpdatedAt,
+    required this.cacheTransactionCount,
+    required this.walletStateLabel,
+  });
+
+  final WalletDiagnostics diagnostics;
+  final DateTime? cacheUpdatedAt;
+  final int cacheTransactionCount;
+  final String walletStateLabel;
+
+  Map<String, Object?> toJson() {
+    return diagnostics.toJson(
+      cacheUpdatedAt: cacheUpdatedAt,
+      walletState: walletStateLabel,
+    )..addAll(<String, Object?>{
+      'cacheTransactionCount': cacheTransactionCount,
+    });
+  }
+}
+
+class WalletDiagnosticsController
+    extends AsyncNotifier<WalletDiagnosticsState> {
+  @override
+  Future<WalletDiagnosticsState> build() async {
+    final diagnostics = await ref.read(getWalletDiagnosticsUsecaseProvider)();
+    final snapshot = await (await ref.read(
+      walletSnapshotCacheProvider.future,
+    )).read();
+    final walletState = ref.read(walletHomeControllerProvider).valueOrNull;
+
+    return WalletDiagnosticsState(
+      diagnostics: diagnostics,
+      cacheUpdatedAt: snapshot == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(snapshot.lastSyncedAtMs),
+      cacheTransactionCount: snapshot?.transactions.length ?? 0,
+      walletStateLabel: _walletStateLabel(walletState),
+    );
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(build);
+  }
+
+  Future<void> tryNextBackend() async {
+    await ref.read(rotateWalletBackendUsecaseProvider)();
+    await ref
+        .read(walletHomeControllerProvider.notifier)
+        .sync(showLoading: true);
+    await refresh();
+  }
+
+  String _walletStateLabel(WalletHomeState? state) {
+    if (state == null) {
+      return 'Wallet state not loaded';
+    }
+    if (state.isSyncing) {
+      return 'Syncing with backend';
+    }
+    if (state.isOffline) {
+      return 'Using cached wallet data';
+    }
+    return 'Live wallet data loaded';
+  }
+}
+
+final walletDiagnosticsControllerProvider =
+    AsyncNotifierProvider<WalletDiagnosticsController, WalletDiagnosticsState>(
+      WalletDiagnosticsController.new,
+    );

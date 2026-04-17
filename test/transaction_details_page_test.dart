@@ -29,7 +29,7 @@ void main() {
 
     expect(
       launcher.openedUris.single.toString(),
-      'https://mempool.space/testnet/tx/test_txid_1234567890',
+      'https://mempool.space/testnet4/tx/test_txid_1234567890',
     );
   });
 
@@ -57,7 +57,7 @@ void main() {
     );
     expect(
       shareService.sharedTexts.single,
-      contains('https://mempool.space/testnet/tx/test_txid_1234567890'),
+      contains('https://mempool.space/testnet4/tx/test_txid_1234567890'),
     );
     expect(shareService.subjects, ['Root Wallet transaction']);
   });

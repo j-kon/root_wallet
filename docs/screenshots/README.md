@@ -12,6 +12,9 @@ These files are already wired into the README gallery:
 - `send-dark.png`
 - `settings-dark.png`
 - `security-light.png`
+- `create-wallet-light.png`
+- `backup-phrase-dark.png`
+- `lock-screen-dark.png`
 
 They are currently copied from the app's golden baselines so the README reflects the UI that is actually covered by tests.
 
@@ -19,11 +22,9 @@ They are currently copied from the app's golden baselines so the README reflects
 
 If you want to expand the README later, these are the best next screens to capture:
 
-- `create-wallet-light.png`
-- `backup-phrase-dark.png`
 - `review-transfer-dark.png`
 - `transaction-details-light.png`
-- `lock-screen-dark.png`
+- `wallet-diagnostics-dark.png`
 
 ## Naming convention
 

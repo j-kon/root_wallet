@@ -23,6 +23,7 @@ class TransactionDetailsPage extends ConsumerWidget {
     final surfaceRaised = AppColors.surfaceRaisedOf(context);
     final border = AppColors.borderOf(context);
     final textSecondary = AppColors.textSecondaryOf(context);
+    final now = ref.watch(dateTimeNowProvider)();
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is! TxItem) {
       return const AppScaffold(
@@ -38,7 +39,7 @@ class TransactionDetailsPage extends ConsumerWidget {
     final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
     final explorerUri = Uri.parse(AppConstants.testnetExplorerTxUrl(tx.txId));
     final shareBody =
-        'Bitcoin testnet transaction\n'
+        '${AppConstants.bitcoinNetworkDisplayName} transaction\n'
         'TXID: ${tx.txId}\n'
         '${explorerUri.toString()}';
     final amountBtc = tx.amountSats / AppConstants.satoshisPerBitcoin;
@@ -109,7 +110,7 @@ class TransactionDetailsPage extends ConsumerWidget {
                         ),
                         const _TxHeroBadge(
                           icon: Icons.language_rounded,
-                          label: 'Testnet',
+                          label: AppConstants.networkDisplayName,
                         ),
                       ],
                     ),
@@ -170,7 +171,15 @@ class TransactionDetailsPage extends ConsumerWidget {
                   value: AppDateTime.ymdHm(tx.timestamp),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                const _DetailRow(label: 'Network', value: 'Bitcoin testnet'),
+                const _DetailRow(
+                  label: 'Network',
+                  value: AppConstants.bitcoinNetworkDisplayName,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _DetailRow(
+                  label: 'Last checked',
+                  value: AppDateTime.ymdHm(now),
+                ),
               ],
             ),
           ),

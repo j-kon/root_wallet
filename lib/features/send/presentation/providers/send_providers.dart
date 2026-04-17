@@ -238,7 +238,7 @@ class SendController extends StateNotifier<SendState> {
       return 'Enter a destination address.';
     }
     if (draft.looksLikeMainnetAddress) {
-      return 'Mainnet address detected. Use a Bitcoin testnet address.';
+      return 'Mainnet address detected. Use a Bitcoin testnet4 address.';
     }
     if (!draft.hasValidAddress) {
       return 'Invalid address.';
