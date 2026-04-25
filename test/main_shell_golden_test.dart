@@ -27,18 +27,22 @@ void main() {
   ];
 
   for (final testCase in cases) {
-    testWidgets('main shell golden ${testCase.name}', (tester) async {
-      await _pumpShellGolden(
-        tester,
-        brightness: testCase.brightness,
-        initialIndex: testCase.tabIndex,
-      );
+    testWidgets(
+      'main shell golden ${testCase.name}',
+      tags: const <String>['golden'],
+      (tester) async {
+        await _pumpShellGolden(
+          tester,
+          brightness: testCase.brightness,
+          initialIndex: testCase.tabIndex,
+        );
 
-      await expectLater(
-        find.byKey(_goldenKey),
-        matchesGoldenFile('goldens/main_shell_${testCase.name}.png'),
-      );
-    });
+        await expectLater(
+          find.byKey(_goldenKey),
+          matchesGoldenFile('goldens/main_shell_${testCase.name}.png'),
+        );
+      },
+    );
   }
 }
 

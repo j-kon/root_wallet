@@ -207,7 +207,7 @@ See [docs/troubleshooting.md](docs/troubleshooting.md) for the exact failure mod
 ```bash
 flutter pub get
 flutter analyze
-flutter test
+flutter test --exclude-tags golden
 flutter run
 ```
 
@@ -227,6 +227,10 @@ flutter test test/main_shell_golden_test.dart
 flutter test test/onboarding_security_golden_test.dart
 ```
 
+Hosted CI excludes `golden` tagged tests because strict pixel baselines can
+drift across Flutter patch versions and hosted runner renderers. Run golden
+suites locally when visual changes are intentional.
+
 Refresh baselines only when the visual change is intentional:
 
 ```bash
@@ -245,7 +249,7 @@ If a golden fails:
 Before shipping UI-heavy changes:
 
 1. Run `flutter analyze`
-2. Run `flutter test`
+2. Run `flutter test --exclude-tags golden`
 3. Run the relevant golden suites if visuals changed
 4. Verify light and dark mode
 5. Verify at least one compact device profile

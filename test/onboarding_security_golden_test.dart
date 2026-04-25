@@ -127,19 +127,25 @@ void main() {
       ];
 
   for (final testCase in cases) {
-    testWidgets('onboarding/security golden ${testCase.name}', (tester) async {
-      await _pumpGoldenPage(
-        tester,
-        brightness: testCase.brightness,
-        overrides: testCase.overrides,
-        child: testCase.child,
-      );
+    testWidgets(
+      'onboarding/security golden ${testCase.name}',
+      tags: const <String>['golden'],
+      (tester) async {
+        await _pumpGoldenPage(
+          tester,
+          brightness: testCase.brightness,
+          overrides: testCase.overrides,
+          child: testCase.child,
+        );
 
-      await expectLater(
-        find.byKey(_goldenKey),
-        matchesGoldenFile('goldens/onboarding_security_${testCase.name}.png'),
-      );
-    });
+        await expectLater(
+          find.byKey(_goldenKey),
+          matchesGoldenFile(
+            'goldens/onboarding_security_${testCase.name}.png',
+          ),
+        );
+      },
+    );
   }
 }
 

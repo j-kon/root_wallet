@@ -5,7 +5,7 @@ Use this checklist for real-device or simulator sign-off after UI, navigation, o
 ## Before You Start
 
 1. Run `flutter analyze`
-2. Run `flutter test`
+2. Run `flutter test --exclude-tags golden`
 3. If visuals changed, run the golden suites
 4. Test both light and dark mode
 5. Test at least one compact device profile

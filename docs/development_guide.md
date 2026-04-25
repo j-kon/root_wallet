@@ -50,7 +50,7 @@ flutter analyze
 ### Test
 
 ```bash
-flutter test
+flutter test --exclude-tags golden
 ```
 
 ### Targeted Goldens
@@ -121,7 +121,7 @@ Minimum expectation:
 
 ```bash
 flutter analyze
-flutter test
+flutter test --exclude-tags golden
 ```
 
 If visual changes were made, also run:

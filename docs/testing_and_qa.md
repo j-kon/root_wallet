@@ -15,7 +15,7 @@ This should be clean before any push.
 ### 2. Automated tests
 
 ```bash
-flutter test
+flutter test --exclude-tags golden
 ```
 
 The suite covers:
@@ -24,11 +24,15 @@ The suite covers:
 - send flow behavior
 - receive interactions
 - compact layout regressions
-- golden coverage for major surfaces
+
+CI runs this non-golden suite. Golden tests are still part of the local visual
+review workflow below.
 
 ### 3. Golden tests
 
 Golden tests protect the main visual surfaces from silent regressions.
+They are tagged as `golden` because strict image comparisons can vary across
+Flutter patch versions and hosted runner renderers.
 
 Current suites:
 - [test/main_shell_golden_test.dart](../test/main_shell_golden_test.dart)
