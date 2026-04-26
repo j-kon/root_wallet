@@ -11,6 +11,8 @@ import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/glass_surface.dart';
+import 'package:root_wallet/core/widgets/pin_entry_dialog.dart';
+import 'package:root_wallet/features/onboarding/presentation/providers/app_start_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
@@ -92,7 +94,7 @@ class SettingsPage extends ConsumerWidget {
                   walletState == null
                       ? 'Security posture and sync health will appear here when wallet data is ready.'
                       : walletState.isSyncing
-                      ? 'Wallet data is syncing against the public testnet4 network.'
+                      ? 'Wallet data is syncing against the public testnet network.'
                       : walletState.isOffline
                       ? 'Offline mode active. Cached wallet data was refreshed ${updatedAgo ?? 'recently'}.'
                       : 'Updated ${updatedAgo ?? 'just now'}. Review privacy, backup, and support controls below.',
@@ -254,6 +256,17 @@ class SettingsPage extends ConsumerWidget {
                   onTap: () =>
                       Navigator.of(context).pushNamed(AppRoutes.restoreWallet),
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.trash
+                      : Icons.delete_outline,
+                  title: 'Delete local wallet',
+                  subtitle:
+                      'Remove this wallet from the device. Recovery phrase required to restore.',
+                  tone: AppColors.danger,
+                  onTap: () => _deleteLocalWallet(context, ref),
+                ),
               ],
             ),
           ),
@@ -276,9 +289,9 @@ class SettingsPage extends ConsumerWidget {
                   icon: useCupertino
                       ? CupertinoIcons.compass
                       : Icons.explore_outlined,
-                  title: 'Public testnet4 explorer',
+                  title: 'Public testnet explorer',
                   subtitle:
-                      'Open mempool.space/testnet4 or copy the explorer URL.',
+                      'Open mempool.space/testnet or copy the explorer URL.',
                   onTap: () => _openExternalLink(
                     context,
                     ref,
@@ -345,6 +358,88 @@ class SettingsPage extends ConsumerWidget {
       context,
     ).showSnackBar(SnackBar(content: Text(copiedMessage)));
   }
+
+  Future<void> _deleteLocalWallet(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete local wallet?'),
+        content: const Text(
+          'This removes the wallet from this device. Funds can only be recovered with the recovery phrase.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete wallet'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final authed = await _requireWalletResetAuth(context, ref);
+    if (!authed || !context.mounted) {
+      return;
+    }
+
+    await ref.read(resetWalletUsecaseProvider)();
+    await (await ref.read(walletSnapshotCacheProvider.future)).clear();
+    await ref.read(walletLabelsControllerProvider.notifier).clear();
+    await ref.read(backupReminderProvider.notifier).clearBackupConfirmation();
+    await ref.read(balancePrivacyProvider.notifier).clear();
+    ref.invalidate(walletHomeControllerProvider);
+    ref.invalidate(recoveryPhraseProvider);
+    ref.invalidate(walletDiagnosticsControllerProvider);
+    ref.invalidate(appStartControllerProvider);
+
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Local wallet deleted from this device.')),
+    );
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AppRoutes.walletHome, (route) => false);
+  }
+
+  Future<bool> _requireWalletResetAuth(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final lock = ref.read(lockControllerProvider).valueOrNull;
+    if (lock == null || !lock.isLockEnabled || !lock.hasPin) {
+      return true;
+    }
+
+    final controller = ref.read(lockControllerProvider.notifier);
+    var ok = await controller.requireReauth();
+    if (!ok && context.mounted) {
+      final pin = await showPinEntryDialog(
+        context,
+        title: 'Confirm wallet deletion',
+        subtitle: 'Enter your PIN to delete this local wallet copy.',
+        confirmLabel: 'Delete',
+      );
+      if (pin != null) {
+        ok = await controller.verifyPin(pin);
+      }
+    }
+
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Authentication required.')));
+    }
+    return ok;
+  }
 }
 
 class _SettingsPanel extends StatelessWidget {
@@ -399,15 +494,19 @@ class _SettingsTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.tone,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final Color? tone;
 
   @override
   Widget build(BuildContext context) {
+    final accent = tone ?? AppColors.primary;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -426,15 +525,13 @@ class _SettingsTile extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(
+                  color: accent.withValues(
                     alpha: AppColors.isDark(context) ? 0.16 : 0.12,
                   ),
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.18),
-                  ),
+                  border: Border.all(color: accent.withValues(alpha: 0.18)),
                 ),
-                child: Icon(icon, color: AppColors.primary),
+                child: Icon(icon, color: accent),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(

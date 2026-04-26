@@ -13,9 +13,7 @@ void main() {
     final secureStorage = InMemorySecureStorage();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          secureStorageProvider.overrideWithValue(secureStorage),
-        ],
+        overrides: [secureStorageProvider.overrideWithValue(secureStorage)],
         child: const RootWalletApp(),
       ),
     );

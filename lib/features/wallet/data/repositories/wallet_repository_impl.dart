@@ -6,6 +6,7 @@ import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
 
 class WalletRepositoryImpl implements WalletRepository {
@@ -29,6 +30,11 @@ class WalletRepositoryImpl implements WalletRepository {
   @override
   Future<WalletIdentity> createWallet() {
     return _walletDatasource.createWallet();
+  }
+
+  @override
+  Future<void> resetWallet() {
+    return _walletDatasource.resetWallet();
   }
 
   @override
@@ -70,9 +76,11 @@ class WalletRepositoryImpl implements WalletRepository {
 
   @override
   Future<WalletOverview> getOverview() async {
+    Object? syncError;
     try {
       await _syncDatasource.sync();
-    } catch (_) {
+    } catch (error) {
+      syncError = error;
       // Keep the wallet usable offline by falling back to local state.
     }
 
@@ -85,6 +93,8 @@ class WalletRepositoryImpl implements WalletRepository {
       balance: Balance(confirmedSats: confirmed, pendingSats: pending),
       transactions: txs.map(_txMapper.fromDto).toList(growable: false),
       receiveAddress: receiveAddress,
+      syncSucceeded: syncError == null,
+      syncError: syncError,
     );
   }
 
@@ -99,7 +109,18 @@ class WalletRepositoryImpl implements WalletRepository {
   }
 
   @override
-  Future<WalletIdentity> restoreWallet({required String mnemonic}) {
-    return _walletDatasource.restoreWallet(mnemonic: mnemonic);
+  Future<void> setCustomBackend(String? endpoint) {
+    return _walletDatasource.setCustomBackend(endpoint);
+  }
+
+  @override
+  Future<WalletIdentity> restoreWallet({
+    required String mnemonic,
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) {
+    return _walletDatasource.restoreWallet(
+      mnemonic: mnemonic,
+      scriptType: scriptType,
+    );
   }
 }

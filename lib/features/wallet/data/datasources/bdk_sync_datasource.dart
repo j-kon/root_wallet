@@ -44,8 +44,8 @@ class BdkSyncDatasource {
     final receivedSats = _toInt(tx.received);
     final sentSats = _toInt(tx.sent);
     final isIncoming = receivedSats >= sentSats;
-    final amount = (isIncoming ? receivedSats - sentSats : sentSats - receivedSats)
-        .abs();
+    final amount =
+        (isIncoming ? receivedSats - sentSats : sentSats - receivedSats).abs();
 
     final blockTime = tx.confirmationTime;
     final timestamp = blockTime == null
@@ -73,10 +73,7 @@ class BdkSyncDatasource {
     );
   }
 
-  int _safeConfirmations({
-    required int chainHeight,
-    required int blockHeight,
-  }) {
+  int _safeConfirmations({required int chainHeight, required int blockHeight}) {
     final depth = chainHeight - blockHeight + 1;
     return depth <= 0 ? 1 : depth;
   }

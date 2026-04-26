@@ -8,6 +8,7 @@ import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
@@ -20,6 +21,7 @@ class RestoreWalletPage extends ConsumerStatefulWidget {
 
 class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
   final _controller = TextEditingController();
+  WalletScriptType _scriptType = WalletScriptType.nativeSegwit;
 
   @override
   void dispose() {
@@ -29,6 +31,16 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<OnboardingState>(onboardingControllerProvider, (previous, next) {
+      final message = next.errorMessage;
+      if (message == null || message == previous?.errorMessage) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message.split('\n').first)));
+    });
+
     final state = ref.watch(onboardingControllerProvider);
     final controller = ref.read(onboardingControllerProvider.notifier);
 
@@ -105,6 +117,9 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
                       controller: _controller,
                       minLines: 4,
                       maxLines: 6,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      textCapitalization: TextCapitalization.none,
                       textInputAction: TextInputAction.done,
                       decoration: const InputDecoration(
                         labelText: 'Recovery phrase',
@@ -112,11 +127,39 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  _RestorePanel(
+                    title: 'Address type',
+                    subtitle:
+                        'Pick the address family your original wallet used. If unsure, start with Native SegWit.',
+                    child: Column(
+                      children: WalletScriptType.values
+                          .map(
+                            (type) => _ScriptTypeOption(
+                              type: type,
+                              isSelected: _scriptType == type,
+                              onTap: () {
+                                setState(() {
+                                  _scriptType = type;
+                                });
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   const InfoBanner(
                     type: InfoBannerType.warning,
                     message:
                         'Only restore a phrase you trust and never share it with anyone. The phrase controls wallet access.',
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  const InfoBanner(
+                    type: InfoBannerType.info,
+                    message:
+                        'Root Wallet restores Bitcoin testnet wallets. A mainnet seed can import, but mainnet funds will not appear here.',
+                    icon: Icons.info_outline_rounded,
                   ),
                   if (state.errorMessage != null) ...[
                     const SizedBox(height: AppSpacing.md),
@@ -137,7 +180,10 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
                   return;
                 }
 
-                final restored = await controller.restoreWallet(phrase);
+                final restored = await controller.restoreWallet(
+                  phrase,
+                  scriptType: _scriptType,
+                );
                 if (!context.mounted) {
                   return;
                 }
@@ -196,6 +242,98 @@ class _RestorePanel extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           child,
         ],
+      ),
+    );
+  }
+}
+
+class _ScriptTypeOption extends StatelessWidget {
+  const _ScriptTypeOption({
+    required this.type,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final WalletScriptType type;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = isSelected
+        ? AppColors.primaryOf(context)
+        : AppColors.textSecondaryOf(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primaryOf(context).withValues(alpha: 0.12)
+                : AppColors.glassSurfaceOf(
+                    context,
+                  ).withValues(alpha: AppColors.isDark(context) ? 0.34 : 0.68),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primaryOf(context).withValues(alpha: 0.50)
+                  : AppColors.glassBorderOf(context).withValues(alpha: 0.62),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: tone.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Text(
+                  type.shortLabel,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: tone,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      type.displayName,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      type.description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondaryOf(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(
+                isSelected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: tone,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

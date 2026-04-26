@@ -2,19 +2,19 @@
 
 ## 2026-04-13
 
-This release turns Root Wallet into a substantially more complete public Testnet4 wallet experience, with a stronger product surface, cleaner developer workflow, and better release confidence.
+This release turns Root Wallet into a substantially more complete public Testnet wallet experience, with a stronger product surface, cleaner developer workflow, and better release confidence.
 
 ## At a glance
 
 ### Best for
 
 - engineers onboarding to the current wallet milestone
-- testers validating public testnet4 behavior
+- testers validating public testnet behavior
 - stakeholders reviewing what is actually ready in the app
 
 ### What matters most
 
-- the app now supports a coherent end-to-end testnet4 journey:
+- the app now supports a coherent end-to-end testnet journey:
   - onboarding
   - backup
   - receive
@@ -32,7 +32,7 @@ This release turns Root Wallet into a substantially more complete public Testnet
 
 ### Wallet foundation
 
-- Public Bitcoin testnet4 wallet flows built around `bdk_flutter`
+- Public Bitcoin testnet wallet flows built around `bdk_flutter`
 - Create wallet and restore wallet onboarding
 - Recovery phrase backup and confirmation
 - Persistent wallet state and cached wallet snapshot support
@@ -44,7 +44,7 @@ This release turns Root Wallet into a substantially more complete public Testnet
 - Copy and share support for raw addresses and `bitcoin:` payment URIs
 - QR scanning for send flows with `mobile_scanner`
 - Send form with validation, fee selection, review, success, and transaction follow-through
-- Public testnet4 explorer integration for post-broadcast verification
+- Public testnet explorer integration for post-broadcast verification
 
 ### Security
 
@@ -72,7 +72,7 @@ This release turns Root Wallet into a substantially more complete public Testnet
 
 - New users are routed through onboarding instead of landing in a broken wallet state
 - Existing users land in the main shell with persistent wallet context
-- Users can receive testnet4 bitcoin, scan payment requests, review sends, and inspect transactions
+- Users can receive testnet bitcoin, scan payment requests, review sends, and inspect transactions
 - Security-sensitive flows now feel integrated instead of bolted on
 
 ### Design system
@@ -108,7 +108,7 @@ Use this if you want the fastest path to confidence:
 1. Launch the app and confirm onboarding opens instead of a broken wallet shell
 2. Create a wallet and complete backup confirmation
 3. Open `Receive` and verify the QR and address copy/share actions
-4. Open `Send`, paste or scan a testnet4 destination, and verify fee/review states
+4. Open `Send`, paste or scan a testnet destination, and verify fee/review states
 5. Confirm the success screen and transaction details flow
 6. Open `Settings` and `Security`, then verify app lock controls and recovery reveal protection
 7. Switch between light and dark mode and confirm the shell still reads cleanly
@@ -117,7 +117,7 @@ Use this if you want the fastest path to confidence:
 
 - The project depends on a Flutter toolchain compatible with Dart `3.10.x`
 - Native-asset behavior still depends on local Flutter tooling being configured correctly
-- Public testnet4 backend availability can affect sync latency and timing
+- Public testnet backend availability can affect sync latency and timing
 
 ## Recommended release QA
 
@@ -140,4 +140,4 @@ Before cutting or promoting a build, run the checklist in [device_qa_checklist.m
 
 ## Suggested release summary
 
-Root Wallet now ships a coherent self-custody Bitcoin testnet4 experience with production-style onboarding, send/receive flows, security controls, visual regression coverage, and polished cross-theme UI.
+Root Wallet now ships a coherent self-custody Bitcoin testnet experience with production-style onboarding, send/receive flows, security controls, visual regression coverage, and polished cross-theme UI.

@@ -13,6 +13,7 @@ class TransactionTile extends StatelessWidget {
     required this.timestamp,
     required this.isIncoming,
     required this.isPending,
+    this.label,
     this.obscureAmount = false,
     this.onTap,
   });
@@ -22,6 +23,7 @@ class TransactionTile extends StatelessWidget {
   final DateTime timestamp;
   final bool isIncoming;
   final bool isPending;
+  final String? label;
   final bool obscureAmount;
   final VoidCallback? onTap;
 
@@ -104,6 +106,16 @@ class TransactionTile extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: AppSpacing.xxs),
+                      if (label != null && label!.trim().isNotEmpty) ...[
+                        Text(
+                          label!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: AppSpacing.xxs),
+                      ],
                       Text(
                         _compactTxId(txId),
                         maxLines: 1,

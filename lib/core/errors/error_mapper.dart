@@ -14,8 +14,15 @@ String mapErrorToMessage(
   String message;
   if (normalized.contains('invalid address')) {
     message = 'Invalid address.';
+  } else if (normalized.contains('recovery phrase word count')) {
+    message = 'Invalid recovery phrase. Enter 12, 18, or 24 words.';
+  } else if (normalized.contains('mnemonic') ||
+      normalized.contains('bip39') ||
+      normalized.contains('invalid word') ||
+      normalized.contains('checksum')) {
+    message = 'Invalid recovery phrase. Check the words and order.';
   } else if (normalized.contains('mainnet address detected')) {
-    message = 'Mainnet address detected. Use a Bitcoin testnet4 address.';
+    message = 'Mainnet address detected. Use a Bitcoin testnet address.';
   } else if (normalized.contains('minimum spendable threshold') ||
       normalized.contains('below the minimum')) {
     message = 'Amount is too small to send.';

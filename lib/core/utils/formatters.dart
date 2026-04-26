@@ -49,10 +49,7 @@ abstract final class AppFormatters {
   static String _groupInt(int value) => _groupIntString(value.toString());
 
   static String _groupIntString(String digits) {
-    return digits.replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => ',',
-    );
+    return digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
   }
 
   static String _trimCompact(double value) {

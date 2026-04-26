@@ -50,17 +50,17 @@ void main() {
         isSyncing: true,
       ),
     );
-    expect(find.text('Syncing testnet4...'), findsOneWidget);
+    expect(find.text('Syncing testnet...'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.textContaining(
-        'Refreshing wallet data from the public testnet4 network',
+        'Refreshing wallet data from the public testnet network',
       ),
       300,
     );
 
     expect(
       find.textContaining(
-        'Refreshing wallet data from the public testnet4 network',
+        'Refreshing wallet data from the public testnet network',
       ),
       findsOneWidget,
     );

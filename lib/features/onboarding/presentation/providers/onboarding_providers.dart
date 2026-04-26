@@ -5,6 +5,7 @@ import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/errors/error_mapper.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/app_start_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 
 class OnboardingState {
@@ -46,8 +47,7 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
       await _ref.read(createWalletUsecaseProvider).call();
-      await _ref.read(backupReminderProvider.notifier).clearBackupConfirmation();
-      _ref.invalidate(appStartControllerProvider);
+      await _resetLocalWalletSessionState();
       state = state.copyWith(
         isBusy: false,
         challengeIndices: const [],
@@ -67,12 +67,16 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     }
   }
 
-  Future<bool> restoreWallet(String mnemonic) async {
+  Future<bool> restoreWallet(
+    String mnemonic, {
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) async {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
-      await _ref.read(restoreWalletUsecaseProvider).call(mnemonic);
-      await _ref.read(backupReminderProvider.notifier).clearBackupConfirmation();
-      _ref.invalidate(appStartControllerProvider);
+      await _ref
+          .read(restoreWalletUsecaseProvider)
+          .call(mnemonic, scriptType: scriptType);
+      await _resetLocalWalletSessionState();
       state = state.copyWith(
         isBusy: false,
         challengeIndices: const [],
@@ -149,6 +153,16 @@ class OnboardingController extends StateNotifier<OnboardingState> {
 
   void clearError() {
     state = state.copyWith(clearError: true);
+  }
+
+  Future<void> _resetLocalWalletSessionState() async {
+    await _ref.read(backupReminderProvider.notifier).clearBackupConfirmation();
+    await (await _ref.read(walletSnapshotCacheProvider.future)).clear();
+    await _ref.read(walletLabelsControllerProvider.notifier).clear();
+    _ref.invalidate(recoveryPhraseProvider);
+    _ref.invalidate(walletHomeControllerProvider);
+    _ref.invalidate(walletDiagnosticsControllerProvider);
+    _ref.invalidate(appStartControllerProvider);
   }
 
   Future<void> _prepareChallenge() async {

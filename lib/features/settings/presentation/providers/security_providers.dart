@@ -44,6 +44,12 @@ class BalancePrivacyController extends AsyncNotifier<bool> {
     await prefs.setBool(_hideBalancesKey, hidden);
     state = AsyncData(hidden);
   }
+
+  Future<void> clear() async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    await prefs.remove(_hideBalancesKey);
+    state = const AsyncData(false);
+  }
 }
 
 final balancePrivacyProvider =

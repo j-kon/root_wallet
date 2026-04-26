@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
@@ -21,6 +22,7 @@ class WalletDiagnosticsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final diagnostics = ref.watch(walletDiagnosticsControllerProvider);
     final controller = ref.read(walletDiagnosticsControllerProvider.notifier);
+    final env = ref.watch(appEnvProvider);
 
     return AppScaffold(
       title: 'Diagnostics',
@@ -106,7 +108,7 @@ class WalletDiagnosticsPage extends ConsumerWidget {
               _DiagnosticsPanel(
                 title: 'Network and backend',
                 subtitle:
-                    'The public Bitcoin testnet4 connection currently in use.',
+                    'The public Bitcoin testnet connection currently in use.',
                 children: [
                   _DiagnosticsRow(
                     label: 'App network label',
@@ -127,6 +129,26 @@ class WalletDiagnosticsPage extends ConsumerWidget {
                   _DiagnosticsRow(
                     label: 'Failover state',
                     value: data.diagnostics.backendFailoverState,
+                  ),
+                  _DiagnosticsRow(
+                    label: 'Last backend failure',
+                    value: data.diagnostics.lastBackendFailure ?? 'None',
+                  ),
+                  _DiagnosticsRow(
+                    label: 'Last failure time',
+                    value: data.diagnostics.lastBackendFailureAt == null
+                        ? 'None'
+                        : AppDateTime.ymdHm(
+                            data.diagnostics.lastBackendFailureAt!,
+                          ),
+                  ),
+                  _DiagnosticsRow(
+                    label: 'Custom dev endpoint',
+                    value:
+                        data.diagnostics.customEsploraEndpoint ??
+                        (env.isProduction
+                            ? 'Disabled in production'
+                            : 'Not set'),
                   ),
                   _DiagnosticsRow(
                     label: 'Explorer base URL',
@@ -214,6 +236,34 @@ class WalletDiagnosticsPage extends ConsumerWidget {
                   );
                 },
               ),
+              if (!env.isProduction) ...[
+                const SizedBox(height: AppSpacing.md),
+                _DiagnosticsPanel(
+                  title: 'Development backend override',
+                  subtitle:
+                      'Optional local-only override for testing another testnet Esplora endpoint.',
+                  children: [
+                    _DiagnosticsRow(
+                      label: 'Stored override',
+                      value:
+                          data.diagnostics.customEsploraEndpoint ?? 'Not set',
+                    ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _editCustomEndpoint(
+                          context,
+                          controller,
+                          currentEndpoint:
+                              data.diagnostics.customEsploraEndpoint ?? '',
+                        ),
+                        icon: const Icon(Icons.tune_rounded),
+                        label: const Text('Set custom endpoint'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           );
         },
@@ -235,6 +285,74 @@ class WalletDiagnosticsPage extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Diagnostics copied.')));
+  }
+
+  Future<void> _editCustomEndpoint(
+    BuildContext context,
+    WalletDiagnosticsController controller, {
+    required String currentEndpoint,
+  }) async {
+    final textController = TextEditingController(text: currentEndpoint);
+    final endpoint = await showDialog<String?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Custom Esplora endpoint'),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'Endpoint URL',
+            hintText: 'https://mempool.space/testnet/api',
+          ),
+          onSubmitted: (_) =>
+              Navigator.of(dialogContext).pop(textController.text),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(null),
+            child: const Text('Cancel'),
+          ),
+          if (currentEndpoint.trim().isNotEmpty)
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(''),
+              child: const Text('Clear'),
+            ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(textController.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    textController.dispose();
+
+    if (endpoint == null || !context.mounted) {
+      return;
+    }
+
+    try {
+      await controller.setCustomBackend(
+        endpoint.trim().isEmpty ? null : endpoint.trim(),
+      );
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Backend endpoint updated.')),
+      );
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Endpoint not saved. Check the URL and try again.'),
+        ),
+      );
+    }
   }
 }
 

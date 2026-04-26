@@ -25,6 +25,7 @@ import 'package:root_wallet/features/wallet/presentation/pages/restore_wallet_pa
 import 'package:root_wallet/features/wallet/presentation/pages/transaction_details_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/wallet_home_page.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -154,7 +155,7 @@ void main() {
 
       await _scrollUntilVisible(
         tester,
-        find.textContaining('Only send BTC on Testnet4'),
+        find.textContaining('Only send BTC on Testnet'),
       );
 
       _expectNoFrameworkErrors(tester);
@@ -565,7 +566,10 @@ class _FakeOnboardingController extends OnboardingController {
   Future<bool> createWallet() async => true;
 
   @override
-  Future<bool> restoreWallet(String mnemonic) async => true;
+  Future<bool> restoreWallet(
+    String mnemonic, {
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) async => true;
 
   @override
   Future<void> prepareSeedChallenge() async {

@@ -12,6 +12,7 @@ import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.
 import 'package:root_wallet/features/wallet/presentation/pages/create_wallet_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/restore_wallet_page.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -140,9 +141,7 @@ void main() {
 
         await expectLater(
           find.byKey(_goldenKey),
-          matchesGoldenFile(
-            'goldens/onboarding_security_${testCase.name}.png',
-          ),
+          matchesGoldenFile('goldens/onboarding_security_${testCase.name}.png'),
         );
       },
     );
@@ -253,7 +252,10 @@ class _FakeOnboardingController extends OnboardingController {
   Future<bool> createWallet() async => true;
 
   @override
-  Future<bool> restoreWallet(String mnemonic) async => true;
+  Future<bool> restoreWallet(
+    String mnemonic, {
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) async => true;
 
   @override
   Future<void> prepareSeedChallenge() async {

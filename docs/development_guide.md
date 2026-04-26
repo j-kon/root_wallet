@@ -16,7 +16,13 @@ sdk: ^3.10.7
 flutter pub get
 ```
 
-3. Run the app:
+3. Refresh native launch assets after splash configuration changes:
+
+```bash
+dart run flutter_native_splash:create
+```
+
+4. Run the app:
 
 ```bash
 flutter run

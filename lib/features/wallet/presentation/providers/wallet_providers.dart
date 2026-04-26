@@ -5,6 +5,7 @@ import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_sync_datasource.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_wallet_datasource.dart';
+import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
 import 'package:root_wallet/features/wallet/data/mappers/tx_mapper.dart';
 import 'package:root_wallet/features/wallet/data/repositories/wallet_repository_impl.dart';
@@ -21,13 +22,17 @@ import 'package:root_wallet/features/wallet/domain/usecases/get_wallet_diagnosti
 import 'package:root_wallet/features/wallet/domain/usecases/get_wallet_overview.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/has_wallet.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/restore_wallet.dart';
+import 'package:root_wallet/features/wallet/domain/usecases/reset_wallet.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/rotate_wallet_backend.dart';
+import 'package:root_wallet/features/wallet/domain/usecases/set_custom_wallet_backend.dart';
 import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 
 final bdkWalletDatasourceProvider = Provider<BdkWalletDatasource>(
   (ref) => BdkWalletDatasource(
     secureStorage: ref.watch(secureStorageProvider),
     walletStoragePathLoader: () => ref.read(walletStoragePathProvider.future),
+    preferencesLoader: () => ref.read(sharedPreferencesProvider.future),
+    allowCustomEsploraEndpoint: !ref.watch(appEnvProvider).isProduction,
   ),
 );
 
@@ -59,6 +64,10 @@ final restoreWalletUsecaseProvider = Provider<RestoreWallet>(
   (ref) => RestoreWallet(ref.watch(walletRepositoryProvider)),
 );
 
+final resetWalletUsecaseProvider = Provider<ResetWallet>(
+  (ref) => ResetWallet(ref.watch(walletRepositoryProvider)),
+);
+
 final getAddressUsecaseProvider = Provider<GetAddress>(
   (ref) => GetAddress(ref.watch(walletRepositoryProvider)),
 );
@@ -87,6 +96,10 @@ final rotateWalletBackendUsecaseProvider = Provider<RotateWalletBackend>(
   (ref) => RotateWalletBackend(ref.watch(walletRepositoryProvider)),
 );
 
+final setCustomWalletBackendUsecaseProvider = Provider<SetCustomWalletBackend>(
+  (ref) => SetCustomWalletBackend(ref.watch(walletRepositoryProvider)),
+);
+
 final recoveryPhraseProvider = FutureProvider<String>((ref) {
   return ref.watch(getRecoveryPhraseUsecaseProvider).call();
 });
@@ -97,6 +110,46 @@ final walletSnapshotCacheProvider = FutureProvider<WalletSnapshotCache>((
   final prefs = await ref.watch(sharedPreferencesProvider.future);
   return WalletSnapshotCache(prefs);
 });
+
+final walletLabelStoreProvider = FutureProvider<WalletLabelStore>((ref) async {
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  return WalletLabelStore(prefs);
+});
+
+class WalletLabelsController extends AsyncNotifier<WalletLabelsSnapshot> {
+  @override
+  Future<WalletLabelsSnapshot> build() async {
+    final store = await ref.watch(walletLabelStoreProvider.future);
+    return store.read();
+  }
+
+  Future<void> setAddressLabel(String address, String label) async {
+    final store = await ref.read(walletLabelStoreProvider.future);
+    await store.setAddressLabel(address, label);
+    state = AsyncData(store.read());
+  }
+
+  Future<void> setTransactionMetadata({
+    required String txId,
+    required String label,
+    required String note,
+  }) async {
+    final store = await ref.read(walletLabelStoreProvider.future);
+    await store.setTransactionMetadata(txId: txId, label: label, note: note);
+    state = AsyncData(store.read());
+  }
+
+  Future<void> clear() async {
+    final store = await ref.read(walletLabelStoreProvider.future);
+    await store.clear();
+    state = const AsyncData(WalletLabelsSnapshot());
+  }
+}
+
+final walletLabelsControllerProvider =
+    AsyncNotifierProvider<WalletLabelsController, WalletLabelsSnapshot>(
+      WalletLabelsController.new,
+    );
 
 class WalletHomeState {
   const WalletHomeState({
@@ -189,7 +242,7 @@ class WalletHomeController extends AsyncNotifier<WalletHomeState> {
       transactions: overview.transactions,
       receiveAddress: overview.receiveAddress,
       lastSyncedAt: DateTime.now(),
-      isOffline: false,
+      isOffline: !overview.syncSucceeded,
       isSyncing: false,
     );
   }
@@ -354,6 +407,14 @@ class WalletDiagnosticsController
 
   Future<void> tryNextBackend() async {
     await ref.read(rotateWalletBackendUsecaseProvider)();
+    await ref
+        .read(walletHomeControllerProvider.notifier)
+        .sync(showLoading: true);
+    await refresh();
+  }
+
+  Future<void> setCustomBackend(String? endpoint) async {
+    await ref.read(setCustomWalletBackendUsecaseProvider)(endpoint);
     await ref
         .read(walletHomeControllerProvider.notifier)
         .sync(showLoading: true);

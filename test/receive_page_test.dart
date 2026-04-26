@@ -31,7 +31,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(shareService.sharedTexts, ['tb1qreceiveaddress']);
-    expect(shareService.subjects, ['Root Wallet testnet4 address']);
+    expect(shareService.subjects, ['Root Wallet testnet address']);
   });
 
   testWidgets('receive share options shares the payment request URI', (

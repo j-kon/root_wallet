@@ -6,6 +6,7 @@ import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/has_wallet.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
@@ -118,12 +119,25 @@ class _FakeWalletRepository implements WalletRepository {
   Future<bool> hasWallet() async => walletExists;
 
   @override
-  Future<WalletIdentity> restoreWallet({required String mnemonic}) {
+  Future<WalletIdentity> restoreWallet({
+    required String mnemonic,
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> resetWallet() {
     throw UnimplementedError();
   }
 
   @override
   Future<void> rotateBackend() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> setCustomBackend(String? endpoint) {
     throw UnimplementedError();
   }
 }

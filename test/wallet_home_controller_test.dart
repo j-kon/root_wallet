@@ -7,6 +7,7 @@ import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_wallet_overview.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
@@ -95,6 +96,36 @@ void main() {
       expect(state.transactions.single.txId, 'fresh_tx');
       expect(state.isSyncing, isFalse);
     });
+
+    test(
+      'marks overview as offline when sync fell back to local wallet state',
+      () async {
+        SharedPreferences.setMockInitialValues(<String, Object>{});
+        final container = ProviderContainer(
+          overrides: [
+            getWalletOverviewUsecaseProvider.overrideWithValue(
+              GetWalletOverview(
+                _StaticWalletRepository(
+                  overview: const WalletOverview(
+                    balance: Balance(confirmedSats: 0),
+                    transactions: <TxItem>[],
+                    receiveAddress: 'tb1qofflineaddress',
+                    syncSucceeded: false,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final state = await container.read(walletHomeControllerProvider.future);
+
+        expect(state.isOffline, isTrue);
+        expect(state.receiveAddress, 'tb1qofflineaddress');
+        expect(state.transactions, isEmpty);
+      },
+    );
 
     test(
       'replaces a pending local send with confirmed remote transaction on sync',
@@ -196,12 +227,25 @@ class _StaticWalletRepository implements WalletRepository {
   Future<bool> hasWallet() async => true;
 
   @override
-  Future<WalletIdentity> restoreWallet({required String mnemonic}) {
+  Future<WalletIdentity> restoreWallet({
+    required String mnemonic,
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> resetWallet() {
     throw UnimplementedError();
   }
 
   @override
   Future<void> rotateBackend() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> setCustomBackend(String? endpoint) {
     throw UnimplementedError();
   }
 }

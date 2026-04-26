@@ -11,6 +11,7 @@ import 'package:root_wallet/features/send/domain/entities/send_request.dart';
 import 'package:root_wallet/features/send/domain/repositories/send_repository.dart';
 import 'package:root_wallet/features/send/domain/usecases/broadcast_tx.dart';
 import 'package:root_wallet/features/send/domain/usecases/build_tx.dart';
+import 'package:root_wallet/features/send/domain/usecases/preview_tx.dart';
 import 'package:root_wallet/features/send/domain/usecases/sign_tx.dart';
 import 'package:root_wallet/features/send/presentation/models/bitcoin_uri_parser.dart';
 import 'package:root_wallet/features/send/presentation/models/send_draft.dart';
@@ -39,6 +40,10 @@ final buildTxUsecaseProvider = Provider<BuildTx>(
   (ref) => BuildTx(ref.watch(sendRepositoryProvider)),
 );
 
+final previewTxUsecaseProvider = Provider<PreviewTx>(
+  (ref) => PreviewTx(ref.watch(sendRepositoryProvider)),
+);
+
 final signTxUsecaseProvider = Provider<SignTx>(
   (ref) => SignTx(ref.watch(sendRepositoryProvider)),
 );
@@ -56,6 +61,8 @@ class SendState {
     required this.draft,
     this.errorMessage,
     this.isSending = false,
+    this.isPreviewing = false,
+    this.previewFeeSats,
     this.lastTxId,
   });
 
@@ -66,27 +73,37 @@ class SendState {
   final SendDraft draft;
   final String? errorMessage;
   final bool isSending;
+  final bool isPreviewing;
+  final int? previewFeeSats;
   final String? lastTxId;
 
   SendState copyWith({
     SendDraft? draft,
     String? errorMessage,
     bool? isSending,
+    bool? isPreviewing,
+    int? previewFeeSats,
     String? lastTxId,
     bool clearError = false,
+    bool clearPreview = false,
     bool clearTxId = false,
   }) {
     return SendState(
       draft: draft ?? this.draft,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       isSending: isSending ?? this.isSending,
+      isPreviewing: isPreviewing ?? this.isPreviewing,
+      previewFeeSats: clearPreview
+          ? null
+          : (previewFeeSats ?? this.previewFeeSats),
       lastTxId: clearTxId ? null : (lastTxId ?? this.lastTxId),
     );
   }
 
   int? get amountSats => draft.amountSats;
 
-  int get estimatedFeeSats => draft.feeRate.satsPerVByte * 140;
+  int get estimatedFeeSats =>
+      previewFeeSats ?? draft.feeRate.satsPerVByte * 140;
 
   int? get totalSats {
     final sats = amountSats;
@@ -119,6 +136,7 @@ class SendController extends StateNotifier<SendState> {
         amountBtcText: nextAmount,
       ),
       clearError: true,
+      clearPreview: true,
       clearTxId: true,
     );
   }
@@ -127,6 +145,7 @@ class SendController extends StateNotifier<SendState> {
     state = state.copyWith(
       draft: state.draft.copyWith(amountBtcText: value),
       clearError: true,
+      clearPreview: true,
       clearTxId: true,
     );
   }
@@ -139,6 +158,7 @@ class SendController extends StateNotifier<SendState> {
         feeRate: FeeRate(satsPerVByte: satsPerVByte),
       ),
       clearError: true,
+      clearPreview: true,
     );
   }
 
@@ -157,6 +177,45 @@ class SendController extends StateNotifier<SendState> {
 
     state = state.copyWith(clearError: true);
     return true;
+  }
+
+  Future<bool> prepareReview() async {
+    if (!validateForReview()) {
+      return false;
+    }
+
+    final amountSats = state.amountSats!;
+    final address = state.draft.address.trim();
+
+    state = state.copyWith(
+      isPreviewing: true,
+      clearError: true,
+      clearPreview: true,
+    );
+
+    try {
+      final preview = await _ref
+          .read(previewTxUsecaseProvider)
+          .call(
+            SendRequest(
+              address: address,
+              amountSats: amountSats,
+              feeRate: state.draft.feeRate,
+            ),
+          );
+      state = state.copyWith(
+        isPreviewing: false,
+        previewFeeSats: preview.estimatedFeeSats,
+        clearError: true,
+      );
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        isPreviewing: false,
+        errorMessage: mapErrorToMessage(error, context: ErrorContext.send),
+      );
+      return false;
+    }
   }
 
   Future<String?> send() async {
@@ -215,6 +274,7 @@ class SendController extends StateNotifier<SendState> {
         feeRate: feeRate,
       ),
       clearError: true,
+      clearPreview: true,
       clearTxId: true,
     );
   }
@@ -238,7 +298,7 @@ class SendController extends StateNotifier<SendState> {
       return 'Enter a destination address.';
     }
     if (draft.looksLikeMainnetAddress) {
-      return 'Mainnet address detected. Use a Bitcoin testnet4 address.';
+      return 'Mainnet address detected. Use a Bitcoin testnet address.';
     }
     if (!draft.hasValidAddress) {
       return 'Invalid address.';

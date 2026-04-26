@@ -1,5 +1,6 @@
 import 'package:bdk_flutter/bdk_flutter.dart';
 import 'package:root_wallet/features/send/data/datasources/broadcast_datasource.dart';
+import 'package:root_wallet/features/send/domain/entities/send_preview.dart';
 import 'package:root_wallet/features/send/domain/entities/send_request.dart';
 import 'package:root_wallet/features/send/domain/repositories/send_repository.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_wallet_datasource.dart';
@@ -23,10 +24,32 @@ class SendRepositoryImpl implements SendRepository {
   }
 
   @override
+  Future<SendPreview> previewTx(SendRequest request) async {
+    final (_, details) = await _buildPsbt(request);
+    final feeSats = _bigIntToInt(details.fee ?? BigInt.zero);
+    return SendPreview(
+      estimatedFeeSats: feeSats,
+      totalSats: request.amountSats + feeSats,
+    );
+  }
+
+  @override
   Future<String> buildTx(SendRequest request) async {
+    final (psbt, _) = await _buildPsbt(request);
+    final serialized = psbt.toString();
+    _psbtCache[serialized] = psbt;
+    return serialized;
+  }
+
+  Future<(PartiallySignedTransaction, TransactionDetails)> _buildPsbt(
+    SendRequest request,
+  ) async {
     final wallet = await _walletDatasource.resolveWallet();
     final network = wallet.network();
-    final address = await Address.fromString(s: request.address, network: network);
+    final address = await Address.fromString(
+      s: request.address,
+      network: network,
+    );
     final script = address.scriptPubkey();
 
     final txBuilder = TxBuilder()
@@ -34,16 +57,14 @@ class SendRepositoryImpl implements SendRepository {
       ..feeRate(request.feeRate.satsPerVByte.toDouble())
       ..addRecipient(script, BigInt.from(request.amountSats));
 
-    final (psbt, _) = await txBuilder.finish(wallet);
-    final serialized = psbt.toString();
-    _psbtCache[serialized] = psbt;
-    return serialized;
+    return txBuilder.finish(wallet);
   }
 
   @override
   Future<String> signTx(String psbt) async {
     final wallet = await _walletDatasource.resolveWallet();
-    final parsed = _psbtCache.remove(psbt) ??
+    final parsed =
+        _psbtCache.remove(psbt) ??
         await PartiallySignedTransaction.fromString(psbt);
 
     final isFinalized = wallet.sign(psbt: parsed);
@@ -86,5 +107,12 @@ class SendRepositoryImpl implements SendRepository {
       bytes.add(value);
     }
     return bytes;
+  }
+
+  int _bigIntToInt(BigInt value) {
+    if (value > BigInt.from(9007199254740991)) {
+      throw StateError('Transaction fee exceeds supported precision.');
+    }
+    return value.toInt();
   }
 }

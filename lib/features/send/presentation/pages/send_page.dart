@@ -77,9 +77,9 @@ class _SendPageState extends ConsumerState<SendPage> {
     final addressStatusLabel = !hasAddress
         ? 'No address entered yet'
         : state.draft.looksLikeMainnetAddress
-        ? 'Mainnet address detected. Testnet4 only.'
+        ? 'Mainnet address detected. Testnet only.'
         : state.draft.hasValidAddress
-        ? 'Looks like a valid testnet4 address'
+        ? 'Looks like a valid testnet address'
         : 'Address format needs review';
 
     return AppScaffold(
@@ -155,7 +155,7 @@ class _SendPageState extends ConsumerState<SendPage> {
                   const SizedBox(height: AppSpacing.md),
                   _FormSection(
                     title: 'Recipient',
-                    subtitle: 'Paste a testnet4 address or scan a QR code.',
+                    subtitle: 'Paste a testnet address or scan a QR code.',
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -394,11 +394,14 @@ class _SendPageState extends ConsumerState<SendPage> {
             ),
             const SizedBox(height: AppSpacing.md),
             PrimaryButton(
-              label: 'Review transfer',
-              onPressed: state.isSending || !state.canReview
+              label: state.isPreviewing
+                  ? 'Preparing review...'
+                  : 'Review transfer',
+              onPressed:
+                  state.isSending || state.isPreviewing || !state.canReview
                   ? null
-                  : () {
-                      final valid = controller.validateForReview();
+                  : () async {
+                      final valid = await controller.prepareReview();
                       if (!valid || !context.mounted) {
                         return;
                       }

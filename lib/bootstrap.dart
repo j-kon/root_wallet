@@ -25,7 +25,8 @@ class RootWalletApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
+    final themeMode =
+        ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
 
     return MaterialApp(
       title: AppConstants.appName,

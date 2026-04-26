@@ -85,6 +85,11 @@ class AboutPage extends ConsumerWidget {
                               ? 'Production flavor'
                               : 'Development flavor',
                         ),
+                        const _AboutBadge(
+                          icon: Icons.tag_rounded,
+                          label:
+                              'Version ${AppConstants.appVersionName}+${AppConstants.appBuildNumber}',
+                        ),
                       ],
                     ),
                   ],
@@ -109,7 +114,7 @@ class AboutPage extends ConsumerWidget {
             bulletPoints: [
               'Local credentials and security controls are handled on-device.',
               'Wallet flows are structured into feature modules and use cases.',
-              'The app is currently optimized around Bitcoin testnet4 workflows.',
+              'The app is currently optimized around Bitcoin testnet workflows.',
             ],
           ),
           const SizedBox(height: AppSpacing.md),

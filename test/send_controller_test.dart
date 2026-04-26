@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:root_wallet/features/send/domain/entities/fee_rate.dart';
+import 'package:root_wallet/features/send/domain/entities/send_preview.dart';
 import 'package:root_wallet/features/send/domain/entities/send_request.dart';
 import 'package:root_wallet/features/send/domain/repositories/send_repository.dart';
 import 'package:root_wallet/features/send/domain/usecases/broadcast_tx.dart';
 import 'package:root_wallet/features/send/domain/usecases/build_tx.dart';
+import 'package:root_wallet/features/send/domain/usecases/preview_tx.dart';
 import 'package:root_wallet/features/send/domain/usecases/sign_tx.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
@@ -12,6 +14,7 @@ import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_balance.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
@@ -62,7 +65,7 @@ void main() {
       expect(notifier.validateForReview(), isFalse);
       expect(
         container.read(sendControllerProvider).errorMessage,
-        'Mainnet address detected. Use a Bitcoin testnet4 address.',
+        'Mainnet address detected. Use a Bitcoin testnet address.',
       );
     });
 
@@ -95,6 +98,33 @@ void main() {
         expect(sendRepository.buildRequests, isEmpty);
       },
     );
+
+    test('prepares review with repository fee preview', () async {
+      final sendRepository = _FakeSendRepository();
+      final walletRepository = _FakeWalletRepository(
+        balance: const Balance(confirmedSats: 500000),
+      );
+      final container = _buildContainer(
+        sendRepository: sendRepository,
+        walletRepository: walletRepository,
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(sendControllerProvider.notifier);
+      await container.read(suggestedFeeProvider.future);
+
+      notifier.setAddress('tb1qexampleaddress12345');
+      notifier.setAmountBtc('0.0001');
+
+      final ok = await notifier.prepareReview();
+      final state = container.read(sendControllerProvider);
+
+      expect(ok, isTrue);
+      expect(sendRepository.previewRequests, hasLength(1));
+      expect(state.previewFeeSats, 128);
+      expect(state.estimatedFeeSats, 128);
+      expect(state.totalSats, 10128);
+    });
   });
 }
 
@@ -107,6 +137,7 @@ ProviderContainer _buildContainer({
       buildTxUsecaseProvider.overrideWithValue(BuildTx(sendRepository)),
       signTxUsecaseProvider.overrideWithValue(SignTx(sendRepository)),
       broadcastTxUsecaseProvider.overrideWithValue(BroadcastTx(sendRepository)),
+      previewTxUsecaseProvider.overrideWithValue(PreviewTx(sendRepository)),
       getBalanceUsecaseProvider.overrideWithValue(GetBalance(walletRepository)),
       suggestedFeeProvider.overrideWith(
         (ref) async => const FeeRate(satsPerVByte: 1),
@@ -117,6 +148,7 @@ ProviderContainer _buildContainer({
 
 class _FakeSendRepository implements SendRepository {
   final List<SendRequest> buildRequests = <SendRequest>[];
+  final List<SendRequest> previewRequests = <SendRequest>[];
 
   @override
   Future<String> broadcastTx(String signedTx) async => 'txid';
@@ -125,6 +157,15 @@ class _FakeSendRepository implements SendRepository {
   Future<String> buildTx(SendRequest request) async {
     buildRequests.add(request);
     return 'psbt';
+  }
+
+  @override
+  Future<SendPreview> previewTx(SendRequest request) async {
+    previewRequests.add(request);
+    return SendPreview(
+      estimatedFeeSats: request.feeRate.satsPerVByte * 128,
+      totalSats: request.amountSats + (request.feeRate.satsPerVByte * 128),
+    );
   }
 
   @override
@@ -175,12 +216,25 @@ class _FakeWalletRepository implements WalletRepository {
   Future<bool> hasWallet() async => true;
 
   @override
-  Future<WalletIdentity> restoreWallet({required String mnemonic}) {
+  Future<WalletIdentity> restoreWallet({
+    required String mnemonic,
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> resetWallet() {
     throw UnimplementedError();
   }
 
   @override
   Future<void> rotateBackend() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> setCustomBackend(String? endpoint) {
     throw UnimplementedError();
   }
 }

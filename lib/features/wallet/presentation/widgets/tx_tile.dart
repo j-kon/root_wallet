@@ -7,11 +7,13 @@ class TxTile extends StatelessWidget {
     super.key,
     required this.item,
     this.onTap,
+    this.label,
     this.obscureAmount = false,
   });
 
   final TxItem item;
   final VoidCallback? onTap;
+  final String? label;
   final bool obscureAmount;
 
   @override
@@ -22,6 +24,7 @@ class TxTile extends StatelessWidget {
       timestamp: item.timestamp,
       isIncoming: item.isIncoming,
       isPending: item.isPending,
+      label: label,
       obscureAmount: obscureAmount,
       onTap: onTap,
     );

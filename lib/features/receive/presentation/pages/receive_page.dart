@@ -36,6 +36,12 @@ class ReceivePage extends ConsumerWidget {
         ),
         data: (data) {
           final address = data.receiveAddress;
+          final addressLabel =
+              ref
+                  .watch(walletLabelsControllerProvider)
+                  .valueOrNull
+                  ?.addressLabel(address) ??
+              '';
           final paymentUri = 'bitcoin:$address';
           final networkName = AppConstants.networkDisplayName;
           final networkSlug = networkName.toLowerCase();
@@ -144,6 +150,42 @@ class ReceivePage extends ConsumerWidget {
                           ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            addressLabel.isEmpty
+                                ? 'No local label yet'
+                                : 'Label: $addressLabel',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: addressLabel.isEmpty
+                                      ? textSecondary
+                                      : AppColors.textPrimaryOf(context),
+                                  fontWeight: addressLabel.isEmpty
+                                      ? FontWeight.w500
+                                      : FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        OutlinedButton.icon(
+                          onPressed: () => _editAddressLabel(
+                            context,
+                            ref,
+                            address: address,
+                            currentLabel: addressLabel,
+                          ),
+                          icon: const Icon(Icons.label_outline_rounded),
+                          label: Text(
+                            addressLabel.isEmpty ? 'Add label' : 'Edit label',
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: AppSpacing.md),
                     LayoutBuilder(
@@ -325,6 +367,62 @@ class ReceivePage extends ConsumerWidget {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _editAddressLabel(
+    BuildContext context,
+    WidgetRef ref, {
+    required String address,
+    required String currentLabel,
+  }) async {
+    final controller = TextEditingController(text: currentLabel);
+    final label = await showDialog<String?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Label receive address'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 80,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'Private label',
+            hintText: 'e.g. Coffee payout',
+          ),
+          onSubmitted: (_) => Navigator.of(dialogContext).pop(controller.text),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(null),
+            child: const Text('Cancel'),
+          ),
+          if (currentLabel.trim().isNotEmpty)
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(''),
+              child: const Text('Remove'),
+            ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (label == null || !context.mounted) {
+      return;
+    }
+
+    await ref
+        .read(walletLabelsControllerProvider.notifier)
+        .setAddressLabel(address, label);
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Address label saved.')));
+  }
+
   Future<void> _showShareOptions(
     BuildContext context, {
     required WidgetRef ref,
@@ -352,7 +450,7 @@ class ReceivePage extends ConsumerWidget {
                       .read(shareServiceProvider)
                       .shareText(
                         address,
-                        subject: 'Root Wallet testnet4 address',
+                        subject: 'Root Wallet testnet address',
                       );
                   if (shared || !parentContext.mounted) {
                     return;
@@ -387,7 +485,7 @@ class ReceivePage extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.copy_rounded),
                 title: const Text('Copy address'),
-                subtitle: const Text('Share the raw testnet4 address.'),
+                subtitle: const Text('Share the raw testnet address.'),
                 onTap: () async {
                   Navigator.of(context).pop();
                   await _copyValue(parentContext, address, 'Address copied.');

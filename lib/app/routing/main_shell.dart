@@ -74,8 +74,9 @@ class _MainShellState extends State<MainShell> {
     final inactiveColor = AppColors.textSecondaryOf(
       context,
     ).withValues(alpha: isDark ? 0.88 : 0.84);
-    final horizontalPadding =
-        context.isCompactWidth ? AppSpacing.sm : AppSpacing.md;
+    final horizontalPadding = context.isCompactWidth
+        ? AppSpacing.sm
+        : AppSpacing.md;
     final tabs = <Widget>[
       WalletHomePage(
         onReceiveRequested: () => _onTap(1),
@@ -137,9 +138,11 @@ class _MainShellState extends State<MainShell> {
                         ),
                         child: Row(
                           children: [
-                            for (var index = 0;
-                                index < _destinations.length;
-                                index++)
+                            for (
+                              var index = 0;
+                              index < _destinations.length;
+                              index++
+                            )
                               Expanded(
                                 child: _ShellNavItem(
                                   destination: _destinations[index],
@@ -271,10 +274,10 @@ class _ShellNavItem extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: selected ? activeColor : inactiveColor,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                      letterSpacing: 0.1,
-                    ),
+                  color: selected ? activeColor : inactiveColor,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  letterSpacing: 0.1,
+                ),
               ),
             ],
           ),

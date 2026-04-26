@@ -8,17 +8,27 @@ import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BdkWalletDatasource {
   BdkWalletDatasource({
     required SecureStorage secureStorage,
     required Future<String> Function() walletStoragePathLoader,
+    required Future<SharedPreferences> Function() preferencesLoader,
+    required bool allowCustomEsploraEndpoint,
   }) : _secureStorage = secureStorage,
-       _walletStoragePathLoader = walletStoragePathLoader;
+       _walletStoragePathLoader = walletStoragePathLoader,
+       _preferencesLoader = preferencesLoader,
+       _allowCustomEsploraEndpoint = allowCustomEsploraEndpoint;
 
   static const _mnemonicKey = 'wallet.mnemonic';
+  static const _scriptTypeKey = 'wallet.script_type';
+  static const _customEsploraEndpointKey = 'wallet.custom_esplora_endpoint.v1';
   final SecureStorage _secureStorage;
   final Future<String> Function() _walletStoragePathLoader;
+  final Future<SharedPreferences> Function() _preferencesLoader;
+  final bool _allowCustomEsploraEndpoint;
 
   Wallet? _wallet;
   Future<Wallet>? _walletFuture;
@@ -26,26 +36,34 @@ class BdkWalletDatasource {
   Future<Blockchain>? _blockchainFuture;
   String? _blockchainEndpoint;
   int _activeEsploraIndex = 0;
-  final List<String> _esploraEndpoints = List<String>.unmodifiable(
+  String? _customEsploraEndpoint;
+  List<String> _esploraEndpoints = const <String>[];
+  bool _endpointsLoaded = false;
+  String? _lastBackendFailure;
+  DateTime? _lastBackendFailureAt;
+  final List<String> _baseEsploraEndpoints = List<String>.unmodifiable(
     AppConstants.testnetEsploraFallbackUrls,
   );
 
-  // bdk_flutter 0.31.3 exposes the testnet address family as Network.testnet.
-  // Root Wallet points this wallet at the public testnet4 Esplora backend via
-  // AppConstants, so addresses remain testnet-prefixed while chain data comes
-  // from testnet4 infrastructure.
+  // bdk_flutter 0.31.3 exposes public Bitcoin testnet as Network.testnet.
+  // Keep BDK descriptors, Esplora sync, explorer links, and user-facing labels
+  // on the same network so wallet history is queried from the correct chain.
   static const Network _network = Network.testnet;
 
   Future<WalletIdentity> createWallet() async {
     final mnemonic = await Mnemonic.create(WordCount.words12);
     final phrase = mnemonic.toString();
     await _secureStorage.write(key: _mnemonicKey, value: phrase);
+    await _secureStorage.write(
+      key: _scriptTypeKey,
+      value: WalletScriptType.nativeSegwit.storageValue,
+    );
 
-    await _deleteWalletDatabase();
     await _resetSession();
+    await _deleteWalletDatabase();
     await _loadWallet();
 
-    return _identityFromMnemonic(phrase);
+    return _identityFromMnemonic(phrase, WalletScriptType.nativeSegwit);
   }
 
   Future<String> getAddress() async {
@@ -65,18 +83,33 @@ class BdkWalletDatasource {
     return mnemonic != null && mnemonic.trim().isNotEmpty;
   }
 
-  Future<WalletIdentity> restoreWallet({required String mnemonic}) async {
+  Future<WalletIdentity> restoreWallet({
+    required String mnemonic,
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) async {
     final normalized = _normalizeMnemonic(mnemonic);
+    _validateMnemonicShape(normalized);
     final parsed = await Mnemonic.fromString(normalized);
     final phrase = parsed.toString();
 
     await _secureStorage.write(key: _mnemonicKey, value: phrase);
+    await _secureStorage.write(
+      key: _scriptTypeKey,
+      value: scriptType.storageValue,
+    );
 
-    await _deleteWalletDatabase();
     await _resetSession();
+    await _deleteWalletDatabase();
     await _loadWallet();
 
-    return _identityFromMnemonic(phrase);
+    return _identityFromMnemonic(phrase, scriptType);
+  }
+
+  Future<void> resetWallet() async {
+    await _secureStorage.delete(key: _mnemonicKey);
+    await _secureStorage.delete(key: _scriptTypeKey);
+    await _resetSession();
+    await _deleteWalletDatabase();
   }
 
   Future<void> syncWallet() async {
@@ -116,18 +149,23 @@ class BdkWalletDatasource {
   }
 
   Future<WalletDiagnostics> diagnostics() async {
+    await _loadEndpointPreferences();
     return WalletDiagnostics(
       networkLabel: AppConstants.networkDisplayName,
       bdkNetwork: _network.name,
       activeEsploraEndpoint: _currentEsploraEndpoint,
       configuredEsploraEndpoints: _esploraEndpoints,
       activeEsploraIndex: _activeEsploraIndex,
+      customEsploraEndpoint: _customEsploraEndpoint,
+      lastBackendFailure: _lastBackendFailure,
+      lastBackendFailureAt: _lastBackendFailureAt,
       walletDatabasePath: await _databasePath(),
       walletExists: await hasWallet(),
     );
   }
 
   Future<void> rotateBackend() async {
+    await _loadEndpointPreferences();
     if (_esploraEndpoints.length <= 1) {
       return;
     }
@@ -135,7 +173,29 @@ class BdkWalletDatasource {
     await _resetBlockchainState();
   }
 
-  WalletIdentity _identityFromMnemonic(String mnemonic) {
+  Future<void> setCustomBackend(String? endpoint) async {
+    if (!_allowCustomEsploraEndpoint) {
+      throw StateError('Custom Esplora endpoints are disabled.');
+    }
+
+    final normalized = _normalizeEndpoint(endpoint);
+    final prefs = await _preferencesLoader();
+    if (normalized == null) {
+      await prefs.remove(_customEsploraEndpointKey);
+    } else {
+      await prefs.setString(_customEsploraEndpointKey, normalized);
+    }
+
+    _customEsploraEndpoint = normalized;
+    _endpointsLoaded = true;
+    _rebuildEndpointList();
+    await _resetBlockchainState();
+  }
+
+  WalletIdentity _identityFromMnemonic(
+    String mnemonic,
+    WalletScriptType scriptType,
+  ) {
     final fingerprint = sha256
         .convert(utf8.encode(mnemonic))
         .toString()
@@ -143,7 +203,7 @@ class BdkWalletDatasource {
         .toUpperCase();
 
     return WalletIdentity(
-      id: 'wallet_${_network.name}',
+      id: 'wallet_${_network.name}_${scriptType.storageValue}',
       fingerprint: fingerprint,
       network: _network.name,
     );
@@ -162,6 +222,7 @@ class BdkWalletDatasource {
   }
 
   Future<Blockchain> _loadBlockchain({bool forceReload = false}) async {
+    await _loadEndpointPreferences();
     if (forceReload) {
       await _resetBlockchainState();
     }
@@ -192,9 +253,9 @@ class BdkWalletDatasource {
     final config = BlockchainConfig.esplora(
       config: EsploraConfig(
         baseUrl: baseUrl,
-        stopGap: BigInt.from(20),
-        concurrency: 4,
-        timeout: BigInt.from(30),
+        stopGap: BigInt.from(AppConstants.walletAddressDiscoveryStopGap),
+        concurrency: AppConstants.esploraRequestConcurrency,
+        timeout: BigInt.from(AppConstants.esploraRequestTimeoutSeconds),
       ),
     );
     return Blockchain.create(config: config);
@@ -205,6 +266,7 @@ class BdkWalletDatasource {
   ) async {
     Object? lastError;
     StackTrace? lastStackTrace;
+    await _loadEndpointPreferences();
     final endpointCount = _esploraEndpoints.length;
     if (endpointCount == 0) {
       throw StateError('No Esplora endpoints configured.');
@@ -213,12 +275,15 @@ class BdkWalletDatasource {
     for (var offset = 0; offset < endpointCount; offset++) {
       final index = (_activeEsploraIndex + offset) % endpointCount;
       _activeEsploraIndex = index;
+      final endpoint = _currentEsploraEndpoint;
       final blockchain = await _loadBlockchain(forceReload: offset > 0);
       try {
         return await task(blockchain);
       } catch (error, stackTrace) {
         lastError = error;
         lastStackTrace = stackTrace;
+        _lastBackendFailure = '$endpoint: ${_summarizeBackendError(error)}';
+        _lastBackendFailureAt = DateTime.now();
       }
     }
 
@@ -233,6 +298,57 @@ class BdkWalletDatasource {
   }
 
   String get _currentEsploraEndpoint => _esploraEndpoints[_activeEsploraIndex];
+
+  Future<void> _loadEndpointPreferences() async {
+    if (_endpointsLoaded) {
+      return;
+    }
+
+    if (_allowCustomEsploraEndpoint) {
+      final prefs = await _preferencesLoader();
+      _customEsploraEndpoint = _normalizeEndpoint(
+        prefs.getString(_customEsploraEndpointKey),
+      );
+    }
+
+    _rebuildEndpointList();
+    _endpointsLoaded = true;
+  }
+
+  void _rebuildEndpointList() {
+    final endpoints = <String>[
+      if (_customEsploraEndpoint != null) _customEsploraEndpoint!,
+      ..._baseEsploraEndpoints,
+    ];
+    _esploraEndpoints = List<String>.unmodifiable(endpoints.toSet());
+    if (_activeEsploraIndex >= _esploraEndpoints.length) {
+      _activeEsploraIndex = 0;
+    }
+  }
+
+  String? _normalizeEndpoint(String? endpoint) {
+    final trimmed = endpoint?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      throw const FormatException('Enter a valid Esplora URL.');
+    }
+    if (uri.scheme != 'https' && uri.host != 'localhost') {
+      throw const FormatException('Use HTTPS unless testing localhost.');
+    }
+    return trimmed.replaceAll(RegExp(r'/+$'), '');
+  }
+
+  String _summarizeBackendError(Object error) {
+    final text = error.toString().replaceAll(RegExp(r'\s+'), ' ');
+    if (text.length <= 180) {
+      return text;
+    }
+    return '${text.substring(0, 180)}...';
+  }
 
   Future<Wallet> _loadWallet() async {
     if (_wallet != null) {
@@ -264,18 +380,19 @@ class BdkWalletDatasource {
     final parsedMnemonic = await Mnemonic.fromString(
       _normalizeMnemonic(mnemonic),
     );
+    final scriptType = await _readWalletScriptType();
     final descriptorSecretKey = await DescriptorSecretKey.create(
       network: _network,
       mnemonic: parsedMnemonic,
     );
-    final externalDescriptor = await Descriptor.newBip84(
+    final externalDescriptor = await _createDescriptor(
       secretKey: descriptorSecretKey,
-      network: _network,
+      scriptType: scriptType,
       keychain: KeychainKind.externalChain,
     );
-    final internalDescriptor = await Descriptor.newBip84(
+    final internalDescriptor = await _createDescriptor(
       secretKey: descriptorSecretKey,
-      network: _network,
+      scriptType: scriptType,
       keychain: KeychainKind.internalChain,
     );
 
@@ -291,9 +408,10 @@ class BdkWalletDatasource {
   }
 
   Future<String> _databasePath() async {
+    final scriptType = await _readWalletScriptType();
     final walletDirectory = await _walletStoragePathLoader();
     final versionedPath =
-        '$walletDirectory/root_wallet_${_network.name}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite';
+        '$walletDirectory/root_wallet_${_network.name}_${scriptType.storageValue}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite';
     final legacyPath = '$walletDirectory/root_wallet_${_network.name}.sqlite';
 
     if (await File(versionedPath).exists()) {
@@ -310,6 +428,8 @@ class BdkWalletDatasource {
     final databasePaths = <String>[
       '$walletDirectory/root_wallet_${_network.name}.sqlite',
       '$walletDirectory/root_wallet_${_network.name}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite',
+      for (final scriptType in WalletScriptType.values)
+        '$walletDirectory/root_wallet_${_network.name}_${scriptType.storageValue}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite',
     ];
     final companionPaths = <String>[];
     for (final databasePath in databasePaths) {
@@ -330,9 +450,59 @@ class BdkWalletDatasource {
 
   String _normalizeMnemonic(String mnemonic) {
     return mnemonic
+        .toLowerCase()
+        .replaceAll(RegExp(r'\b\d{1,2}[\.\):]\s*'), ' ')
+        .replaceAll(RegExp('[^a-z]+'), ' ')
         .trim()
         .split(RegExp(r'\s+'))
         .where((word) => word.isNotEmpty)
         .join(' ');
+  }
+
+  void _validateMnemonicShape(String normalized) {
+    final words = normalized
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList(growable: false);
+    if (words.length != 12 && words.length != 18 && words.length != 24) {
+      throw FormatException(
+        'Invalid recovery phrase word count: ${words.length}. '
+        'Enter 12, 18, or 24 words.',
+      );
+    }
+  }
+
+  Future<WalletScriptType> _readWalletScriptType() async {
+    final value = await _secureStorage.read(key: _scriptTypeKey);
+    return WalletScriptType.fromStorageValue(value);
+  }
+
+  Future<Descriptor> _createDescriptor({
+    required DescriptorSecretKey secretKey,
+    required WalletScriptType scriptType,
+    required KeychainKind keychain,
+  }) {
+    return switch (scriptType) {
+      WalletScriptType.legacy => Descriptor.newBip44(
+        secretKey: secretKey,
+        network: _network,
+        keychain: keychain,
+      ),
+      WalletScriptType.nestedSegwit => Descriptor.newBip49(
+        secretKey: secretKey,
+        network: _network,
+        keychain: keychain,
+      ),
+      WalletScriptType.nativeSegwit => Descriptor.newBip84(
+        secretKey: secretKey,
+        network: _network,
+        keychain: keychain,
+      ),
+      WalletScriptType.taproot => Descriptor.newBip86(
+        secretKey: secretKey,
+        network: _network,
+        keychain: keychain,
+      ),
+    };
   }
 }

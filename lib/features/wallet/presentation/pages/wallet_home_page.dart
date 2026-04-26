@@ -46,6 +46,7 @@ class WalletHomePage extends ConsumerWidget {
     final env = ref.watch(appEnvProvider);
     final now = ref.watch(dateTimeNowProvider)();
     final btcNgnRate = ref.watch(btcNgnRateProvider);
+    final walletLabels = ref.watch(walletLabelsControllerProvider);
     final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
     const networkLabel = AppConstants.networkDisplayName;
 
@@ -127,7 +128,7 @@ class WalletHomePage extends ConsumerWidget {
               ? 'Ready for your first transaction'
               : '${data.transactions.length} transaction${data.transactions.length == 1 ? '' : 's'} tracked';
           final syncChipLabel = data.isSyncing
-              ? 'Syncing testnet4...'
+              ? 'Syncing testnet...'
               : data.isOffline
               ? 'Cached ${AppDateTime.updatedAgo(data.lastSyncedAt, now: now).replaceFirst('Updated ', '').toLowerCase()}'
               : AppDateTime.updatedAgo(data.lastSyncedAt, now: now);
@@ -282,7 +283,7 @@ class WalletHomePage extends ConsumerWidget {
                   const InfoBanner(
                     type: InfoBannerType.info,
                     message:
-                        'Refreshing wallet data from the public testnet4 network.',
+                        'Refreshing wallet data from the public testnet network.',
                     icon: Icons.sync_rounded,
                   ),
                 ] else ...[
@@ -310,6 +311,11 @@ class WalletHomePage extends ConsumerWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   obscureAmounts: hideBalances,
+                  labelForItem: (tx) {
+                    return walletLabels.valueOrNull
+                        ?.transactionMeta(tx.txId)
+                        .label;
+                  },
                   onItemTap: (tx) {
                     Navigator.of(
                       context,

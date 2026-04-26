@@ -7,6 +7,9 @@ class WalletDiagnostics {
     required this.activeEsploraEndpoint,
     required this.configuredEsploraEndpoints,
     required this.activeEsploraIndex,
+    required this.customEsploraEndpoint,
+    required this.lastBackendFailure,
+    required this.lastBackendFailureAt,
     required this.walletDatabasePath,
     required this.walletExists,
   });
@@ -16,6 +19,9 @@ class WalletDiagnostics {
   final String activeEsploraEndpoint;
   final List<String> configuredEsploraEndpoints;
   final int activeEsploraIndex;
+  final String? customEsploraEndpoint;
+  final String? lastBackendFailure;
+  final DateTime? lastBackendFailureAt;
   final String walletDatabasePath;
   final bool walletExists;
 
@@ -33,6 +39,9 @@ class WalletDiagnostics {
       'activeEsploraEndpoint': activeEsploraEndpoint,
       'configuredEsploraEndpoints': configuredEsploraEndpoints,
       'activeEsploraIndex': activeEsploraIndex,
+      'customEsploraEndpoint': customEsploraEndpoint,
+      'lastBackendFailure': lastBackendFailure,
+      'lastBackendFailureAt': lastBackendFailureAt?.toIso8601String(),
       'walletDatabasePath': walletDatabasePath,
       'walletExists': walletExists,
       'cacheUpdatedAt': cacheUpdatedAt?.toIso8601String(),

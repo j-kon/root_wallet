@@ -13,6 +13,7 @@ import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class TransactionDetailsPage extends ConsumerWidget {
@@ -36,6 +37,12 @@ class TransactionDetailsPage extends ConsumerWidget {
     }
 
     final tx = args;
+    final txMetadata = ref
+        .watch(walletLabelsControllerProvider)
+        .valueOrNull
+        ?.transactionMeta(tx.txId);
+    final txLabel = txMetadata?.label ?? '';
+    final txNote = txMetadata?.note ?? '';
     final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
     final explorerUri = Uri.parse(AppConstants.testnetExplorerTxUrl(tx.txId));
     final shareBody =
@@ -59,6 +66,21 @@ class TransactionDetailsPage extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Transaction',
+      actions: [
+        IconButton(
+          tooltip: 'Refresh transaction status',
+          onPressed: () async {
+            await ref.read(walletHomeControllerProvider.notifier).sync();
+            if (!context.mounted) {
+              return;
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Transaction status refreshed.')),
+            );
+          },
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
@@ -112,6 +134,11 @@ class TransactionDetailsPage extends ConsumerWidget {
                           icon: Icons.language_rounded,
                           label: AppConstants.networkDisplayName,
                         ),
+                        if (txLabel.isNotEmpty)
+                          _TxHeroBadge(
+                            icon: Icons.label_outline_rounded,
+                            label: txLabel,
+                          ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -179,6 +206,64 @@ class TransactionDetailsPage extends ConsumerWidget {
                 _DetailRow(
                   label: 'Last checked',
                   value: AppDateTime.ymdHm(now),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _DetailsPanel(
+            title: 'Private label and note',
+            subtitle:
+                'Stored locally on this device, never sent to the network.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _DetailRow(
+                  label: 'Label',
+                  value: txLabel.isEmpty ? 'No label' : txLabel,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Note',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: textSecondary),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: surfaceRaised,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: border),
+                  ),
+                  child: Text(
+                    txNote.isEmpty ? 'No note added.' : txNote,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: txNote.isEmpty ? textSecondary : null,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _editTransactionMetadata(
+                      context,
+                      ref,
+                      txId: tx.txId,
+                      currentLabel: txLabel,
+                      currentNote: txNote,
+                    ),
+                    icon: const Icon(Icons.edit_note_rounded),
+                    label: Text(
+                      txLabel.isEmpty && txNote.isEmpty
+                          ? 'Add private note'
+                          : 'Edit private note',
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -373,6 +458,86 @@ class TransactionDetailsPage extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Explorer link copied.')));
+  }
+
+  Future<void> _editTransactionMetadata(
+    BuildContext context,
+    WidgetRef ref, {
+    required String txId,
+    required String currentLabel,
+    required String currentNote,
+  }) async {
+    final labelController = TextEditingController(text: currentLabel);
+    final noteController = TextEditingController(text: currentNote);
+    final result = await showDialog<({String label, String note})?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Private transaction note'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: labelController,
+              autofocus: true,
+              maxLength: 80,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Label',
+                hintText: 'e.g. Faucet test',
+              ),
+            ),
+            TextField(
+              controller: noteController,
+              maxLength: 280,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Note',
+                hintText: 'Why this transaction matters',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(null),
+            child: const Text('Cancel'),
+          ),
+          if (currentLabel.trim().isNotEmpty || currentNote.trim().isNotEmpty)
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop((label: '', note: '')),
+              child: const Text('Remove'),
+            ),
+          FilledButton(
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop((label: labelController.text, note: noteController.text)),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    labelController.dispose();
+    noteController.dispose();
+
+    if (result == null || !context.mounted) {
+      return;
+    }
+
+    await ref
+        .read(walletLabelsControllerProvider.notifier)
+        .setTransactionMetadata(
+          txId: txId,
+          label: result.label,
+          note: result.note,
+        );
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Transaction note saved.')));
   }
 
   Future<void> _openExplorer(

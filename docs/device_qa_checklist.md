@@ -39,7 +39,7 @@ Use this checklist for real-device or simulator sign-off after UI, navigation, o
 3. Balance card, action cards, and activity list render cleanly
 4. Pull-to-refresh works
 5. Sync state copy reads correctly
-6. Network badge clearly shows `Testnet4`
+6. Network badge clearly shows `Testnet`
 
 ## Receive
 

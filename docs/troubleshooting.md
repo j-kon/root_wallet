@@ -85,9 +85,12 @@ Home screen fails to sync or shows offline data.
 
 ### Current network assumptions
 
-Root Wallet uses public Bitcoin testnet4 infrastructure:
-- `https://mempool.space/testnet4/api`
-- The app keeps the backend list intentionally small until additional public testnet4 Esplora mirrors are verified.
+Root Wallet uses public Bitcoin testnet infrastructure:
+- `https://mempool.space/testnet/api`
+- The app keeps the backend list intentionally small until additional public testnet Esplora mirrors are verified.
+
+Do not replace this with mainnet, regtest, signet, or localhost endpoints unless
+the product mode is intentionally changing.
 
 ### Things to check
 

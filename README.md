@@ -1,8 +1,8 @@
 # Root Wallet
 
-Root Wallet is a self-custody Bitcoin wallet focused on public testnet4 flows, clean architecture, and a polished Flutter user experience.
+Root Wallet is a self-custody Bitcoin wallet focused on public testnet flows, clean architecture, and a polished Flutter user experience.
 
-It is built for real wallet behavior on testnet4:
+It is built for real wallet behavior on testnet:
 - create and restore wallet flows
 - recovery phrase backup and confirmation
 - receive address + QR
@@ -15,7 +15,7 @@ It is built for real wallet behavior on testnet4:
 
 Root Wallet is intentionally opinionated:
 - self-custody first
-- public Bitcoin testnet4 by default
+- public Bitcoin testnet by default
 - Riverpod for app orchestration
 - feature-first clean architecture
 - no SDK or network calls inside widgets
@@ -46,7 +46,7 @@ The README screenshot assets live in [`docs/screenshots`](docs/screenshots/READM
       <br />
       <strong>Receive</strong>
       <br />
-      Testnet4 address and QR handoff
+      Testnet address and QR handoff
     </td>
   </tr>
   <tr>
@@ -102,20 +102,24 @@ The README screenshot assets live in [`docs/screenshots`](docs/screenshots/READM
 - Project architecture: [docs/architecture.md](docs/architecture.md)
 - Development workflow: [docs/development_guide.md](docs/development_guide.md)
 - Testing and QA: [docs/testing_and_qa.md](docs/testing_and_qa.md)
+- Privacy and security notes: [docs/privacy_security.md](docs/privacy_security.md)
+- Mobile permission notes: [docs/mobile_permissions.md](docs/mobile_permissions.md)
 - Troubleshooting: [docs/troubleshooting.md](docs/troubleshooting.md)
 - Device sign-off checklist: [docs/device_qa_checklist.md](docs/device_qa_checklist.md)
+- Release checklist: [docs/release_checklist.md](docs/release_checklist.md)
 - Release notes: [docs/release_notes.md](docs/release_notes.md)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ## Feature Overview
 
 ### Wallet
-- Create or restore a Bitcoin testnet4 wallet
+- Create or restore a Bitcoin testnet wallet
 - Sync balance and recent activity
 - Persist wallet data and cache wallet snapshots
 - View transaction details and open explorer links
 
 ### Receive
-- Generate a testnet4 receive address
+- Generate a testnet receive address
 - Display QR code with `qr_flutter`
 - Copy raw address or `bitcoin:` URI
 - Native share integration via `share_plus`
@@ -124,7 +128,7 @@ The README screenshot assets live in [`docs/screenshots`](docs/screenshots/READM
 - Manual paste or QR scan via `mobile_scanner`
 - Parse raw addresses and `bitcoin:` URIs
 - Fee selection and transfer review
-- Broadcast on public testnet4
+- Broadcast on public testnet
 
 ### Security
 - PIN hashing and secure storage
@@ -134,7 +138,7 @@ The README screenshot assets live in [`docs/screenshots`](docs/screenshots/READM
 - Android screen capture protection while viewing recovery words
 
 ### Diagnostics
-- Inspect active Testnet4 Esplora backend
+- Inspect active Testnet Esplora backend
 - Inspect BDK network family and wallet database path
 - Inspect cached wallet snapshot age and transaction count
 - Copy debug context without exposing recovery words or private keys
@@ -197,7 +201,7 @@ environment:
 That means the local Flutter install must bundle a compatible Dart SDK. If your Flutter installation is older, analysis and tests may fail before the app code even runs.
 
 Recommended local baseline:
-- Flutter with Dart `3.10.x` or newer
+- Flutter `3.41.4` from [.fvmrc](.fvmrc), or another Flutter release with Dart `3.10.x` or newer
 - native assets enabled in Flutter tooling when required by dependencies
 
 See [docs/troubleshooting.md](docs/troubleshooting.md) for the exact failure modes we have already encountered.
@@ -206,6 +210,7 @@ See [docs/troubleshooting.md](docs/troubleshooting.md) for the exact failure mod
 
 ```bash
 flutter pub get
+dart run flutter_native_splash:create
 flutter analyze
 flutter test --exclude-tags golden
 flutter run
@@ -257,10 +262,10 @@ Before shipping UI-heavy changes:
 
 ## Network Assumption
 
-Root Wallet is currently configured around public Bitcoin testnet4 infrastructure:
+Root Wallet is currently configured around public Bitcoin testnet infrastructure:
 
-- testnet4 Esplora base: `https://mempool.space/testnet4/api`
-- testnet4 explorer base: `https://mempool.space/testnet4`
+- testnet Esplora base: `https://mempool.space/testnet/api`
+- testnet explorer base: `https://mempool.space/testnet`
 
 This app is not configured for mainnet by default.
 
