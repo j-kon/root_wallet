@@ -5,14 +5,21 @@ void main() {
   test('public network constants align with bdk Network.testnet', () {
     expect(AppConstants.networkDisplayName, 'Testnet');
     expect(AppConstants.bitcoinNetworkDisplayName, 'Bitcoin testnet');
-    expect(AppConstants.testnetEsploraUrl, 'https://mempool.space/testnet/api');
+    expect(
+      AppConstants.testnetElectrumUrl,
+      'ssl://electrum.blockstream.info:60002',
+    );
+    expect(
+      AppConstants.testnetEsploraUrl,
+      'https://blockstream.info/testnet/api',
+    );
     expect(
       AppConstants.testnetExplorerTxUrl('abc123'),
       'https://mempool.space/testnet/tx/abc123',
     );
     expect(
       AppConstants.testnetEsploraFallbackUrls,
-      contains('https://blockstream.info/testnet/api'),
+      contains('https://mempool.space/testnet/api'),
     );
     expect(
       AppConstants.walletAddressDiscoveryStopGap,

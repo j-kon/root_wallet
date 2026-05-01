@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_sync_datasource.dart';
-import 'package:root_wallet/features/wallet/data/datasources/bdk_wallet_datasource.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
 import 'package:root_wallet/features/wallet/data/mappers/tx_mapper.dart';
 import 'package:root_wallet/features/wallet/data/repositories/wallet_repository_impl.dart';
+import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
@@ -27,8 +27,8 @@ import 'package:root_wallet/features/wallet/domain/usecases/rotate_wallet_backen
 import 'package:root_wallet/features/wallet/domain/usecases/set_custom_wallet_backend.dart';
 import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 
-final bdkWalletDatasourceProvider = Provider<BdkWalletDatasource>(
-  (ref) => BdkWalletDatasource(
+final bdkWalletServiceProvider = Provider<BdkWalletService>(
+  (ref) => BdkWalletService(
     secureStorage: ref.watch(secureStorageProvider),
     walletStoragePathLoader: () => ref.read(walletStoragePathProvider.future),
     preferencesLoader: () => ref.read(sharedPreferencesProvider.future),
@@ -37,16 +37,15 @@ final bdkWalletDatasourceProvider = Provider<BdkWalletDatasource>(
 );
 
 final bdkSyncDatasourceProvider = Provider<BdkSyncDatasource>(
-  (ref) => BdkSyncDatasource(
-    walletDatasource: ref.watch(bdkWalletDatasourceProvider),
-  ),
+  (ref) =>
+      BdkSyncDatasource(walletService: ref.watch(bdkWalletServiceProvider)),
 );
 
 final txMapperProvider = Provider<TxMapper>((ref) => const TxMapper());
 
 final walletRepositoryProvider = Provider<WalletRepository>((ref) {
   return WalletRepositoryImpl(
-    walletDatasource: ref.watch(bdkWalletDatasourceProvider),
+    walletService: ref.watch(bdkWalletServiceProvider),
     syncDatasource: ref.watch(bdkSyncDatasourceProvider),
     txMapper: ref.watch(txMapperProvider),
   );

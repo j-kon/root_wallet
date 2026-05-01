@@ -143,6 +143,21 @@ The README screenshot assets live in [`docs/screenshots`](docs/screenshots/READM
 - Inspect cached wallet snapshot age and transaction count
 - Copy debug context without exposing recovery words or private keys
 
+## BDK integration
+
+Root Wallet now uses `bdk_dart` directly from GitHub as its wallet engine:
+
+```yaml
+bdk_dart:
+  git:
+    url: https://github.com/bitcoindevkit/bdk-dart.git
+    ref: main
+```
+
+`bdk_dart` is not published on pub.dev yet. Because it builds native FFI assets, a Rust toolchain with `cargo` is required for local builds. The wallet is configured for Bitcoin testnet only, using Blockstream testnet Esplora (`https://blockstream.info/testnet/api`) and Electrum (`ssl://electrum.blockstream.info:60002`) backends.
+
+Root Wallet currently targets Android and iOS wallet functionality, not Flutter Web. Web is unsupported because `bdk_dart` depends on `dart:ffi` and native assets.
+
 ## Architecture at a Glance
 
 The app is organized around feature modules and clean boundaries:
@@ -202,6 +217,7 @@ That means the local Flutter install must bundle a compatible Dart SDK. If your 
 
 Recommended local baseline:
 - Flutter `3.41.4` from [.fvmrc](.fvmrc), or another Flutter release with Dart `3.10.x` or newer
+- Rust toolchain with `cargo` for `bdk_dart` native assets
 - native assets enabled in Flutter tooling when required by dependencies
 
 See [docs/troubleshooting.md](docs/troubleshooting.md) for the exact failure modes we have already encountered.
@@ -264,7 +280,8 @@ Before shipping UI-heavy changes:
 
 Root Wallet is currently configured around public Bitcoin testnet infrastructure:
 
-- testnet Esplora base: `https://mempool.space/testnet/api`
+- testnet Electrum base: `ssl://electrum.blockstream.info:60002`
+- testnet Esplora base: `https://blockstream.info/testnet/api`
 - testnet explorer base: `https://mempool.space/testnet`
 
 This app is not configured for mainnet by default.
@@ -273,7 +290,7 @@ This app is not configured for mainnet by default.
 
 Key production dependencies currently integrated:
 
-- `bdk_flutter`
+- `bdk_dart`
 - `flutter_riverpod`
 - `qr_flutter`
 - `mobile_scanner`

@@ -1,5 +1,5 @@
 import 'package:root_wallet/features/wallet/data/datasources/bdk_sync_datasource.dart';
-import 'package:root_wallet/features/wallet/data/datasources/bdk_wallet_datasource.dart';
+import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 import 'package:root_wallet/features/wallet/data/mappers/tx_mapper.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
@@ -11,40 +11,40 @@ import 'package:root_wallet/features/wallet/domain/repositories/wallet_repositor
 
 class WalletRepositoryImpl implements WalletRepository {
   WalletRepositoryImpl({
-    required BdkWalletDatasource walletDatasource,
+    required BdkWalletService walletService,
     required BdkSyncDatasource syncDatasource,
     required TxMapper txMapper,
-  }) : _walletDatasource = walletDatasource,
+  }) : _walletService = walletService,
        _syncDatasource = syncDatasource,
        _txMapper = txMapper;
 
-  final BdkWalletDatasource _walletDatasource;
+  final BdkWalletService _walletService;
   final BdkSyncDatasource _syncDatasource;
   final TxMapper _txMapper;
 
   @override
   Future<bool> hasWallet() {
-    return _walletDatasource.hasWallet();
+    return _walletService.hasWallet();
   }
 
   @override
   Future<WalletIdentity> createWallet() {
-    return _walletDatasource.createWallet();
+    return _walletService.createWallet();
   }
 
   @override
   Future<void> resetWallet() {
-    return _walletDatasource.resetWallet();
+    return _walletService.resetWallet();
   }
 
   @override
   Future<String> getAddress() {
-    return _walletDatasource.getAddress();
+    return _walletService.getAddress();
   }
 
   @override
   Future<String> getRecoveryPhrase() async {
-    final phrase = await _walletDatasource.getMnemonic();
+    final phrase = await _walletService.getMnemonic();
     if (phrase == null || phrase.trim().isEmpty) {
       throw StateError('No wallet recovery phrase found.');
     }
@@ -87,7 +87,7 @@ class WalletRepositoryImpl implements WalletRepository {
     final confirmed = await _syncDatasource.confirmedBalance();
     final pending = await _syncDatasource.pendingBalance();
     final txs = await _syncDatasource.transactions();
-    final receiveAddress = await _walletDatasource.getAddress();
+    final receiveAddress = await _walletService.getAddress();
 
     return WalletOverview(
       balance: Balance(confirmedSats: confirmed, pendingSats: pending),
@@ -100,17 +100,17 @@ class WalletRepositoryImpl implements WalletRepository {
 
   @override
   Future<WalletDiagnostics> getDiagnostics() {
-    return _walletDatasource.diagnostics();
+    return _walletService.diagnostics();
   }
 
   @override
   Future<void> rotateBackend() {
-    return _walletDatasource.rotateBackend();
+    return _walletService.rotateBackend();
   }
 
   @override
   Future<void> setCustomBackend(String? endpoint) {
-    return _walletDatasource.setCustomBackend(endpoint);
+    return _walletService.setCustomBackend(endpoint);
   }
 
   @override
@@ -118,7 +118,7 @@ class WalletRepositoryImpl implements WalletRepository {
     required String mnemonic,
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
   }) {
-    return _walletDatasource.restoreWallet(
+    return _walletService.restoreWallet(
       mnemonic: mnemonic,
       scriptType: scriptType,
     );

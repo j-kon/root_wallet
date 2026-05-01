@@ -1,15 +1,15 @@
 import 'package:root_wallet/features/send/domain/entities/fee_rate.dart';
-import 'package:root_wallet/features/wallet/data/datasources/bdk_wallet_datasource.dart';
+import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 
 class MempoolFeeDatasource {
-  MempoolFeeDatasource({required BdkWalletDatasource walletDatasource})
-    : _walletDatasource = walletDatasource;
+  MempoolFeeDatasource({required BdkWalletService walletService})
+    : _walletService = walletService;
 
-  final BdkWalletDatasource _walletDatasource;
+  final BdkWalletService _walletService;
 
   Future<FeeRate> recommendedFee() async {
     try {
-      final sats = (await _walletDatasource.estimateFeeSatPerVbyte(
+      final sats = (await _walletService.estimateFeeSatPerVbyte(
         targetBlocks: 3,
       )).ceil();
       return FeeRate(satsPerVByte: sats < 1 ? 1 : sats);

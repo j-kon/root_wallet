@@ -17,13 +17,15 @@ abstract final class AppConstants {
   static const esploraRequestConcurrency = 2;
   static const esploraRequestTimeoutSeconds = 60;
   static const mainnetEsploraUrl = 'https://blockstream.info/api';
-  static const testnetEsploraUrl = 'https://mempool.space/testnet/api';
+  static const testnetElectrumUrl = 'ssl://electrum.blockstream.info:60002';
+  static const testnetEsploraUrl = 'https://blockstream.info/testnet/api';
+  static const mempoolTestnetEsploraUrl = 'https://mempool.space/testnet/api';
   static const blockstreamTestnetEsploraUrl =
       'https://blockstream.info/testnet/api';
   static const testnetExplorerBaseUrl = 'https://mempool.space/testnet';
   static const testnetEsploraFallbackUrls = <String>[
     testnetEsploraUrl,
-    blockstreamTestnetEsploraUrl,
+    mempoolTestnetEsploraUrl,
   ];
 
   static String testnetExplorerTxUrl(String txId) {

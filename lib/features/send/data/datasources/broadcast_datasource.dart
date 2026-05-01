@@ -1,13 +1,13 @@
-import 'package:bdk_flutter/bdk_flutter.dart';
-import 'package:root_wallet/features/wallet/data/datasources/bdk_wallet_datasource.dart';
+import 'package:bdk_dart/bdk.dart' as bdk;
+import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 
 class BroadcastDatasource {
-  BroadcastDatasource({required BdkWalletDatasource walletDatasource})
-    : _walletDatasource = walletDatasource;
+  BroadcastDatasource({required BdkWalletService walletService})
+    : _walletService = walletService;
 
-  final BdkWalletDatasource _walletDatasource;
+  final BdkWalletService _walletService;
 
-  Future<String> broadcast(Transaction transaction) async {
-    return _walletDatasource.broadcastTransaction(transaction);
+  Future<String> broadcast(bdk.Transaction transaction) async {
+    return _walletService.broadcastTransaction(transaction);
   }
 }
