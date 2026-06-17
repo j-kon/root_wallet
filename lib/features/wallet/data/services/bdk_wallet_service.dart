@@ -176,7 +176,7 @@ class BdkWalletService {
   Future<double> estimateFeeSatPerVbyte({int targetBlocks = 3}) {
     return _guard('estimate transaction fee', () async {
       final electrumUrls = [
-        'tcp://electrum.blockstream.info:50001',
+        'tcp://testnet.aranguren.org:51001',
         'tcp://testnet.qtornado.com:51001',
         'tcp://testnet.hsmiths.com:53011',
       ];
@@ -213,7 +213,7 @@ class BdkWalletService {
   Future<String> broadcastTransaction(bdk.Transaction transaction) {
     return _guard('broadcast transaction', () async {
       final electrumUrls = [
-        'tcp://electrum.blockstream.info:50001',
+        'tcp://testnet.aranguren.org:51001',
         'tcp://testnet.qtornado.com:51001',
         'tcp://testnet.hsmiths.com:53011',
       ];
@@ -904,7 +904,7 @@ Future<IsolateSyncResult> _performBackgroundSync(IsolateSyncParams params) async
     if (!syncSucceeded) {
       print('DEBUG ISOLATE: Esplora sync failed or skipped. Trying TCP Electrum fallback...');
       final electrumUrls = [
-        'tcp://electrum.blockstream.info:50001',
+        'tcp://testnet.aranguren.org:51001',
         'tcp://testnet.qtornado.com:51001',
         'tcp://testnet.hsmiths.com:53011',
       ];

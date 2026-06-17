@@ -11,13 +11,13 @@ abstract final class AppConstants {
   static const minSendAmountSats = 546;
   static const splashMinimumDuration = Duration(milliseconds: 1800);
   static const supportUrl = 'https://support.rootwallet.app';
-  static const walletDatabaseSchemaVersion = 1;
+  static const walletDatabaseSchemaVersion = 2;
   static const walletSnapshotSchemaVersion = 1;
   static const walletAddressDiscoveryStopGap = 20;
   static const esploraRequestConcurrency = 2;
   static const esploraRequestTimeoutSeconds = 60;
   static const mainnetEsploraUrl = 'https://blockstream.info/api';
-  static const testnetElectrumUrl = 'tcp://electrum.blockstream.info:50001';
+  static const testnetElectrumUrl = 'tcp://testnet.aranguren.org:51001';
   static const testnetEsploraUrl = 'https://blockstream.info/testnet/api';
   static const mempoolTestnetEsploraUrl = 'https://mempool.space/testnet/api';
   static const blockstreamTestnetEsploraUrl =
