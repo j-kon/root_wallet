@@ -77,17 +77,6 @@ class _MainShellState extends State<MainShell> {
     final horizontalPadding = context.isCompactWidth
         ? AppSpacing.sm
         : AppSpacing.md;
-    final tabs = <Widget>[
-      WalletHomePage(
-        onReceiveRequested: () => _onTap(1),
-        onSendRequested: () => _onTap(2),
-        onSettingsRequested: () => _onTap(3),
-      ),
-      const ReceivePage(),
-      const SendPage(),
-      const SettingsPage(),
-    ];
-
     return PopScope(
       canPop: _currentIndex == 0,
       onPopInvokedWithResult: (didPop, _) {
@@ -102,9 +91,7 @@ class _MainShellState extends State<MainShell> {
         extendBody: true,
         body: Stack(
           children: [
-            Positioned.fill(
-              child: IndexedStack(index: _currentIndex, children: tabs),
-            ),
+            Positioned.fill(child: _buildCurrentTab()),
             Positioned(
               left: horizontalPadding,
               right: horizontalPadding,
@@ -197,6 +184,19 @@ class _MainShellState extends State<MainShell> {
         ),
       ),
     );
+  }
+
+  Widget _buildCurrentTab() {
+    return switch (_currentIndex) {
+      0 => WalletHomePage(
+        onReceiveRequested: () => _onTap(1),
+        onSendRequested: () => _onTap(2),
+        onSettingsRequested: () => _onTap(3),
+      ),
+      1 => const ReceivePage(),
+      2 => const SendPage(),
+      _ => const SettingsPage(),
+    };
   }
 }
 

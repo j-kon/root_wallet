@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,14 +6,25 @@ import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/errors/error_mapper.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/app_start_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
+import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
+import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
+import 'package:root_wallet/features/wallet/data/services/wallet_seed_service.dart';
+import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
-import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
+
+final onboardingWalletSeedServiceProvider = Provider<WalletSeedService>(
+  (ref) => WalletSeedService(
+    secureStorage: ref.watch(secureStorageProvider),
+    walletStoragePathLoader: () => ref.read(walletStoragePathProvider.future),
+  ),
+);
 
 class OnboardingState {
   const OnboardingState({
     required this.isBusy,
     required this.challengeIndices,
     this.errorMessage,
+    this.recoveryPhrase,
   });
 
   factory OnboardingState.initial() {
@@ -22,17 +34,23 @@ class OnboardingState {
   final bool isBusy;
   final List<int> challengeIndices;
   final String? errorMessage;
+  final String? recoveryPhrase;
 
   OnboardingState copyWith({
     bool? isBusy,
     List<int>? challengeIndices,
     String? errorMessage,
+    String? recoveryPhrase,
     bool clearError = false,
+    bool clearRecoveryPhrase = false,
   }) {
     return OnboardingState(
       isBusy: isBusy ?? this.isBusy,
       challengeIndices: challengeIndices ?? this.challengeIndices,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      recoveryPhrase: clearRecoveryPhrase
+          ? null
+          : (recoveryPhrase ?? this.recoveryPhrase),
     );
   }
 }
@@ -46,11 +64,14 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   Future<bool> createWallet() async {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
-      await _ref.read(createWalletUsecaseProvider).call();
-      await _resetLocalWalletSessionState();
+      final identity = await _ref
+          .read(onboardingWalletSeedServiceProvider)
+          .createWallet();
+      _resetLocalWalletSessionState();
       state = state.copyWith(
         isBusy: false,
         challengeIndices: const [],
+        recoveryPhrase: identity.recoveryPhrase,
         clearError: true,
       );
       return true;
@@ -73,13 +94,14 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   }) async {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
-      await _ref
-          .read(restoreWalletUsecaseProvider)
-          .call(mnemonic, scriptType: scriptType);
-      await _resetLocalWalletSessionState();
+      final identity = await _ref
+          .read(onboardingWalletSeedServiceProvider)
+          .restoreWallet(mnemonic: mnemonic, scriptType: scriptType);
+      _resetLocalWalletSessionState();
       state = state.copyWith(
         isBusy: false,
         challengeIndices: const [],
+        recoveryPhrase: identity.recoveryPhrase,
         clearError: true,
       );
       return true;
@@ -116,7 +138,14 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   Future<bool> confirmBackup(Map<int, String> answers) async {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
-      final phrase = await _ref.read(getRecoveryPhraseUsecaseProvider).call();
+      final phrase =
+          state.recoveryPhrase ??
+          await _ref
+              .read(secureStorageProvider)
+              .read(key: WalletStorageKeys.mnemonic);
+      if (phrase == null || phrase.trim().isEmpty) {
+        throw StateError('Recovery phrase is not available.');
+      }
       final words = _normalizeWords(phrase);
       final requiredIndices = state.challengeIndices.isEmpty
           ? _randomIndices(words.length)
@@ -136,7 +165,11 @@ class OnboardingController extends StateNotifier<OnboardingState> {
 
       await _ref.read(backupReminderProvider.notifier).confirmBackup();
       _ref.invalidate(appStartControllerProvider);
-      state = state.copyWith(isBusy: false, clearError: true);
+      state = state.copyWith(
+        isBusy: false,
+        clearRecoveryPhrase: true,
+        clearError: true,
+      );
       return true;
     } catch (error) {
       state = state.copyWith(
@@ -155,18 +188,27 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     state = state.copyWith(clearError: true);
   }
 
-  Future<void> _resetLocalWalletSessionState() async {
-    await _ref.read(backupReminderProvider.notifier).clearBackupConfirmation();
-    await (await _ref.read(walletSnapshotCacheProvider.future)).clear();
-    await _ref.read(walletLabelsControllerProvider.notifier).clear();
-    _ref.invalidate(recoveryPhraseProvider);
-    _ref.invalidate(walletHomeControllerProvider);
-    _ref.invalidate(walletDiagnosticsControllerProvider);
+  void _resetLocalWalletSessionState() {
+    unawaited(_clearLocalWalletSessionState().catchError((Object _) {}));
     _ref.invalidate(appStartControllerProvider);
   }
 
+  Future<void> _clearLocalWalletSessionState() async {
+    await _ref.read(backupReminderProvider.notifier).clearBackupConfirmation();
+    final prefs = await _ref.read(sharedPreferencesProvider.future);
+    await WalletSnapshotCache(prefs).clear();
+    await WalletLabelStore(prefs).clear();
+  }
+
   Future<void> _prepareChallenge() async {
-    final phrase = await _ref.read(getRecoveryPhraseUsecaseProvider).call();
+    final phrase =
+        state.recoveryPhrase ??
+        await _ref.read(secureStorageProvider).read(
+          key: WalletStorageKeys.mnemonic,
+        );
+    if (phrase == null || phrase.trim().isEmpty) {
+      throw StateError('Recovery phrase is not available.');
+    }
     final words = _normalizeWords(phrase);
     state = state.copyWith(
       challengeIndices: _randomIndices(words.length),

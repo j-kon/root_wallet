@@ -6,6 +6,8 @@
         android:label="root_wallet"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"

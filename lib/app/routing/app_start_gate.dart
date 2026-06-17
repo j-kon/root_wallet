@@ -9,6 +9,7 @@ import 'package:root_wallet/core/widgets/empty_state.dart';
 import 'package:root_wallet/features/onboarding/presentation/pages/welcome_page.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/app_start_providers.dart';
 import 'package:root_wallet/app/routing/main_shell.dart';
+import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 
 class AppStartGate extends ConsumerStatefulWidget {
   const AppStartGate({super.key});
@@ -68,7 +69,10 @@ class _AppStartGateState extends ConsumerState<AppStartGate> {
         return switch (state.destination) {
           AppStartDestination.onboarding => const WelcomePage(),
           AppStartDestination.mainShell => const MainShell(),
-          AppStartDestination.needsBackup => const MainShell(),
+          AppStartDestination.needsBackup => const BackupSeedPage(
+            requireReauth: false,
+            isOnboardingFlow: true,
+          ),
         };
       },
     );

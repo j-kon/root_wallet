@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
-import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
+import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 
 enum AppStartDestination { onboarding, mainShell, needsBackup }
 
@@ -32,7 +32,10 @@ class AppStartController extends AsyncNotifier<AppStartState> {
   }
 
   Future<AppStartState> _load() async {
-    final walletExists = await ref.read(hasWalletUsecaseProvider).call();
+    final mnemonic = await ref
+        .read(secureStorageProvider)
+        .read(key: WalletStorageKeys.mnemonic);
+    final walletExists = mnemonic != null && mnemonic.trim().isNotEmpty;
     final prefs = await ref.read(sharedPreferencesProvider.future);
     final backupConfirmed = prefs.getBool(_backupConfirmedKey) ?? false;
 

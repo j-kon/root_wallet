@@ -46,8 +46,6 @@ final txMapperProvider = Provider<TxMapper>((ref) => const TxMapper());
 final walletRepositoryProvider = Provider<WalletRepository>((ref) {
   return WalletRepositoryImpl(
     walletService: ref.watch(bdkWalletServiceProvider),
-    syncDatasource: ref.watch(bdkSyncDatasourceProvider),
-    txMapper: ref.watch(txMapperProvider),
   );
 });
 

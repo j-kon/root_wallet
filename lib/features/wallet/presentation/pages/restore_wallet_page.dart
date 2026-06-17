@@ -190,12 +190,16 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
                 if (!restored) {
                   return;
                 }
+                final recoveryPhrase = ref
+                    .read(onboardingControllerProvider)
+                    .recoveryPhrase;
 
                 Navigator.of(context).pushReplacementNamed(
                   AppRoutes.backupSeed,
-                  arguments: const BackupSeedPageArgs(
+                  arguments: BackupSeedPageArgs(
                     requireReauth: false,
                     isOnboardingFlow: true,
+                    recoveryPhrase: recoveryPhrase,
                   ),
                 );
               },

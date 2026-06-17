@@ -1,6 +1,4 @@
-import 'package:root_wallet/features/wallet/data/datasources/bdk_sync_datasource.dart';
 import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
-import 'package:root_wallet/features/wallet/data/mappers/tx_mapper.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
@@ -12,15 +10,9 @@ import 'package:root_wallet/features/wallet/domain/repositories/wallet_repositor
 class WalletRepositoryImpl implements WalletRepository {
   WalletRepositoryImpl({
     required BdkWalletService walletService,
-    required BdkSyncDatasource syncDatasource,
-    required TxMapper txMapper,
-  }) : _walletService = walletService,
-       _syncDatasource = syncDatasource,
-       _txMapper = txMapper;
+  }) : _walletService = walletService;
 
   final BdkWalletService _walletService;
-  final BdkSyncDatasource _syncDatasource;
-  final TxMapper _txMapper;
 
   @override
   Future<bool> hasWallet() {
@@ -53,49 +45,71 @@ class WalletRepositoryImpl implements WalletRepository {
 
   @override
   Future<Balance> getBalance() async {
-    try {
-      await _syncDatasource.sync();
-    } catch (_) {
-      // Keep the wallet usable offline by falling back to local state.
-    }
-    final confirmed = await _syncDatasource.confirmedBalance();
-    final pending = await _syncDatasource.pendingBalance();
-    return Balance(confirmedSats: confirmed, pendingSats: pending);
+    final overview = await getOverview();
+    return overview.balance;
   }
 
   @override
   Future<List<TxItem>> getTransactions() async {
-    try {
-      await _syncDatasource.sync();
-    } catch (_) {
-      // Local transactions can still be read even when sync fails.
-    }
-    final txs = await _syncDatasource.transactions();
-    return txs.map(_txMapper.fromDto).toList(growable: false);
+    final overview = await getOverview();
+    return overview.transactions;
   }
 
   @override
   Future<WalletOverview> getOverview() async {
-    Object? syncError;
     try {
-      await _syncDatasource.sync();
-    } catch (error) {
-      syncError = error;
-      // Keep the wallet usable offline by falling back to local state.
+      final data = await _walletService.loadWalletOverviewInBackground();
+
+      final txs = data.transactions.map((tx) {
+        return TxItem(
+          txId: tx.txId,
+          amountSats: tx.amountSats,
+          timestamp: DateTime.fromMillisecondsSinceEpoch(tx.timestampMs),
+          isIncoming: tx.isIncoming,
+          status: tx.status == 'confirmed'
+              ? TxItemStatus.confirmed
+              : TxItemStatus.pending,
+          feeSats: tx.feeSats,
+          confirmations: tx.confirmations,
+        );
+      }).toList();
+
+      var address = data.receiveAddress;
+      if (address.isEmpty) {
+        try {
+          address = await _walletService.getAddress();
+        } catch (e) {
+          print('DEBUG: getAddress fallback failed: $e');
+        }
+      }
+
+      return WalletOverview(
+        balance: Balance(
+          confirmedSats: data.confirmedSats,
+          pendingSats: data.pendingSats,
+        ),
+        transactions: txs,
+        receiveAddress: address,
+        syncSucceeded: data.syncSucceeded,
+        syncError: data.syncError != null ? Exception(data.syncError) : null,
+      );
+    } catch (error, stackTrace) {
+      print('DEBUG: getOverview failed: $error');
+      print(stackTrace);
+      String fallbackAddress = '';
+      try {
+        fallbackAddress = await _walletService.getAddress();
+      } catch (e) {
+        print('DEBUG: getAddress fallback failed: $e');
+      }
+      return WalletOverview(
+        balance: const Balance(confirmedSats: 0, pendingSats: 0),
+        transactions: const [],
+        receiveAddress: fallbackAddress,
+        syncSucceeded: false,
+        syncError: error,
+      );
     }
-
-    final confirmed = await _syncDatasource.confirmedBalance();
-    final pending = await _syncDatasource.pendingBalance();
-    final txs = await _syncDatasource.transactions();
-    final receiveAddress = await _walletService.getAddress();
-
-    return WalletOverview(
-      balance: Balance(confirmedSats: confirmed, pendingSats: pending),
-      transactions: txs.map(_txMapper.fromDto).toList(growable: false),
-      receiveAddress: receiveAddress,
-      syncSucceeded: syncError == null,
-      syncError: syncError,
-    );
   }
 
   @override

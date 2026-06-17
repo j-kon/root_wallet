@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:root_wallet/app/routing/routes.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/theme/app_theme.dart';
+import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
@@ -23,11 +25,17 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          secureStorageProvider.overrideWithValue(InMemorySecureStorage()),
+          walletStoragePathProvider.overrideWith((ref) async => '/tmp/wallet_test'),
           onboardingControllerProvider.overrideWith((ref) {
             onboardingController = _FakeOnboardingController(ref);
             return onboardingController;
           }),
           recoveryPhraseProvider.overrideWith(
+            (ref) async =>
+                'abandon ability able about above absent absorb abstract absurd abuse access accident',
+          ),
+          backupSeedRecoveryPhraseProvider.overrideWith(
             (ref) async =>
                 'abandon ability able about above absent absorb abstract absurd abuse access accident',
           ),

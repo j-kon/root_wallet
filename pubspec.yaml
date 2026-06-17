@@ -43,7 +43,7 @@ dependencies:
   bdk_dart:
     git:
       url: https://github.com/bitcoindevkit/bdk-dart.git
-      ref: main
+      ref: v1.0.0-rc.1
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.1.2
   path_provider: ^2.1.5

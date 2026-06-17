@@ -32,8 +32,12 @@ extension BuildContextX on BuildContext {
   double get navBarBottomSpacing =>
       (viewPadding.bottom > 0 ? 6 : AppSpacing.xs);
 
+  double get navBarButtonSpacing =>
+      80.0 + (viewPadding.bottom > 0 ? 20.0 : AppSpacing.lg);
+
   double get contentBottomSpacing =>
       108 +
       viewPadding.bottom +
       (isShortHeight ? AppSpacing.sm : AppSpacing.md);
 }
+

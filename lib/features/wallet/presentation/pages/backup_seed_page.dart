@@ -15,28 +15,33 @@ import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/core/security/screen_protection_service.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
-import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
+import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
+export 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page_args.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
-class BackupSeedPageArgs {
-  const BackupSeedPageArgs({
-    this.requireReauth = true,
-    this.isOnboardingFlow = false,
-  });
-
-  final bool requireReauth;
-  final bool isOnboardingFlow;
-}
+final backupSeedRecoveryPhraseProvider = FutureProvider.autoDispose<String>((
+  ref,
+) async {
+  final phrase = await ref
+      .watch(secureStorageProvider)
+      .read(key: WalletStorageKeys.mnemonic);
+  if (phrase == null || phrase.trim().isEmpty) {
+    throw StateError('Recovery phrase is not available.');
+  }
+  return phrase;
+});
 
 class BackupSeedPage extends ConsumerStatefulWidget {
   const BackupSeedPage({
     super.key,
     this.requireReauth = true,
     this.isOnboardingFlow = false,
+    this.recoveryPhrase,
   });
 
   final bool requireReauth;
   final bool isOnboardingFlow;
+  final String? recoveryPhrase;
 
   @override
   ConsumerState<BackupSeedPage> createState() => _BackupSeedPageState();
@@ -74,7 +79,9 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
 
   @override
   Widget build(BuildContext context) {
-    final phraseAsync = ref.watch(recoveryPhraseProvider);
+    final phraseAsync = widget.recoveryPhrase == null
+        ? ref.watch(backupSeedRecoveryPhraseProvider)
+        : AsyncData(widget.recoveryPhrase!);
     final onboarding = ref.watch(onboardingControllerProvider);
 
     return AppScaffold(

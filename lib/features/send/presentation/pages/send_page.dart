@@ -161,6 +161,18 @@ class _SendPageState extends ConsumerState<SendPage> {
                       children: [
                         TextField(
                           controller: _addressController,
+                          inputFormatters: [
+                            TextInputFormatter.withFunction((oldValue, newValue) {
+                              final sanitized = _sanitizeAddressText(newValue.text);
+                              if (sanitized != newValue.text) {
+                                return TextEditingValue(
+                                  text: sanitized,
+                                  selection: TextSelection.collapsed(offset: sanitized.length),
+                                );
+                              }
+                              return newValue;
+                            }),
+                          ],
                           decoration: InputDecoration(
                             labelText: 'Destination address',
                             hintText: 'tb1...',
@@ -403,12 +415,12 @@ class _SendPageState extends ConsumerState<SendPage> {
                   : () async {
                       final valid = await controller.prepareReview();
                       if (!valid || !context.mounted) {
-                        return;
+                         return;
                       }
                       Navigator.of(context).pushNamed(AppRoutes.reviewTransfer);
                     },
             ),
-            SizedBox(height: context.navBarBottomSpacing),
+            SizedBox(height: context.navBarButtonSpacing),
           ],
         ),
       ),
@@ -422,10 +434,76 @@ class _SendPageState extends ConsumerState<SendPage> {
       return;
     }
 
-    controller.setAddress(text);
+    final sanitized = _sanitizeAddressText(text);
+    controller.setAddress(sanitized);
     final updated = ref.read(sendControllerProvider);
     _addressController.text = updated.draft.address;
     _amountController.text = updated.draft.amountBtcText;
+  }
+
+  String _sanitizeAddressText(String text) {
+    if (text.isEmpty) return text;
+
+    // Check if the text contains CJK (Chinese, Japanese, Korean) characters
+    final hasCjk = text.runes.any((rune) =>
+        (rune >= 0x4E00 && rune <= 0x9FFF) ||
+        (rune >= 0x3400 && rune <= 0x4DBF) ||
+        (rune >= 0x3000 && rune <= 0x303F) ||
+        (rune >= 0xFF00 && rune <= 0xFFEF)
+    );
+
+    if (!hasCjk) {
+      return text;
+    }
+
+    // Try decoding as UTF-16 Little Endian (bytes stored in code units)
+    try {
+      final leBytes = <int>[];
+      for (var i = 0; i < text.length; i++) {
+        final codeUnit = text.codeUnitAt(i);
+        leBytes.add(codeUnit & 0xFF);
+        leBytes.add((codeUnit >> 8) & 0xFF);
+      }
+      final decodedLe = String.fromCharCodes(leBytes).trim();
+      if (_looksLikeTestnetAddressOrUri(decodedLe)) {
+        return decodedLe;
+      }
+    } catch (_) {}
+
+    // Try decoding as UTF-16 Big Endian
+    try {
+      final beBytes = <int>[];
+      for (var i = 0; i < text.length; i++) {
+        final codeUnit = text.codeUnitAt(i);
+        beBytes.add((codeUnit >> 8) & 0xFF);
+        beBytes.add(codeUnit & 0xFF);
+      }
+      final decodedBe = String.fromCharCodes(beBytes).trim();
+      if (_looksLikeTestnetAddressOrUri(decodedBe)) {
+        return decodedBe;
+      }
+    } catch (_) {}
+
+    return text;
+  }
+
+  bool _looksLikeTestnetAddressOrUri(String text) {
+    final clean = text.toLowerCase().trim();
+    if (clean.startsWith('bitcoin:')) {
+      final addressPart = clean.substring(8).split('?').first;
+      return _looksLikeRawTestnetAddress(addressPart);
+    }
+    return _looksLikeRawTestnetAddress(clean);
+  }
+
+  bool _looksLikeRawTestnetAddress(String text) {
+    if (text.startsWith('tb1') && text.length >= 42 && text.length <= 62) {
+      return true;
+    }
+    if ((text.startsWith('m') || text.startsWith('n') || text.startsWith('2')) && text.length >= 26 && text.length <= 35) {
+      return true;
+    }
+    return false;
   }
 
   Future<void> _scanAddress(

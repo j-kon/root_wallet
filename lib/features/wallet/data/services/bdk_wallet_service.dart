@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
-import 'package:bdk_dart/bdk.dart' as bdk;
+import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:crypto/crypto.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
+import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
@@ -32,10 +34,9 @@ class BdkWalletService {
        _preferencesLoader = preferencesLoader,
        _allowCustomEsploraEndpoint = allowCustomEsploraEndpoint;
 
-  static const _mnemonicKey = 'wallet.mnemonic';
-  static const _scriptTypeKey = 'wallet.script_type';
   static const _customEsploraEndpointKey = 'wallet.custom_esplora_endpoint.v1';
   static const bdk.Network _network = bdk.Network.testnet;
+  static const bdk.NetworkKind _networkKind = bdk.NetworkKind.test;
 
   final SecureStorage _secureStorage;
   final Future<String> Function() _walletStoragePathLoader;
@@ -61,20 +62,20 @@ class BdkWalletService {
 
   Future<WalletIdentity> createWallet() {
     return _guard('create wallet', () async {
-      final mnemonic = bdk.Mnemonic(wordCount: bdk.WordCount.words12);
-      final phrase = mnemonic.toString();
-      mnemonic.dispose();
+      final phrase = bdk.Mnemonic(wordCount: bdk.WordCount.words12).toString();
 
       // Sensitive seed material must stay in flutter_secure_storage only.
-      await _secureStorage.write(key: _mnemonicKey, value: phrase);
       await _secureStorage.write(
-        key: _scriptTypeKey,
+        key: WalletStorageKeys.mnemonic,
+        value: phrase,
+      );
+      await _secureStorage.write(
+        key: WalletStorageKeys.scriptType,
         value: WalletScriptType.nativeSegwit.storageValue,
       );
 
       await _resetSession();
       await _deleteWalletDatabase();
-      await _loadWallet();
 
       return _identityFromMnemonic(phrase, WalletScriptType.nativeSegwit);
     });
@@ -92,11 +93,11 @@ class BdkWalletService {
   }
 
   Future<String?> getMnemonic() {
-    return _secureStorage.read(key: _mnemonicKey);
+    return _secureStorage.read(key: WalletStorageKeys.mnemonic);
   }
 
   Future<bool> hasWallet() async {
-    final mnemonic = await _secureStorage.read(key: _mnemonicKey);
+    final mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
     return mnemonic != null && mnemonic.trim().isNotEmpty;
   }
 
@@ -107,20 +108,26 @@ class BdkWalletService {
     return _guard('restore wallet', () async {
       final normalized = _normalizeMnemonic(mnemonic);
       _validateMnemonicShape(normalized);
-      final parsed = bdk.Mnemonic.fromString(mnemonic: normalized);
-      final phrase = parsed.toString();
-      parsed.dispose();
+      try {
+        final parsed = bdk.Mnemonic.fromString(mnemonic: normalized);
+        parsed.dispose();
+      } catch (_) {
+        throw const FormatException('Invalid recovery phrase checksum.');
+      }
+      final phrase = normalized;
 
       // Sensitive seed material must stay in flutter_secure_storage only.
-      await _secureStorage.write(key: _mnemonicKey, value: phrase);
       await _secureStorage.write(
-        key: _scriptTypeKey,
+        key: WalletStorageKeys.mnemonic,
+        value: phrase,
+      );
+      await _secureStorage.write(
+        key: WalletStorageKeys.scriptType,
         value: scriptType.storageValue,
       );
 
       await _resetSession();
       await _deleteWalletDatabase();
-      await _loadWallet();
 
       return _identityFromMnemonic(phrase, scriptType);
     });
@@ -128,8 +135,8 @@ class BdkWalletService {
 
   Future<void> resetWallet() {
     return _guard('reset wallet', () async {
-      await _secureStorage.delete(key: _mnemonicKey);
-      await _secureStorage.delete(key: _scriptTypeKey);
+      await _secureStorage.delete(key: WalletStorageKeys.mnemonic);
+      await _secureStorage.delete(key: WalletStorageKeys.scriptType);
       await _resetSession();
       await _deleteWalletDatabase();
     });
@@ -171,6 +178,9 @@ class BdkWalletService {
       final client = bdk.ElectrumClient(
         url: AppConstants.testnetElectrumUrl,
         socks5: null,
+        timeout: null,
+        retry: null,
+        validateDomain: !AppConstants.testnetElectrumUrl.startsWith('tcp://'),
       );
       try {
         final estimate = client.estimateFee(number: targetBlocks);
@@ -186,6 +196,9 @@ class BdkWalletService {
       final client = bdk.ElectrumClient(
         url: AppConstants.testnetElectrumUrl,
         socks5: null,
+        timeout: null,
+        retry: null,
+        validateDomain: !AppConstants.testnetElectrumUrl.startsWith('tcp://'),
       );
       try {
         final txid = client.transactionBroadcast(tx: transaction);
@@ -273,6 +286,7 @@ class BdkWalletService {
       id: 'wallet_${_network.name}_${scriptType.storageValue}',
       fingerprint: fingerprint,
       network: _network.name,
+      recoveryPhrase: mnemonic,
     );
   }
 
@@ -405,7 +419,7 @@ class BdkWalletService {
   }
 
   Future<bdk.Wallet> _createWalletFromStorage() async {
-    final mnemonic = await _secureStorage.read(key: _mnemonicKey);
+    final mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
     if (mnemonic == null || mnemonic.trim().isEmpty) {
       throw StateError('Wallet not initialized. Create or restore first.');
     }
@@ -415,7 +429,7 @@ class BdkWalletService {
     );
     final scriptType = await _readWalletScriptType();
     final descriptorSecretKey = bdk.DescriptorSecretKey(
-      network: _network,
+      networkKind: _networkKind,
       mnemonic: parsedMnemonic,
       password: null,
     );
@@ -537,7 +551,7 @@ class BdkWalletService {
   }
 
   Future<WalletScriptType> _readWalletScriptType() async {
-    final value = await _secureStorage.read(key: _scriptTypeKey);
+    final value = await _secureStorage.read(key: WalletStorageKeys.scriptType);
     return WalletScriptType.fromStorageValue(value);
   }
 
@@ -549,24 +563,449 @@ class BdkWalletService {
     return switch (scriptType) {
       WalletScriptType.legacy => bdk.Descriptor.newBip44(
         secretKey: secretKey,
-        network: _network,
+        networkKind: _networkKind,
         keychainKind: keychain,
       ),
       WalletScriptType.nestedSegwit => bdk.Descriptor.newBip49(
         secretKey: secretKey,
-        network: _network,
+        networkKind: _networkKind,
         keychainKind: keychain,
       ),
       WalletScriptType.nativeSegwit => bdk.Descriptor.newBip84(
         secretKey: secretKey,
-        network: _network,
+        networkKind: _networkKind,
         keychainKind: keychain,
       ),
       WalletScriptType.taproot => bdk.Descriptor.newBip86(
         secretKey: secretKey,
-        network: _network,
+        networkKind: _networkKind,
         keychainKind: keychain,
       ),
     };
+  }
+
+  Future<WalletOverviewData> loadWalletOverviewInBackground() async {
+    return _guard('load wallet overview in background', () async {
+      await _loadEndpointPreferences();
+      final mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
+      if (mnemonic == null || mnemonic.trim().isEmpty) {
+        throw StateError('Wallet not initialized. Create or restore first.');
+      }
+      final scriptType = await _readWalletScriptType();
+      final databasePath = await _databasePath();
+
+      // Reset the session on the main thread to prevent DB lock issues during sync
+      await _resetSession();
+
+      final params = IsolateSyncParams(
+        mnemonic: mnemonic,
+        scriptType: scriptType,
+        network: _network,
+        networkKind: _networkKind,
+        databasePath: databasePath,
+        esploraEndpoints: _esploraEndpoints,
+        activeEsploraIndex: _activeEsploraIndex,
+        lookahead: AppConstants.walletAddressDiscoveryStopGap,
+        parallelRequests: AppConstants.esploraRequestConcurrency,
+      );
+
+      final result = await _runSyncIsolate(params);
+
+      // Update the active esplora index based on the result
+      _activeEsploraIndex = result.newActiveIndex;
+
+      return WalletOverviewData(
+        confirmedSats: result.confirmedSats,
+        pendingSats: result.pendingSats,
+        transactions: result.transactions,
+        receiveAddress: result.receiveAddress,
+        syncSucceeded: result.syncSucceeded,
+        syncError: result.syncErrorString,
+      );
+    });
+  }
+}
+
+class IsolateSyncParams {
+  const IsolateSyncParams({
+    required this.mnemonic,
+    required this.scriptType,
+    required this.network,
+    required this.networkKind,
+    required this.databasePath,
+    required this.esploraEndpoints,
+    required this.activeEsploraIndex,
+    required this.lookahead,
+    required this.parallelRequests,
+  });
+
+  final String mnemonic;
+  final WalletScriptType scriptType;
+  final bdk.Network network;
+  final bdk.NetworkKind networkKind;
+  final String databasePath;
+  final List<String> esploraEndpoints;
+  final int activeEsploraIndex;
+  final int lookahead;
+  final int parallelRequests;
+}
+
+class IsolateTxItem {
+  const IsolateTxItem({
+    required this.txId,
+    required this.amountSats,
+    required this.timestampMs,
+    required this.isIncoming,
+    required this.status,
+    this.feeSats,
+    this.confirmations,
+  });
+
+  final String txId;
+  final int amountSats;
+  final int timestampMs;
+  final bool isIncoming;
+  final String status;
+  final int? feeSats;
+  final int? confirmations;
+}
+
+class IsolateSyncResult {
+  const IsolateSyncResult({
+    required this.confirmedSats,
+    required this.pendingSats,
+    required this.transactions,
+    required this.receiveAddress,
+    required this.syncSucceeded,
+    required this.newActiveIndex,
+    this.syncErrorString,
+  });
+
+  final int confirmedSats;
+  final int pendingSats;
+  final List<IsolateTxItem> transactions;
+  final String receiveAddress;
+  final bool syncSucceeded;
+  final int newActiveIndex;
+  final String? syncErrorString;
+}
+
+class WalletOverviewData {
+  const WalletOverviewData({
+    required this.confirmedSats,
+    required this.pendingSats,
+    required this.transactions,
+    required this.receiveAddress,
+    required this.syncSucceeded,
+    this.syncError,
+  });
+
+  final int confirmedSats;
+  final int pendingSats;
+  final List<IsolateTxItem> transactions;
+  final String receiveAddress;
+  final bool syncSucceeded;
+  final String? syncError;
+}
+
+bdk.Descriptor _createDescriptorStatic({
+  required bdk.DescriptorSecretKey secretKey,
+  required WalletScriptType scriptType,
+  required bdk.KeychainKind keychain,
+  required bdk.NetworkKind networkKind,
+}) {
+  return switch (scriptType) {
+    WalletScriptType.legacy => bdk.Descriptor.newBip44(
+        secretKey: secretKey,
+        networkKind: networkKind,
+        keychainKind: keychain,
+      ),
+    WalletScriptType.nestedSegwit => bdk.Descriptor.newBip49(
+        secretKey: secretKey,
+        networkKind: networkKind,
+        keychainKind: keychain,
+      ),
+    WalletScriptType.nativeSegwit => bdk.Descriptor.newBip84(
+        secretKey: secretKey,
+        networkKind: networkKind,
+        keychainKind: keychain,
+      ),
+    WalletScriptType.taproot => bdk.Descriptor.newBip86(
+        secretKey: secretKey,
+        networkKind: networkKind,
+        keychainKind: keychain,
+      ),
+  };
+}
+
+int? _confirmationsStatic(bdk.ChainPosition chainPosition, int? chainHeight) {
+  if (chainPosition is! bdk.ConfirmedChainPosition) {
+    return 0;
+  }
+  if (chainHeight == null) {
+    return null;
+  }
+  final depth = chainHeight - chainPosition.confirmationBlockTime.blockId.height + 1;
+  return depth <= 0 ? 1 : depth;
+}
+
+int _timestampMsStatic(bdk.ChainPosition chainPosition) {
+  if (chainPosition is bdk.ConfirmedChainPosition) {
+    return chainPosition.confirmationBlockTime.confirmationTime * 1000;
+  }
+  if (chainPosition is bdk.UnconfirmedChainPosition &&
+      chainPosition.timestamp != null) {
+    return chainPosition.timestamp! * 1000;
+  }
+  return DateTime.now().millisecondsSinceEpoch;
+}
+
+Future<IsolateSyncResult> _performBackgroundSync(IsolateSyncParams params) async {
+  print('DEBUG ISOLATE: Start _performBackgroundSync');
+  final parsedMnemonic = bdk.Mnemonic.fromString(mnemonic: params.mnemonic);
+  print('DEBUG ISOLATE: Parsed mnemonic');
+  final descriptorSecretKey = bdk.DescriptorSecretKey(
+    networkKind: params.networkKind,
+    mnemonic: parsedMnemonic,
+    password: null,
+  );
+  print('DEBUG ISOLATE: Created descriptorSecretKey');
+
+  final externalDescriptor = _createDescriptorStatic(
+    secretKey: descriptorSecretKey,
+    scriptType: params.scriptType,
+    keychain: bdk.KeychainKind.external_,
+    networkKind: params.networkKind,
+  );
+  final internalDescriptor = _createDescriptorStatic(
+    secretKey: descriptorSecretKey,
+    scriptType: params.scriptType,
+    keychain: bdk.KeychainKind.internal,
+    networkKind: params.networkKind,
+  );
+  print('DEBUG ISOLATE: Created descriptors');
+
+  final databaseFile = File(params.databasePath);
+  final hasExistingDatabase = databaseFile.existsSync() && databaseFile.lengthSync() > 0;
+  print('DEBUG ISOLATE: Checked database exists: $hasExistingDatabase (path: ${params.databasePath})');
+  final persister = bdk.Persister.newSqlite(path: params.databasePath);
+  print('DEBUG ISOLATE: Created persister');
+
+  bdk.Wallet? wallet;
+  try {
+    print('DEBUG ISOLATE: Loading wallet...');
+    wallet = hasExistingDatabase
+        ? bdk.Wallet.load(
+            descriptor: externalDescriptor,
+            changeDescriptor: internalDescriptor,
+            persister: persister,
+            lookahead: params.lookahead,
+          )
+        : bdk.Wallet(
+            descriptor: externalDescriptor,
+            changeDescriptor: internalDescriptor,
+            network: params.network,
+            persister: persister,
+            lookahead: params.lookahead,
+          );
+    print('DEBUG ISOLATE: Wallet loaded successfully');
+
+    Object? lastError;
+    bool syncSucceeded = false;
+    final endpointCount = params.esploraEndpoints.length;
+    var activeIndex = params.activeEsploraIndex;
+    print('DEBUG ISOLATE: Starting sync loop. Endpoint count: $endpointCount');
+
+    for (var offset = 0; offset < endpointCount; offset++) {
+      final index = (activeIndex + offset) % endpointCount;
+      final endpoint = params.esploraEndpoints[index];
+      print('DEBUG ISOLATE: Trying endpoint $index: $endpoint');
+
+      print('DEBUG ISOLATE: Testing HTTPS reachability for $endpoint...');
+      final isReachable = await _testHttpsEndpoint(endpoint);
+      if (!isReachable) {
+        print('DEBUG ISOLATE: HTTPS endpoint $endpoint is not reachable or TLS failed. Skipping.');
+        lastError = StateError('HTTPS endpoint $endpoint not reachable / TLS handshake issue');
+        continue;
+      }
+
+      bdk.EsploraClient? client;
+      bdk.Update? update;
+      bdk.FullScanRequest? request;
+      bdk.FullScanRequestBuilder? requestBuilder;
+      try {
+        client = bdk.EsploraClient(url: endpoint, proxy: null);
+        print('DEBUG ISOLATE: Created EsploraClient');
+        requestBuilder = wallet.startFullScan();
+        request = requestBuilder.build();
+        print('DEBUG ISOLATE: Calling client.fullScan...');
+        update = client.fullScan(
+          request: request,
+          stopGap: params.lookahead,
+          parallelRequests: params.parallelRequests,
+        );
+        print('DEBUG ISOLATE: client.fullScan completed. Applying update...');
+        wallet.applyUpdate(update: update);
+        print('DEBUG ISOLATE: Update applied. Persisting wallet...');
+        wallet.persist(persister: persister);
+        print('DEBUG ISOLATE: Wallet persisted');
+        syncSucceeded = true;
+        activeIndex = index;
+        break;
+      } catch (error) {
+        print('DEBUG ISOLATE: Endpoint $endpoint failed: $error');
+        lastError = error;
+      } finally {
+        update?.dispose();
+        request?.dispose();
+        requestBuilder?.dispose();
+        client?.dispose();
+      }
+    }
+
+    if (!syncSucceeded) {
+      print('DEBUG ISOLATE: Esplora sync failed or skipped. Trying TCP Electrum fallback...');
+      bdk.ElectrumClient? client;
+      bdk.Update? update;
+      bdk.FullScanRequest? request;
+      bdk.FullScanRequestBuilder? requestBuilder;
+      try {
+        client = bdk.ElectrumClient(
+          url: 'tcp://electrum.blockstream.info:50001',
+          socks5: null,
+          timeout: 10,
+          retry: 3,
+          validateDomain: false,
+        );
+        print('DEBUG ISOLATE: Created ElectrumClient for fallback');
+        requestBuilder = wallet.startFullScan();
+        request = requestBuilder.build();
+        print('DEBUG ISOLATE: Calling ElectrumClient.fullScan...');
+        update = client.fullScan(
+          request: request,
+          stopGap: params.lookahead,
+          batchSize: 10,
+          fetchPrevTxouts: true,
+        );
+        print('DEBUG ISOLATE: ElectrumClient.fullScan completed. Applying update...');
+        wallet.applyUpdate(update: update);
+        print('DEBUG ISOLATE: Update applied. Persisting wallet...');
+        wallet.persist(persister: persister);
+        print('DEBUG ISOLATE: Wallet persisted');
+        syncSucceeded = true;
+        activeIndex = endpointCount; // Special index to indicate Electrum fallback
+      } catch (error) {
+        print('DEBUG ISOLATE: Electrum fallback failed: $error');
+        lastError = error;
+      } finally {
+        update?.dispose();
+        request?.dispose();
+        requestBuilder?.dispose();
+        client?.dispose();
+      }
+    }
+
+    int? chainHeight;
+    if (syncSucceeded) {
+      if (activeIndex < params.esploraEndpoints.length) {
+        final endpoint = params.esploraEndpoints[activeIndex];
+        print('DEBUG ISOLATE: Sync succeeded. Getting chain height from $endpoint...');
+        bdk.EsploraClient? client;
+        try {
+          client = bdk.EsploraClient(url: endpoint, proxy: null);
+          chainHeight = client.getHeight();
+          print('DEBUG ISOLATE: Chain height: $chainHeight');
+        } catch (e) {
+          print('DEBUG ISOLATE: Failed to get chain height: $e');
+        } finally {
+          client?.dispose();
+        }
+      } else {
+        print('DEBUG ISOLATE: Sync succeeded via Electrum. Chain height is null (not supported via ElectrumClient).');
+      }
+    } else {
+      print('DEBUG ISOLATE: Sync failed on all endpoints.');
+    }
+
+    print('DEBUG ISOLATE: Reading balance...');
+    final balance = wallet.balance();
+    final confirmedSats = balance.confirmed.toSat();
+    final pendingSats = balance.trustedPending.toSat() + balance.untrustedPending.toSat();
+    print('DEBUG ISOLATE: Balance: $confirmedSats sats confirmed, $pendingSats sats pending');
+
+    print('DEBUG ISOLATE: Reading transactions...');
+    final bdkTxs = wallet.transactions();
+    final List<IsolateTxItem> txItems = [];
+    for (final canonicalTx in bdkTxs) {
+      final txid = canonicalTx.transaction.computeTxid();
+      final details = wallet.txDetails(txid: txid);
+      final values = details == null
+          ? wallet.sentAndReceived(tx: canonicalTx.transaction)
+          : null;
+      final receivedSats = (details?.received ?? values!.received).toSat();
+      final sentSats = (details?.sent ?? values!.sent).toSat();
+      final isIncoming = receivedSats >= sentSats;
+      final amount = (receivedSats - sentSats).abs();
+      if (amount == 0) continue;
+
+      final chainPosition = details?.chainPosition ?? canonicalTx.chainPosition;
+      final confirmations = _confirmationsStatic(chainPosition, chainHeight);
+      final timestampMs = _timestampMsStatic(chainPosition);
+
+      txItems.add(IsolateTxItem(
+        txId: txid.toString(),
+        amountSats: amount,
+        timestampMs: timestampMs,
+        isIncoming: isIncoming,
+        status: chainPosition is bdk.ConfirmedChainPosition ? 'confirmed' : 'pending',
+        feeSats: details?.fee?.toSat(),
+        confirmations: confirmations,
+      ));
+    }
+    print('DEBUG ISOLATE: Transactions count: ${txItems.length}');
+
+    print('DEBUG ISOLATE: Revealing receive address...');
+    final addressInfo = wallet.revealNextAddress(keychain: bdk.KeychainKind.external_);
+    print('DEBUG ISOLATE: Receive address: ${addressInfo.address}');
+    wallet.persist(persister: persister);
+
+    print('DEBUG ISOLATE: Returning result');
+    return IsolateSyncResult(
+      confirmedSats: confirmedSats,
+      pendingSats: pendingSats,
+      transactions: txItems,
+      receiveAddress: addressInfo.address.toString(),
+      syncSucceeded: syncSucceeded,
+      syncErrorString: lastError?.toString(),
+      newActiveIndex: activeIndex < params.esploraEndpoints.length ? activeIndex : params.activeEsploraIndex,
+    );
+  } finally {
+    print('DEBUG ISOLATE: Disposing resources...');
+    wallet?.dispose();
+    persister.dispose();
+    externalDescriptor.dispose();
+    internalDescriptor.dispose();
+    descriptorSecretKey.dispose();
+    parsedMnemonic.dispose();
+    print('DEBUG ISOLATE: Disposed resources');
+  }
+}
+
+Future<IsolateSyncResult> _runSyncIsolate(IsolateSyncParams params) {
+  return Isolate.run(() => _performBackgroundSync(params))
+      .timeout(const Duration(seconds: 15));
+}
+
+Future<bool> _testHttpsEndpoint(String url) async {
+  try {
+    final uri = Uri.parse(url);
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 3);
+    final request = await client.getUrl(uri);
+    final response = await request.close().timeout(const Duration(seconds: 3));
+    await response.drain();
+    return response.statusCode == 200;
+  } catch (_) {
+    return false;
   }
 }

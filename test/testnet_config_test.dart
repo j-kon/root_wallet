@@ -7,7 +7,7 @@ void main() {
     expect(AppConstants.bitcoinNetworkDisplayName, 'Bitcoin testnet');
     expect(
       AppConstants.testnetElectrumUrl,
-      'ssl://electrum.blockstream.info:60002',
+      'tcp://electrum.blockstream.info:50001',
     );
     expect(
       AppConstants.testnetEsploraUrl,

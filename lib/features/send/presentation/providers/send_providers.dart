@@ -253,7 +253,9 @@ class SendController extends StateNotifier<SendState> {
 
       state = state.copyWith(isSending: false, lastTxId: txId);
       return txId;
-    } catch (error) {
+    } catch (error, stackTrace) {
+      print('DEBUG BROADCAST ERROR: $error');
+      print('DEBUG BROADCAST STACK: $stackTrace');
       state = state.copyWith(
         isSending: false,
         errorMessage: mapErrorToMessage(error, context: ErrorContext.broadcast),

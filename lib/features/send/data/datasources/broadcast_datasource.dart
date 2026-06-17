@@ -1,4 +1,4 @@
-import 'package:bdk_dart/bdk.dart' as bdk;
+import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 
 class BroadcastDatasource {

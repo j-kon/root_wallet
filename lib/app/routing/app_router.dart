@@ -33,6 +33,7 @@ abstract final class AppRouter {
           BackupSeedPage(
             requireReauth: options.requireReauth,
             isOnboardingFlow: options.isOnboardingFlow,
+            recoveryPhrase: options.recoveryPhrase,
           ),
         );
       case AppRoutes.confirmSeed:

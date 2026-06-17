@@ -151,7 +151,7 @@ Root Wallet now uses `bdk_dart` directly from GitHub as its wallet engine:
 bdk_dart:
   git:
     url: https://github.com/bitcoindevkit/bdk-dart.git
-    ref: main
+    ref: v1.0.0-rc.1
 ```
 
 `bdk_dart` is not published on pub.dev yet. Because it builds native FFI assets, a Rust toolchain with `cargo` is required for local builds. The wallet is configured for Bitcoin testnet only, using Blockstream testnet Esplora (`https://blockstream.info/testnet/api`) and Electrum (`ssl://electrum.blockstream.info:60002`) backends.

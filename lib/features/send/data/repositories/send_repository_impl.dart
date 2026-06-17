@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:bdk_dart/bdk.dart' as bdk;
+import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:root_wallet/features/send/data/datasources/broadcast_datasource.dart';
 import 'package:root_wallet/features/send/domain/entities/send_preview.dart';
 import 'package:root_wallet/features/send/domain/entities/send_request.dart';
@@ -62,7 +62,8 @@ class SendRepositoryImpl implements SendRepository {
         .addRecipient(
           script: script,
           amount: bdk.Amount.fromSat(satoshi: request.amountSats),
-        );
+        )
+        .nlocktime(locktime: bdk.BlocksLockTime(0));
 
     return txBuilder.finish(wallet: wallet);
   }
