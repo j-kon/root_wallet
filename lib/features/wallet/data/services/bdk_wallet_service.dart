@@ -175,37 +175,75 @@ class BdkWalletService {
 
   Future<double> estimateFeeSatPerVbyte({int targetBlocks = 3}) {
     return _guard('estimate transaction fee', () async {
-      final client = bdk.ElectrumClient(
-        url: AppConstants.testnetElectrumUrl,
-        socks5: null,
-        timeout: null,
-        retry: null,
-        validateDomain: !AppConstants.testnetElectrumUrl.startsWith('tcp://'),
-      );
-      try {
-        final estimate = client.estimateFee(number: targetBlocks);
-        return estimate <= 0 ? 1 : estimate;
-      } finally {
-        client.dispose();
+      final electrumUrls = [
+        'tcp://electrum.blockstream.info:50001',
+        'tcp://testnet.qtornado.com:51001',
+        'tcp://testnet.hsmiths.com:53011',
+      ];
+
+      Object? lastError;
+      for (final url in electrumUrls) {
+        print('DEBUG FEE: Trying to estimate fee via Electrum URL: $url');
+        final client = bdk.ElectrumClient(
+          url: url,
+          socks5: null,
+          timeout: 10,
+          retry: 3,
+          validateDomain: false,
+        );
+        try {
+          final estimate = client.estimateFee(number: targetBlocks);
+          print('DEBUG FEE: Successfully estimated fee via $url. Estimate: $estimate');
+          return estimate <= 0 ? 1.0 : estimate;
+        } catch (error) {
+          print('DEBUG FEE: Fee estimation via $url failed: $error');
+          lastError = error;
+        } finally {
+          client.dispose();
+        }
       }
+
+      if (lastError != null) {
+        throw lastError;
+      }
+      return 1.0;
     });
   }
 
   Future<String> broadcastTransaction(bdk.Transaction transaction) {
     return _guard('broadcast transaction', () async {
-      final client = bdk.ElectrumClient(
-        url: AppConstants.testnetElectrumUrl,
-        socks5: null,
-        timeout: null,
-        retry: null,
-        validateDomain: !AppConstants.testnetElectrumUrl.startsWith('tcp://'),
-      );
-      try {
-        final txid = client.transactionBroadcast(tx: transaction);
-        return txid.toString();
-      } finally {
-        client.dispose();
+      final electrumUrls = [
+        'tcp://electrum.blockstream.info:50001',
+        'tcp://testnet.qtornado.com:51001',
+        'tcp://testnet.hsmiths.com:53011',
+      ];
+
+      Object? lastError;
+      for (final url in electrumUrls) {
+        print('DEBUG BROADCAST: Trying to broadcast via Electrum URL: $url');
+        final client = bdk.ElectrumClient(
+          url: url,
+          socks5: null,
+          timeout: 10,
+          retry: 3,
+          validateDomain: false,
+        );
+        try {
+          final txid = client.transactionBroadcast(tx: transaction);
+          print('DEBUG BROADCAST: Successfully broadcasted tx via $url. TXID: $txid');
+          return txid.toString();
+        } catch (error) {
+          print('DEBUG BROADCAST: Broadcast via $url failed: $error');
+          lastError = error;
+        } finally {
+          client.dispose();
+        }
       }
+
+      if (lastError != null) {
+        throw lastError;
+      }
+      throw StateError('Broadcast failed: No active Electrum servers');
     });
   }
 
