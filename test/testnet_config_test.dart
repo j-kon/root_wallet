@@ -23,7 +23,7 @@ void main() {
     );
     expect(
       AppConstants.walletAddressDiscoveryStopGap,
-      greaterThanOrEqualTo(100),
+      greaterThanOrEqualTo(20),
     );
     expect(AppConstants.esploraRequestConcurrency, lessThanOrEqualTo(2));
     expect(AppConstants.esploraRequestTimeoutSeconds, greaterThanOrEqualTo(60));

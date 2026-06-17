@@ -865,43 +865,53 @@ Future<IsolateSyncResult> _performBackgroundSync(IsolateSyncParams params) async
 
     if (!syncSucceeded) {
       print('DEBUG ISOLATE: Esplora sync failed or skipped. Trying TCP Electrum fallback...');
-      bdk.ElectrumClient? client;
-      bdk.Update? update;
-      bdk.FullScanRequest? request;
-      bdk.FullScanRequestBuilder? requestBuilder;
-      try {
-        client = bdk.ElectrumClient(
-          url: 'tcp://electrum.blockstream.info:50001',
-          socks5: null,
-          timeout: 10,
-          retry: 3,
-          validateDomain: false,
-        );
-        print('DEBUG ISOLATE: Created ElectrumClient for fallback');
-        requestBuilder = wallet.startFullScan();
-        request = requestBuilder.build();
-        print('DEBUG ISOLATE: Calling ElectrumClient.fullScan...');
-        update = client.fullScan(
-          request: request,
-          stopGap: params.lookahead,
-          batchSize: 10,
-          fetchPrevTxouts: true,
-        );
-        print('DEBUG ISOLATE: ElectrumClient.fullScan completed. Applying update...');
-        wallet.applyUpdate(update: update);
-        print('DEBUG ISOLATE: Update applied. Persisting wallet...');
-        wallet.persist(persister: persister);
-        print('DEBUG ISOLATE: Wallet persisted');
-        syncSucceeded = true;
-        activeIndex = endpointCount; // Special index to indicate Electrum fallback
-      } catch (error) {
-        print('DEBUG ISOLATE: Electrum fallback failed: $error');
-        lastError = error;
-      } finally {
-        update?.dispose();
-        request?.dispose();
-        requestBuilder?.dispose();
-        client?.dispose();
+      final electrumUrls = [
+        'tcp://electrum.blockstream.info:50001',
+        'tcp://testnet.qtornado.com:51001',
+        'tcp://testnet.hsmiths.com:53011',
+      ];
+
+      for (final electrumUrl in electrumUrls) {
+        print('DEBUG ISOLATE: Trying Electrum fallback URL: $electrumUrl');
+        bdk.ElectrumClient? client;
+        bdk.Update? update;
+        bdk.FullScanRequest? request;
+        bdk.FullScanRequestBuilder? requestBuilder;
+        try {
+          client = bdk.ElectrumClient(
+            url: electrumUrl,
+            socks5: null,
+            timeout: 10,
+            retry: 3,
+            validateDomain: false,
+          );
+          print('DEBUG ISOLATE: Created ElectrumClient for fallback');
+          requestBuilder = wallet.startFullScan();
+          request = requestBuilder.build();
+          print('DEBUG ISOLATE: Calling ElectrumClient.fullScan...');
+          update = client.fullScan(
+            request: request,
+            stopGap: params.lookahead,
+            batchSize: 10,
+            fetchPrevTxouts: true,
+          );
+          print('DEBUG ISOLATE: ElectrumClient.fullScan completed. Applying update...');
+          wallet.applyUpdate(update: update);
+          print('DEBUG ISOLATE: Update applied. Persisting wallet...');
+          wallet.persist(persister: persister);
+          print('DEBUG ISOLATE: Wallet persisted');
+          syncSucceeded = true;
+          activeIndex = endpointCount; // Special index to indicate Electrum fallback
+          break;
+        } catch (error) {
+          print('DEBUG ISOLATE: Electrum fallback URL $electrumUrl failed: $error');
+          lastError = error;
+        } finally {
+          update?.dispose();
+          request?.dispose();
+          requestBuilder?.dispose();
+          client?.dispose();
+        }
       }
     }
 
@@ -993,19 +1003,23 @@ Future<IsolateSyncResult> _performBackgroundSync(IsolateSyncParams params) async
 
 Future<IsolateSyncResult> _runSyncIsolate(IsolateSyncParams params) {
   return Isolate.run(() => _performBackgroundSync(params))
-      .timeout(const Duration(seconds: 15));
+      .timeout(const Duration(seconds: 60));
 }
 
 Future<bool> _testHttpsEndpoint(String url) async {
   try {
     final uri = Uri.parse(url);
+    final testUri = uri.replace(
+      path: '${uri.path.replaceAll(RegExp(r'/+$'), '')}/blocks/tip/height',
+    );
     final client = HttpClient();
     client.connectionTimeout = const Duration(seconds: 3);
-    final request = await client.getUrl(uri);
+    final request = await client.getUrl(testUri);
     final response = await request.close().timeout(const Duration(seconds: 3));
     await response.drain();
     return response.statusCode == 200;
-  } catch (_) {
+  } catch (e, stack) {
+    print('DEBUG ISOLATE: _testHttpsEndpoint Exception for $url: $e\n$stack');
     return false;
   }
 }

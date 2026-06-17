@@ -13,7 +13,7 @@ abstract final class AppConstants {
   static const supportUrl = 'https://support.rootwallet.app';
   static const walletDatabaseSchemaVersion = 1;
   static const walletSnapshotSchemaVersion = 1;
-  static const walletAddressDiscoveryStopGap = 100;
+  static const walletAddressDiscoveryStopGap = 20;
   static const esploraRequestConcurrency = 2;
   static const esploraRequestTimeoutSeconds = 60;
   static const mainnetEsploraUrl = 'https://blockstream.info/api';
