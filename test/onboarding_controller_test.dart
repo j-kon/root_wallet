@@ -8,15 +8,8 @@ import 'package:root_wallet/features/onboarding/presentation/providers/onboardin
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
-import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
-import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
-import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
-import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
-import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
-import 'package:root_wallet/features/wallet/domain/usecases/create_wallet.dart';
-import 'package:root_wallet/features/wallet/domain/usecases/restore_wallet.dart';
 import 'package:root_wallet/features/wallet/data/services/wallet_seed_service.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/models/wallet_snapshot.dart';
