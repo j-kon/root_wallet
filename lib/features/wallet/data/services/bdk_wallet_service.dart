@@ -852,46 +852,49 @@ Future<IsolateSyncResult> _performBackgroundSync(IsolateSyncParams params) async
     bool syncSucceeded = false;
     final endpointCount = params.esploraEndpoints.length;
     var activeIndex = params.activeEsploraIndex;
-    print('DEBUG ISOLATE: Starting sync loop. Endpoint count: $endpointCount');
 
-    for (var offset = 0; offset < endpointCount; offset++) {
-      final index = (activeIndex + offset) % endpointCount;
-      final endpoint = params.esploraEndpoints[index];
-      print('DEBUG ISOLATE: Trying endpoint $index: $endpoint');
+    // Prioritize Electrum sync as it is faster, has connection timeouts, and is not rate-limited.
+    final electrumUrls = [
+      'tcp://testnet.aranguren.org:51001',
+      'tcp://testnet.qtornado.com:51001',
+      'tcp://testnet.hsmiths.com:53011',
+    ];
 
-      print('DEBUG ISOLATE: Testing HTTPS reachability for $endpoint...');
-      final isReachable = await _testHttpsEndpoint(endpoint);
-      if (!isReachable) {
-        print('DEBUG ISOLATE: HTTPS endpoint $endpoint is not reachable or TLS failed. Skipping.');
-        lastError = StateError('HTTPS endpoint $endpoint not reachable / TLS handshake issue');
-        continue;
-      }
-
-      bdk.EsploraClient? client;
+    print('DEBUG ISOLATE: Starting TCP Electrum sync...');
+    for (final electrumUrl in electrumUrls) {
+      print('DEBUG ISOLATE: Trying Electrum URL: $electrumUrl');
+      bdk.ElectrumClient? client;
       bdk.Update? update;
       bdk.FullScanRequest? request;
       bdk.FullScanRequestBuilder? requestBuilder;
       try {
-        client = bdk.EsploraClient(url: endpoint, proxy: null);
-        print('DEBUG ISOLATE: Created EsploraClient');
+        client = bdk.ElectrumClient(
+          url: electrumUrl,
+          socks5: null,
+          timeout: 5,
+          retry: 2,
+          validateDomain: false,
+        );
+        print('DEBUG ISOLATE: Created ElectrumClient');
         requestBuilder = wallet.startFullScan();
         request = requestBuilder.build();
-        print('DEBUG ISOLATE: Calling client.fullScan...');
+        print('DEBUG ISOLATE: Calling ElectrumClient.fullScan...');
         update = client.fullScan(
           request: request,
           stopGap: params.lookahead,
-          parallelRequests: params.parallelRequests,
+          batchSize: 10,
+          fetchPrevTxouts: true,
         );
-        print('DEBUG ISOLATE: client.fullScan completed. Applying update...');
+        print('DEBUG ISOLATE: ElectrumClient.fullScan completed. Applying update...');
         wallet.applyUpdate(update: update);
         print('DEBUG ISOLATE: Update applied. Persisting wallet...');
         wallet.persist(persister: persister);
         print('DEBUG ISOLATE: Wallet persisted');
         syncSucceeded = true;
-        activeIndex = index;
+        activeIndex = endpointCount; // Special index indicating Electrum
         break;
       } catch (error) {
-        print('DEBUG ISOLATE: Endpoint $endpoint failed: $error');
+        print('DEBUG ISOLATE: Electrum URL $electrumUrl failed: $error');
         lastError = error;
       } finally {
         update?.dispose();
@@ -902,47 +905,45 @@ Future<IsolateSyncResult> _performBackgroundSync(IsolateSyncParams params) async
     }
 
     if (!syncSucceeded) {
-      print('DEBUG ISOLATE: Esplora sync failed or skipped. Trying TCP Electrum fallback...');
-      final electrumUrls = [
-        'tcp://testnet.aranguren.org:51001',
-        'tcp://testnet.qtornado.com:51001',
-        'tcp://testnet.hsmiths.com:53011',
-      ];
+      print('DEBUG ISOLATE: Electrum sync failed on all servers. Trying Esplora backup...');
+      for (var offset = 0; offset < endpointCount; offset++) {
+        final index = (activeIndex + offset) % endpointCount;
+        final endpoint = params.esploraEndpoints[index];
+        print('DEBUG ISOLATE: Trying Esplora endpoint $index: $endpoint');
 
-      for (final electrumUrl in electrumUrls) {
-        print('DEBUG ISOLATE: Trying Electrum fallback URL: $electrumUrl');
-        bdk.ElectrumClient? client;
+        print('DEBUG ISOLATE: Testing HTTPS reachability for $endpoint...');
+        final isReachable = await _testHttpsEndpoint(endpoint);
+        if (!isReachable) {
+          print('DEBUG ISOLATE: HTTPS endpoint $endpoint is not reachable. Skipping.');
+          lastError = StateError('HTTPS endpoint $endpoint not reachable');
+          continue;
+        }
+
+        bdk.EsploraClient? client;
         bdk.Update? update;
         bdk.FullScanRequest? request;
         bdk.FullScanRequestBuilder? requestBuilder;
         try {
-          client = bdk.ElectrumClient(
-            url: electrumUrl,
-            socks5: null,
-            timeout: 10,
-            retry: 3,
-            validateDomain: false,
-          );
-          print('DEBUG ISOLATE: Created ElectrumClient for fallback');
+          client = bdk.EsploraClient(url: endpoint, proxy: null);
+          print('DEBUG ISOLATE: Created EsploraClient');
           requestBuilder = wallet.startFullScan();
           request = requestBuilder.build();
-          print('DEBUG ISOLATE: Calling ElectrumClient.fullScan...');
+          print('DEBUG ISOLATE: Calling client.fullScan...');
           update = client.fullScan(
             request: request,
             stopGap: params.lookahead,
-            batchSize: 10,
-            fetchPrevTxouts: true,
+            parallelRequests: params.parallelRequests,
           );
-          print('DEBUG ISOLATE: ElectrumClient.fullScan completed. Applying update...');
+          print('DEBUG ISOLATE: client.fullScan completed. Applying update...');
           wallet.applyUpdate(update: update);
           print('DEBUG ISOLATE: Update applied. Persisting wallet...');
           wallet.persist(persister: persister);
           print('DEBUG ISOLATE: Wallet persisted');
           syncSucceeded = true;
-          activeIndex = endpointCount; // Special index to indicate Electrum fallback
+          activeIndex = index;
           break;
         } catch (error) {
-          print('DEBUG ISOLATE: Electrum fallback URL $electrumUrl failed: $error');
+          print('DEBUG ISOLATE: Esplora endpoint $endpoint failed: $error');
           lastError = error;
         } finally {
           update?.dispose();
