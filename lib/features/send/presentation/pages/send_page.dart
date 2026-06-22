@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
@@ -349,6 +350,68 @@ class _SendPageState extends ConsumerState<SendPage> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _FormSection(
+                    title: 'Coin Selection',
+                    subtitle: 'Choose specific inputs or let the wallet auto-select.',
+                    child: Builder(
+                      builder: (builderContext) {
+                        final selectedUtxos = ref.watch(selectedUtxosProvider);
+                        final utxos = ref.watch(walletUtxosProvider).valueOrNull ?? [];
+                        final lockedSet = ref.watch(lockedUtxosProvider).valueOrNull ?? {};
+
+                        int selectedSats = 0;
+                        for (final utxo in utxos) {
+                          final outpoint = '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
+                          if (selectedUtxos.contains(outpoint)) {
+                            selectedSats += utxo.txout.value.toSat();
+                          }
+                        }
+
+                        final isManual = selectedUtxos.isNotEmpty;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        isManual
+                                            ? 'Manual selection'
+                                            : 'Automatic selection',
+                                        style: Theme.of(builderContext).textTheme.titleSmall?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        isManual
+                                            ? '${selectedUtxos.length} inputs selected (${AppFormatters.sats(selectedSats)})'
+                                            : 'Excluded locked UTXOs automatically.',
+                                        style: Theme.of(builderContext).textTheme.bodySmall?.copyWith(
+                                              color: textSecondary,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: () => _showCoinSelectionSheet(builderContext),
+                                  icon: const Icon(Icons.toll_rounded, size: 16),
+                                  label: Text(isManual ? 'Edit' : 'Select'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _FormSection(
                     title: 'Transfer summary',
                     subtitle:
                         'Review what leaves your wallet before final check.',
@@ -424,6 +487,134 @@ class _SendPageState extends ConsumerState<SendPage> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showCoinSelectionSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (dialogContext) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (sheetContext, scrollController) {
+            return Consumer(
+              builder: (consumerContext, ref, child) {
+                final utxosAsync = ref.watch(walletUtxosProvider);
+                final lockedSet = ref.watch(lockedUtxosProvider).valueOrNull ?? {};
+                final selectedSet = ref.watch(selectedUtxosProvider);
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(consumerContext).colorScheme.surface,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Customize Inputs',
+                              style: Theme.of(consumerContext).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                            TextButton(
+                              onPressed: () => ref.read(selectedUtxosProvider.notifier).clear(),
+                              child: const Text('Clear all'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(),
+                      Expanded(
+                        child: utxosAsync.when(
+                          loading: () => const Center(child: CircularProgressIndicator()),
+                          error: (err, stack) => Center(child: Text('Error loading UTXOs: $err')),
+                          data: (utxos) {
+                            final spendableUtxos = utxos.where((utxo) {
+                              final outpoint = '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
+                              return !lockedSet.contains(outpoint);
+                            }).toList();
+
+                            if (spendableUtxos.isEmpty) {
+                              return const Center(child: Text('No spendable UTXOs available.'));
+                            }
+
+                            return ListView.builder(
+                              controller: scrollController,
+                              itemCount: spendableUtxos.length,
+                              itemBuilder: (itemContext, index) {
+                                final utxo = spendableUtxos[index];
+                                final outpointStr = '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
+                                final isSelected = selectedSet.contains(outpointStr);
+                                final sats = utxo.txout.value.toSat();
+
+                                String addressStr = 'Unknown';
+                                try {
+                                  final address = bdk.Address.fromScript(
+                                    script: utxo.txout.scriptPubkey,
+                                    network: bdk.Network.testnet,
+                                  );
+                                  addressStr = address.toString();
+                                } catch (_) {}
+
+                                return CheckboxListTile(
+                                  value: isSelected,
+                                  onChanged: (_) {
+                                    HapticFeedback.lightImpact();
+                                    ref.read(selectedUtxosProvider.notifier).toggleUtxo(outpointStr);
+                                  },
+                                  title: Text(
+                                    AppFormatters.sats(sats),
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    '${AppFormatters.maskAddress(addressStr)}\n${AppFormatters.maskAddress(outpointStr)}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  isThreeLine: true,
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            child: const Text('Confirm'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 

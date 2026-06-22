@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 
 class BackupReminderController extends AsyncNotifier<bool> {
   static const _backupConfirmedKey = 'settings.backup_confirmed';
@@ -233,6 +234,7 @@ class LockController extends AsyncNotifier<AppLockState> {
       return;
     }
 
+    ref.read(bdkWalletServiceProvider).setDecoyActive(false);
     state = AsyncData(current.copyWith(isLocked: true, clearMessage: true));
   }
 
@@ -255,6 +257,7 @@ class LockController extends AsyncNotifier<AppLockState> {
     };
 
     if (shouldLock) {
+      ref.read(bdkWalletServiceProvider).setDecoyActive(false);
       state = AsyncData(current.copyWith(isLocked: true, clearMessage: true));
     }
   }
@@ -367,6 +370,32 @@ class LockController extends AsyncNotifier<AppLockState> {
     state = AsyncData(current.copyWith(isBusy: true, clearMessage: true));
 
     final lockService = ref.read(lockServiceProvider);
+    
+    // Check if decoy PIN matches
+    final hasDecoy = await lockService.hasDecoyPin();
+    if (hasDecoy) {
+      final isDecoy = await lockService.verifyDecoyPin(pin);
+      if (isDecoy) {
+        ref.read(bdkWalletServiceProvider).setDecoyActive(true);
+        _cooldownTicker?.cancel();
+        state = AsyncData(
+          current.copyWith(
+            isBusy: false,
+            isLocked: false,
+            failedAttempts: 0,
+            clearCooldown: true,
+            clearMessage: true,
+          ),
+        );
+        ref.read(selectedUtxosProvider.notifier).clear();
+        ref.invalidate(lockedUtxosProvider);
+        ref.invalidate(walletHomeControllerProvider);
+        ref.invalidate(walletDiagnosticsControllerProvider);
+        ref.invalidate(walletUtxosProvider);
+        return true;
+      }
+    }
+
     final ok = await lockService.verifyPin(pin);
 
     final next = state.valueOrNull;
@@ -375,6 +404,7 @@ class LockController extends AsyncNotifier<AppLockState> {
     }
 
     if (ok) {
+      ref.read(bdkWalletServiceProvider).setDecoyActive(false);
       _cooldownTicker?.cancel();
       state = AsyncData(
         next.copyWith(
@@ -385,6 +415,11 @@ class LockController extends AsyncNotifier<AppLockState> {
           clearMessage: true,
         ),
       );
+      ref.read(selectedUtxosProvider.notifier).clear();
+      ref.invalidate(lockedUtxosProvider);
+      ref.invalidate(walletHomeControllerProvider);
+      ref.invalidate(walletDiagnosticsControllerProvider);
+      ref.invalidate(walletUtxosProvider);
       return true;
     }
 
@@ -442,3 +477,70 @@ class LockController extends AsyncNotifier<AppLockState> {
 
 final lockControllerProvider =
     AsyncNotifierProvider<LockController, AppLockState>(LockController.new);
+
+class CustomNodeController extends AsyncNotifier<String?> {
+  static const _key = 'settings.custom_electrum_url';
+
+  @override
+  Future<String?> build() async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    return prefs.getString(_key);
+  }
+
+  Future<void> setNodeUrl(String? url) async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    if (url == null || url.trim().isEmpty) {
+      await prefs.remove(_key);
+      state = const AsyncData(null);
+    } else {
+      final normalized = _normalizeUrl(url);
+      await prefs.setString(_key, normalized);
+      state = AsyncData(normalized);
+    }
+  }
+
+  String _normalizeUrl(String url) {
+    final trimmed = url.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty || uri.port == 0) {
+      throw const FormatException('Enter a valid Electrum URL (e.g. tcp://host:port).');
+    }
+    if (uri.scheme != 'tcp' && uri.scheme != 'ssl') {
+      throw const FormatException('Only tcp:// or ssl:// protocols are supported.');
+    }
+    return trimmed;
+  }
+}
+
+final customNodeProvider =
+    AsyncNotifierProvider<CustomNodeController, String?>(
+      CustomNodeController.new,
+    );
+
+class DecoyPinController extends AsyncNotifier<bool> {
+  @override
+  Future<bool> build() async {
+    final lockService = ref.read(lockServiceProvider);
+    return lockService.hasDecoyPin();
+  }
+
+  Future<void> setDecoyPin(String pin) async {
+    state = const AsyncLoading();
+    final lockService = ref.read(lockServiceProvider);
+    await lockService.setDecoyPin(pin);
+    ref.invalidateSelf();
+  }
+
+  Future<void> clearDecoyPin() async {
+    state = const AsyncLoading();
+    final lockService = ref.read(lockServiceProvider);
+    await lockService.clearDecoyPin();
+    ref.invalidateSelf();
+  }
+}
+
+final decoyPinProvider =
+    AsyncNotifierProvider<DecoyPinController, bool>(
+      DecoyPinController.new,
+    );
+

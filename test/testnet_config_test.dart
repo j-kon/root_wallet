@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
+import 'package:bdk_dart/bdk_dart.dart' as bdk;
 
 void main() {
   test('public network constants align with bdk Network.testnet', () {
@@ -28,4 +29,11 @@ void main() {
     expect(AppConstants.esploraRequestConcurrency, lessThanOrEqualTo(2));
     expect(AppConstants.esploraRequestTimeoutSeconds, greaterThanOrEqualTo(60));
   });
+
+  test('verifies bdk.OutPoint and bdk.TxBuilder methods compile', () {
+    final outpoint = bdk.OutPoint(txid: bdk.Txid.fromString(hex: '0000000000000000000000000000000000000000000000000000000000000000'), vout: 0);
+    expect(outpoint.txid.toString(), '0000000000000000000000000000000000000000000000000000000000000000');
+    expect(outpoint.vout, 0);
+  });
 }
+

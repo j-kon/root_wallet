@@ -192,6 +192,7 @@ class SendController extends StateNotifier<SendState> {
     );
 
     try {
+      final selectedUtxos = _ref.read(selectedUtxosProvider);
       final preview = await _ref
           .read(previewTxUsecaseProvider)
           .call(
@@ -199,6 +200,7 @@ class SendController extends StateNotifier<SendState> {
               address: address,
               amountSats: amountSats,
               feeRate: state.draft.feeRate,
+              selectedUtxos: selectedUtxos.isNotEmpty ? selectedUtxos.toList() : null,
             ),
           );
       state = state.copyWith(
@@ -239,6 +241,7 @@ class SendController extends StateNotifier<SendState> {
         return null;
       }
 
+      final selectedUtxos = _ref.read(selectedUtxosProvider);
       final psbt = await _ref
           .read(buildTxUsecaseProvider)
           .call(
@@ -246,6 +249,7 @@ class SendController extends StateNotifier<SendState> {
               address: address,
               amountSats: amountSats,
               feeRate: state.draft.feeRate,
+              selectedUtxos: selectedUtxos.isNotEmpty ? selectedUtxos.toList() : null,
             ),
           );
       final signed = await _ref.read(signTxUsecaseProvider).call(psbt);
@@ -265,6 +269,7 @@ class SendController extends StateNotifier<SendState> {
   }
 
   void resetAfterSuccess() {
+    _ref.read(selectedUtxosProvider.notifier).clear();
     final feePreset = state.draft.feePreset;
     final feeRate = state.draft.feeRate;
 

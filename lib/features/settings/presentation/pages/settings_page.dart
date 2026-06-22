@@ -272,6 +272,39 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           _SettingsPanel(
+            title: 'Advanced settings',
+            subtitle: 'Coin control and custom network configuration.',
+            child: Column(
+              children: [
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.settings
+                      : Icons.toll_rounded,
+                  title: 'Coin Control',
+                  subtitle: 'Manage and lock specific UTXOs (unspent outputs).',
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.coinControl),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.link
+                      : Icons.lan_rounded,
+                  title: 'Electrum node connection',
+                  subtitle: ref.watch(customNodeProvider).when(
+                        data: (url) => url != null
+                            ? 'Using custom server: $url'
+                            : 'Configure a custom Electrum server URL.',
+                        loading: () => 'Loading...',
+                        error: (_, __) => 'Error loading configuration',
+                      ),
+                  onTap: () => _editCustomElectrumNode(context, ref),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _SettingsPanel(
             title: 'Help and app info',
             subtitle: 'Support, app information, and technical context.',
             child: Column(
@@ -325,6 +358,79 @@ class SettingsPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _editCustomElectrumNode(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final currentUrl = ref.read(customNodeProvider).valueOrNull ?? '';
+    final textController = TextEditingController(text: currentUrl);
+    final url = await showDialog<String?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Custom Electrum Node'),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'Server URL',
+            hintText: 'tcp://testnet.qtornado.com:51001',
+          ),
+          onSubmitted: (_) =>
+              Navigator.of(dialogContext).pop(textController.text),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(null),
+            child: const Text('Cancel'),
+          ),
+          if (currentUrl.trim().isNotEmpty)
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(''),
+              child: const Text('Clear'),
+            ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(textController.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    textController.dispose();
+
+    if (url == null || !context.mounted) {
+      return;
+    }
+
+    try {
+      final trimmed = url.trim();
+      await ref
+          .read(customNodeProvider.notifier)
+          .setNodeUrl(trimmed.isEmpty ? null : trimmed);
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Electrum node configuration updated.')),
+      );
+      // Force sync to refresh the wallet connection
+      await ref
+          .read(walletHomeControllerProvider.notifier)
+          .sync(showLoading: true);
+    } catch (e) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('FormatException: ', '')),
+        ),
+      );
+    }
   }
 
   Future<void> _openSupport(BuildContext context, WidgetRef ref) async {

@@ -34,4 +34,20 @@ class LockService {
   Future<bool> verifyPin(String pin) {
     return _pinLockService.verifyPin(pin);
   }
+
+  Future<void> clearDecoyPin() {
+    return _pinLockService.clearDecoyPin();
+  }
+
+  Future<bool> hasDecoyPin() {
+    return _pinLockService.hasDecoyPin();
+  }
+
+  Future<void> setDecoyPin(String pin) {
+    return _pinLockService.setDecoyPin(pin);
+  }
+
+  Future<bool> verifyDecoyPin(String pin) {
+    return _pinLockService.verifyDecoyPin(pin);
+  }
 }

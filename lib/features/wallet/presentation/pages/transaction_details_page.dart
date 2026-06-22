@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
+import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
+import 'package:root_wallet/features/send/domain/entities/fee_rate.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
@@ -176,6 +178,21 @@ class TransactionDetailsPage extends ConsumerWidget {
                 ? Icons.hourglass_bottom_rounded
                 : Icons.check_circle_outline_rounded,
           ),
+          if (tx.isPending && !tx.isIncoming) ...[
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _showSpeedUpDialog(context, ref, tx),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.amber.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.bolt_rounded),
+                label: const Text('Speed up (Fee Bump)'),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           _DetailsPanel(
             title: 'Breakdown',
@@ -553,6 +570,115 @@ class TransactionDetailsPage extends ConsumerWidget {
     }
     await _copyExplorerLink(context, explorerUri);
   }
+
+  Future<void> _showSpeedUpDialog(
+    BuildContext context,
+    WidgetRef ref,
+    TxItem tx,
+  ) async {
+    final suggestedFeeAsync = ref.read(suggestedFeeProvider);
+    int suggestedRate = 5;
+    if (suggestedFeeAsync is AsyncData<FeeRate>) {
+      suggestedRate = suggestedFeeAsync.value.satsPerVByte;
+    }
+
+    final newRate = await showDialog<int?>(
+      context: context,
+      builder: (dialogContext) {
+        final textController = TextEditingController(text: '${suggestedRate + 5}');
+        return AlertDialog(
+          title: const Text('Speed up transaction'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Replace-by-Fee (RBF) allows you to increase the network fee to get faster confirmation.',
+                style: Theme.of(dialogContext).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Enter new fee rate (sat/vB):',
+                style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: textController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  suffixText: 'sat/vB',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _PresetFeeButton(
+                    label: 'Standard (+5)',
+                    rate: suggestedRate + 5,
+                    onTap: () => textController.text = '${suggestedRate + 5}',
+                  ),
+                  _PresetFeeButton(
+                    label: 'Fast (+10)',
+                    rate: suggestedRate + 10,
+                    onTap: () => textController.text = '${suggestedRate + 10}',
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(null),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final val = int.tryParse(textController.text);
+                Navigator.of(dialogContext).pop(val);
+              },
+              child: const Text('Broadcast'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newRate == null || !context.mounted) {
+      return;
+    }
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Broadcasting fee bump...')),
+      );
+
+      final service = ref.read(bdkWalletServiceProvider);
+      final newTxid = await service.bumpFee(
+        txidHex: tx.txId,
+        newFeeRateSatVb: newRate,
+      );
+
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fee bump broadcasted! New TXID: $newTxid')),
+      );
+
+      // Refresh wallet
+      await ref.read(walletHomeControllerProvider.notifier).sync(showLoading: true);
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fee bump failed: $e')),
+      );
+    }
+  }
 }
 
 class _DetailsPanel extends StatelessWidget {
@@ -701,6 +827,40 @@ class _DetailRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PresetFeeButton extends StatelessWidget {
+  const _PresetFeeButton({
+    required this.label,
+    required this.rate,
+    required this.onTap,
+  });
+
+  final String label;
+  final int rate;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.borderOf(context)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 2),
+            Text('$rate sat/vB', style: TextStyle(fontSize: 10, color: AppColors.textSecondaryOf(context))),
+          ],
+        ),
+      ),
     );
   }
 }

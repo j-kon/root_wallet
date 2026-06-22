@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:bdk_dart/bdk_dart.dart' as bdk;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:root_wallet/features/send/data/datasources/broadcast_datasource.dart';
 import 'package:root_wallet/features/send/domain/entities/send_preview.dart';
 import 'package:root_wallet/features/send/domain/entities/send_request.dart';
@@ -53,7 +54,7 @@ class SendRepositoryImpl implements SendRepository {
     final address = bdk.Address(address: request.address, network: network);
     final script = address.scriptPubkey();
 
-    final txBuilder = bdk.TxBuilder()
+    var txBuilder = bdk.TxBuilder()
         .feeRate(
           feeRate: bdk.FeeRate.fromSatPerVb(
             satVb: request.feeRate.satsPerVByte,
@@ -64,6 +65,33 @@ class SendRepositoryImpl implements SendRepository {
           amount: bdk.Amount.fromSat(satoshi: request.amountSats),
         )
         .nlocktime(locktime: bdk.BlocksLockTime(0));
+
+    if (request.selectedUtxos != null && request.selectedUtxos!.isNotEmpty) {
+      final selectedOutpoints = request.selectedUtxos!.map((outpointStr) {
+        final parts = outpointStr.split(':');
+        final txid = parts[0];
+        final vout = int.parse(parts[1]);
+        return bdk.OutPoint(txid: bdk.Txid.fromString(hex: txid), vout: vout);
+      }).toList();
+      txBuilder = txBuilder.addUtxos(outpoints: selectedOutpoints).manuallySelectedOnly();
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      final lockedList = prefs.getStringList('settings.locked_utxos') ?? [];
+      for (final lockedStr in lockedList) {
+        final parts = lockedStr.split(':');
+        if (parts.length == 2) {
+          final txid = parts[0];
+          final vout = int.tryParse(parts[1]);
+          if (vout != null) {
+            final outpoint = bdk.OutPoint(
+              txid: bdk.Txid.fromString(hex: txid),
+              vout: vout,
+            );
+            txBuilder = txBuilder.addUnspendable(unspendable: outpoint);
+          }
+        }
+      }
+    }
 
     return txBuilder.finish(wallet: wallet);
   }

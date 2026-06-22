@@ -24,6 +24,18 @@ abstract final class AppFormatters {
     return 'NGN ${_groupIntString(parts[0])}.${parts[1]}';
   }
 
+  static String usd(double value) {
+    final fixed = value.toStringAsFixed(2);
+    final parts = fixed.split('.');
+    return 'USD ${_groupIntString(parts[0])}.${parts[1]}';
+  }
+
+  static String eur(double value) {
+    final fixed = value.toStringAsFixed(2);
+    final parts = fixed.split('.');
+    return 'EUR ${_groupIntString(parts[0])}.${parts[1]}';
+  }
+
   static String ngnCompact(double value) {
     final absolute = value.abs();
     final sign = value.isNegative ? '-' : '';
@@ -43,6 +55,10 @@ abstract final class AppFormatters {
   static String obscuredBtc() => '•••••••• BTC';
 
   static String obscuredNgn() => 'NGN ••••••';
+
+  static String obscuredUsd() => 'USD ••••••';
+
+  static String obscuredEur() => 'EUR ••••••';
 
   static String obscuredSats() => '•••• sats';
 

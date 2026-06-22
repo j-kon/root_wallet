@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
@@ -56,6 +57,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       return;
     }
 
+    HapticFeedback.lightImpact();
+
     setState(() {
       _enteredPin += digit;
     });
@@ -69,6 +72,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     if (lock.isInCooldown || lock.isBusy || _enteredPin.isEmpty) {
       return;
     }
+    HapticFeedback.lightImpact();
     setState(() {
       _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
     });

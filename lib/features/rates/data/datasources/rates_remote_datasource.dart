@@ -6,6 +6,7 @@ class RatesRemoteDatasource {
     final value = switch (normalizedQuote) {
       'NGN' => 171500000.0,
       'USD' => 64250.12,
+      'EUR' => 59020.40,
       _ => 1.0,
     };
 

@@ -14,6 +14,7 @@ import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
 import 'package:root_wallet/features/send/presentation/pages/send_success_page.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
+import 'package:root_wallet/features/send/presentation/widgets/swipe_to_confirm_slider.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
@@ -241,44 +242,43 @@ class ReviewTransferPage extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            PrimaryButton(
+            SwipeToConfirmSlider(
               label: state.isSending
                   ? 'Broadcasting...'
-                  : 'Confirm & broadcast',
-              onPressed: state.isSending
-                  ? null
-                  : () async {
-                      final amountSatsToSend = amountSats;
-                      final estimatedFeeSats = state.estimatedFeeSats;
-                      final sentAt = DateTime.now();
-                      final txId = await controller.send();
-                      if (txId == null || !context.mounted) {
-                        return;
-                      }
+                  : 'Swipe to broadcast',
+              enabled: !state.isSending,
+              onConfirm: () async {
+                final amountSatsToSend = amountSats;
+                final estimatedFeeSats = state.estimatedFeeSats;
+                final sentAt = DateTime.now();
+                final txId = await controller.send();
+                if (txId == null || !context.mounted) {
+                  return;
+                }
 
-                      await ref
-                          .read(walletHomeControllerProvider.notifier)
-                          .recordPendingSend(
-                            txId: txId,
-                            amountSats: amountSatsToSend,
-                            feeSats: estimatedFeeSats,
-                            timestamp: sentAt,
-                          );
-                      controller.resetAfterSuccess();
-                      if (!context.mounted) {
-                        return;
-                      }
+                await ref
+                    .read(walletHomeControllerProvider.notifier)
+                    .recordPendingSend(
+                      txId: txId,
+                      amountSats: amountSatsToSend,
+                      feeSats: estimatedFeeSats,
+                      timestamp: sentAt,
+                    );
+                controller.resetAfterSuccess();
+                if (!context.mounted) {
+                  return;
+                }
 
-                      Navigator.of(context).pushReplacementNamed(
-                        AppRoutes.sendSuccess,
-                        arguments: SendSuccessPageArgs(
-                          txId: txId,
-                          amountSats: amountSatsToSend,
-                          feeSats: estimatedFeeSats,
-                          sentAt: sentAt,
-                        ),
-                      );
-                    },
+                Navigator.of(context).pushReplacementNamed(
+                  AppRoutes.sendSuccess,
+                  arguments: SendSuccessPageArgs(
+                    txId: txId,
+                    amountSats: amountSatsToSend,
+                    feeSats: estimatedFeeSats,
+                    sentAt: sentAt,
+                  ),
+                );
+              },
             ),
             const SizedBox(height: AppSpacing.sm),
             OutlinedButton(

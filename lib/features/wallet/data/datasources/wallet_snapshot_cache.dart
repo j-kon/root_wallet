@@ -5,11 +5,14 @@ import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WalletSnapshotCache {
-  WalletSnapshotCache(this._prefs);
+  WalletSnapshotCache(this._prefs, [bool Function()? isDecoyActive])
+      : _isDecoyActive = isDecoyActive ?? (() => false);
 
-  static const _cacheKey = 'wallet.snapshot.v2';
-  static const _legacyCacheKey = 'wallet.snapshot.v1';
   final SharedPreferences _prefs;
+  final bool Function() _isDecoyActive;
+
+  String get _cacheKey => _isDecoyActive() ? 'wallet.snapshot.decoy.v2' : 'wallet.snapshot.v2';
+  String get _legacyCacheKey => _isDecoyActive() ? 'wallet.snapshot.decoy.v1' : 'wallet.snapshot.v1';
 
   Future<void> clear() async {
     await _prefs.remove(_cacheKey);

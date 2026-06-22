@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:root_wallet/app/di/providers.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/core/security/biometric_service.dart';
 import 'package:root_wallet/core/security/lock_service.dart';
 import 'package:root_wallet/core/security/pin_lock_service.dart';
@@ -85,6 +86,34 @@ void main() {
         container.read(lockControllerProvider).valueOrNull?.isLocked,
         isFalse,
       );
+    });
+
+    test('unlocks in decoy mode when decoy PIN is entered', () async {
+      final container = await _buildContainer(
+        prefs: <String, Object>{'security.lock_enabled': true},
+        biometricService: _FakeBiometricService(),
+      );
+      addTearDown(container.dispose);
+
+      final lockService = container.read(lockServiceProvider);
+      await lockService.setDecoyPin('654321');
+
+      final notifier = container.read(lockControllerProvider.notifier);
+      await container.read(lockControllerProvider.future);
+
+      // Verify decoy active is initially false
+      final walletService = container.read(bdkWalletServiceProvider);
+      expect(walletService.isDecoyActive, isFalse);
+
+      // Verify decoy PIN unlocks and toggles decoyActive
+      final ok = await notifier.verifyPin('654321');
+
+      expect(ok, isTrue);
+      expect(
+        container.read(lockControllerProvider).valueOrNull?.isLocked,
+        isFalse,
+      );
+      expect(walletService.isDecoyActive, isTrue);
     });
   });
 }

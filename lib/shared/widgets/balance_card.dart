@@ -10,17 +10,22 @@ class BalanceCard extends StatelessWidget {
     required this.btcAmount,
     required this.fiatAmountLabel,
     this.subtitle = 'Available balance',
+    this.onTap,
   });
 
   final String subtitle;
   final String btcAmount;
   final String fiatAmountLabel;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final isCompact = context.isCompactWidth;
 
-    return GlassSurface(
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: GlassSurface(
       borderRadius: BorderRadius.circular(AppRadius.lg),
       blur: 30,
       tint: AppColors.glassSurfaceStrongOf(
@@ -172,8 +177,9 @@ class BalanceCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _BalanceMetaChip extends StatelessWidget {

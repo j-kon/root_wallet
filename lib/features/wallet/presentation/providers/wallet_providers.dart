@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_sync_datasource.dart';
@@ -105,7 +106,7 @@ final walletSnapshotCacheProvider = FutureProvider<WalletSnapshotCache>((
   ref,
 ) async {
   final prefs = await ref.watch(sharedPreferencesProvider.future);
-  return WalletSnapshotCache(prefs);
+  return WalletSnapshotCache(prefs, () => ref.read(bdkWalletServiceProvider).isDecoyActive);
 });
 
 final walletLabelStoreProvider = FutureProvider<WalletLabelStore>((ref) async {
@@ -436,3 +437,116 @@ final walletDiagnosticsControllerProvider =
     AsyncNotifierProvider<WalletDiagnosticsController, WalletDiagnosticsState>(
       WalletDiagnosticsController.new,
     );
+
+enum BalanceUnit { sats, btc, usd, ngn, eur }
+
+class BalanceUnitNotifier extends AsyncNotifier<BalanceUnit> {
+  static const _key = 'settings.balance_unit';
+
+  @override
+  Future<BalanceUnit> build() async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    final value = prefs.getString(_key);
+    return BalanceUnit.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => BalanceUnit.sats,
+    );
+  }
+
+  Future<void> setUnit(BalanceUnit unit) async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    await prefs.setString(_key, unit.name);
+    state = AsyncData(unit);
+  }
+
+  Future<void> cycle() async {
+    final current = state.valueOrNull ?? BalanceUnit.sats;
+    final nextIndex = (current.index + 1) % BalanceUnit.values.length;
+    final next = BalanceUnit.values[nextIndex];
+    await setUnit(next);
+  }
+}
+
+final balanceUnitProvider =
+    AsyncNotifierProvider<BalanceUnitNotifier, BalanceUnit>(
+      BalanceUnitNotifier.new,
+    );
+
+class LockedUtxosNotifier extends AsyncNotifier<Set<String>> {
+  String get _key {
+    final isDecoy = ref.read(bdkWalletServiceProvider).isDecoyActive;
+    return isDecoy ? 'settings.decoy_locked_utxos' : 'settings.locked_utxos';
+  }
+
+  @override
+  Future<Set<String>> build() async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    final list = prefs.getStringList(_key) ?? [];
+    return list.toSet();
+  }
+
+  Future<void> lockUtxo(String outpoint) async {
+    final current = state.valueOrNull ?? {};
+    final updated = {...current, outpoint};
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    await prefs.setStringList(_key, updated.toList());
+    state = AsyncData(updated);
+  }
+
+  Future<void> unlockUtxo(String outpoint) async {
+    final current = state.valueOrNull ?? {};
+    final updated = {...current}..remove(outpoint);
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    await prefs.setStringList(_key, updated.toList());
+    state = AsyncData(updated);
+  }
+
+  Future<void> toggleUtxo(String outpoint) async {
+    final current = state.valueOrNull ?? {};
+    if (current.contains(outpoint)) {
+      await unlockUtxo(outpoint);
+    } else {
+      await lockUtxo(outpoint);
+    }
+  }
+}
+
+final lockedUtxosProvider =
+    AsyncNotifierProvider<LockedUtxosNotifier, Set<String>>(
+      LockedUtxosNotifier.new,
+    );
+
+class SelectedUtxosNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    return {};
+  }
+
+  void toggleUtxo(String outpoint) {
+    if (state.contains(outpoint)) {
+      state = {...state}..remove(outpoint);
+    } else {
+      state = {...state, outpoint};
+    }
+  }
+
+  void clear() {
+    state = {};
+  }
+
+  void setUtxos(Set<String> outpoints) {
+    state = outpoints;
+  }
+}
+
+final selectedUtxosProvider =
+    NotifierProvider<SelectedUtxosNotifier, Set<String>>(
+      SelectedUtxosNotifier.new,
+    );
+
+final walletUtxosProvider = FutureProvider<List<bdk.LocalOutput>>((ref) async {
+  final service = ref.watch(bdkWalletServiceProvider);
+  return service.getUtxos();
+});
+
+

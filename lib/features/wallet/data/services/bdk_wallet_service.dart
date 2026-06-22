@@ -56,6 +56,16 @@ class BdkWalletService {
   bool _endpointsLoaded = false;
   String? _lastBackendFailure;
   DateTime? _lastBackendFailureAt;
+  bool _isDecoyActive = false;
+
+  bool get isDecoyActive => _isDecoyActive;
+
+  void setDecoyActive(bool active) {
+    if (_isDecoyActive != active) {
+      _isDecoyActive = active;
+      _resetSession();
+    }
+  }
   final List<String> _baseEsploraEndpoints = List<String>.unmodifiable(
     AppConstants.testnetEsploraFallbackUrls,
   );
@@ -89,6 +99,33 @@ class BdkWalletService {
       );
       await _persistWallet();
       return addressInfo.address.toString();
+    });
+  }
+
+  Future<List<bdk.LocalOutput>> getUtxos() {
+    return _guard('get UTXOs', () async {
+      final wallet = await _loadWallet();
+      return wallet.listUnspent();
+    });
+  }
+
+  Future<String> bumpFee({required String txidHex, required int newFeeRateSatVb}) {
+    return _guard('bump transaction fee', () async {
+      final wallet = await _loadWallet();
+      final txid = bdk.Txid.fromString(hex: txidHex);
+      final feeRate = bdk.FeeRate.fromSatPerVb(satVb: newFeeRateSatVb);
+      final builder = bdk.BumpFeeTxBuilder(txid: txid, feeRate: feeRate);
+      final psbt = builder.finish(wallet: wallet);
+      try {
+        final isFinalized = wallet.sign(psbt: psbt, signOptions: null);
+        if (!isFinalized) {
+          throw StateError('Transaction could not be finalized.');
+        }
+        final transaction = psbt.extractTx();
+        return await broadcastTransaction(transaction);
+      } finally {
+        psbt.dispose();
+      }
     });
   }
 
@@ -136,6 +173,7 @@ class BdkWalletService {
   Future<void> resetWallet() {
     return _guard('reset wallet', () async {
       await _secureStorage.delete(key: WalletStorageKeys.mnemonic);
+      await _secureStorage.delete(key: WalletStorageKeys.decoyMnemonic);
       await _secureStorage.delete(key: WalletStorageKeys.scriptType);
       await _resetSession();
       await _deleteWalletDatabase();
@@ -175,7 +213,11 @@ class BdkWalletService {
 
   Future<double> estimateFeeSatPerVbyte({int targetBlocks = 3}) {
     return _guard('estimate transaction fee', () async {
+      final prefs = await _preferencesLoader();
+      final customUrl = prefs.getString('settings.custom_electrum_url');
+
       final electrumUrls = [
+        if (customUrl != null) customUrl,
         'tcp://testnet.aranguren.org:51001',
         'tcp://testnet.qtornado.com:51001',
         'tcp://testnet.hsmiths.com:53011',
@@ -212,7 +254,11 @@ class BdkWalletService {
 
   Future<String> broadcastTransaction(bdk.Transaction transaction) {
     return _guard('broadcast transaction', () async {
+      final prefs = await _preferencesLoader();
+      final customUrl = prefs.getString('settings.custom_electrum_url');
+
       final electrumUrls = [
+        if (customUrl != null) customUrl,
         'tcp://testnet.aranguren.org:51001',
         'tcp://testnet.qtornado.com:51001',
         'tcp://testnet.hsmiths.com:53011',
@@ -457,7 +503,20 @@ class BdkWalletService {
   }
 
   Future<bdk.Wallet> _createWalletFromStorage() async {
-    final mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
+    String? mnemonic;
+    if (_isDecoyActive) {
+      mnemonic = await _secureStorage.read(key: WalletStorageKeys.decoyMnemonic);
+      if (mnemonic == null || mnemonic.trim().isEmpty) {
+        mnemonic = bdk.Mnemonic(wordCount: bdk.WordCount.words12).toString();
+        await _secureStorage.write(
+          key: WalletStorageKeys.decoyMnemonic,
+          value: mnemonic,
+        );
+      }
+    } else {
+      mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
+    }
+
     if (mnemonic == null || mnemonic.trim().isEmpty) {
       throw StateError('Wallet not initialized. Create or restore first.');
     }
@@ -526,9 +585,10 @@ class BdkWalletService {
   Future<String> _databasePath() async {
     final scriptType = await _readWalletScriptType();
     final walletDirectory = await _walletStoragePathLoader();
+    final prefix = _isDecoyActive ? 'decoy_' : '';
     final versionedPath =
-        '$walletDirectory/root_wallet_${_network.name}_${scriptType.storageValue}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite';
-    final legacyPath = '$walletDirectory/root_wallet_${_network.name}.sqlite';
+        '$walletDirectory/${prefix}root_wallet_${_network.name}_${scriptType.storageValue}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite';
+    final legacyPath = '$walletDirectory/${prefix}root_wallet_${_network.name}.sqlite';
 
     if (await File(versionedPath).exists()) {
       return versionedPath;
@@ -625,7 +685,19 @@ class BdkWalletService {
   Future<WalletOverviewData> loadWalletOverviewInBackground() async {
     return _guard('load wallet overview in background', () async {
       await _loadEndpointPreferences();
-      final mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
+      String? mnemonic;
+      if (_isDecoyActive) {
+        mnemonic = await _secureStorage.read(key: WalletStorageKeys.decoyMnemonic);
+        if (mnemonic == null || mnemonic.trim().isEmpty) {
+          mnemonic = bdk.Mnemonic(wordCount: bdk.WordCount.words12).toString();
+          await _secureStorage.write(
+            key: WalletStorageKeys.decoyMnemonic,
+            value: mnemonic,
+          );
+        }
+      } else {
+        mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
+      }
       if (mnemonic == null || mnemonic.trim().isEmpty) {
         throw StateError('Wallet not initialized. Create or restore first.');
       }
@@ -634,6 +706,9 @@ class BdkWalletService {
 
       // Reset the session on the main thread to prevent DB lock issues during sync
       await _resetSession();
+
+      final prefs = await _preferencesLoader();
+      final customElectrumUrl = prefs.getString('settings.custom_electrum_url');
 
       final params = IsolateSyncParams(
         mnemonic: mnemonic,
@@ -645,6 +720,7 @@ class BdkWalletService {
         activeEsploraIndex: _activeEsploraIndex,
         lookahead: AppConstants.walletAddressDiscoveryStopGap,
         parallelRequests: AppConstants.esploraRequestConcurrency,
+        customElectrumUrl: customElectrumUrl,
       );
 
       final result = await _runSyncIsolate(params);
@@ -675,6 +751,7 @@ class IsolateSyncParams {
     required this.activeEsploraIndex,
     required this.lookahead,
     required this.parallelRequests,
+    this.customElectrumUrl,
   });
 
   final String mnemonic;
@@ -686,6 +763,7 @@ class IsolateSyncParams {
   final int activeEsploraIndex;
   final int lookahead;
   final int parallelRequests;
+  final String? customElectrumUrl;
 }
 
 class IsolateTxItem {
@@ -855,6 +933,7 @@ Future<IsolateSyncResult> _performBackgroundSync(IsolateSyncParams params) async
 
     // Prioritize Electrum sync as it is faster, has connection timeouts, and is not rate-limited.
     final electrumUrls = [
+      if (params.customElectrumUrl != null) params.customElectrumUrl!,
       'tcp://testnet.aranguren.org:51001',
       'tcp://testnet.qtornado.com:51001',
       'tcp://testnet.hsmiths.com:53011',

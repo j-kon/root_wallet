@@ -45,7 +45,10 @@ class WalletHomePage extends ConsumerWidget {
     final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
     final env = ref.watch(appEnvProvider);
     final now = ref.watch(dateTimeNowProvider)();
+    final unit = ref.watch(balanceUnitProvider).valueOrNull ?? BalanceUnit.sats;
     final btcNgnRate = ref.watch(btcNgnRateProvider);
+    final btcUsdRate = ref.watch(btcUsdRateProvider);
+    final btcEurRate = ref.watch(btcEurRateProvider);
     final walletLabels = ref.watch(walletLabelsControllerProvider);
     final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
     const networkLabel = AppConstants.networkDisplayName;
@@ -119,11 +122,23 @@ class WalletHomePage extends ConsumerWidget {
             loading: () => 'FX rate syncing...',
             error: (error, stackTrace) => 'FX rate unavailable',
           );
-          final marketLabel = btcNgnRate.when(
-            data: (rate) => '1 BTC ${AppFormatters.ngnCompact(rate.value)}',
-            loading: () => 'Market data loading',
-            error: (error, stackTrace) => 'Market data unavailable',
-          );
+          final marketLabel = switch (unit) {
+            BalanceUnit.eur => btcEurRate.when(
+                data: (rate) => '1 BTC = ${AppFormatters.eur(rate.value)}',
+                loading: () => 'Market data loading',
+                error: (error, stackTrace) => 'Market data unavailable',
+              ),
+            BalanceUnit.usd => btcUsdRate.when(
+                data: (rate) => '1 BTC = ${AppFormatters.usd(rate.value)}',
+                loading: () => 'Market data loading',
+                error: (error, stackTrace) => 'Market data unavailable',
+              ),
+            _ => btcNgnRate.when(
+                data: (rate) => '1 BTC = ${AppFormatters.ngnCompact(rate.value)}',
+                loading: () => 'Market data loading',
+                error: (error, stackTrace) => 'Market data unavailable',
+              ),
+          };
           final activitySummary = data.transactions.isEmpty
               ? 'Ready for your first transaction'
               : '${data.transactions.length} transaction${data.transactions.length == 1 ? '' : 's'} tracked';

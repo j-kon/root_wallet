@@ -19,3 +19,7 @@ final btcUsdRateProvider = FutureProvider<FxRate>((ref) {
 final btcNgnRateProvider = FutureProvider<FxRate>((ref) {
   return ref.watch(ratesRepositoryProvider).fetchRate(quote: 'NGN');
 });
+
+final btcEurRateProvider = FutureProvider<FxRate>((ref) {
+  return ref.watch(ratesRepositoryProvider).fetchRate(quote: 'EUR');
+});

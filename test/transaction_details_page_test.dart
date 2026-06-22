@@ -21,7 +21,7 @@ void main() {
       urlLauncherService: launcher,
     );
 
-    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.scrollUntilVisible(find.text('View on explorer'), 100.0);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('View on explorer'));
@@ -44,7 +44,7 @@ void main() {
       urlLauncherService: _FakeUrlLauncherService(),
     );
 
-    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.scrollUntilVisible(find.byIcon(Icons.share_outlined), 100.0);
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.share_outlined));

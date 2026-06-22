@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
@@ -17,6 +18,7 @@ class SecurityPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final lockAsync = ref.watch(lockControllerProvider);
     final controller = ref.read(lockControllerProvider.notifier);
+    final decoyPinAsync = ref.watch(decoyPinProvider);
 
     return AppScaffold(
       title: 'Security',
@@ -229,6 +231,85 @@ class SecurityPage extends ConsumerWidget {
                         );
                       },
                     ),
+                    if (lock.hasPin) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      decoyPinAsync.when(
+                        data: (hasDecoy) => _SecurityActionTile(
+                          icon: Icons.lock_person_rounded,
+                          title: hasDecoy ? 'Change Duress PIN' : 'Set Duress PIN',
+                          subtitle: 'Enter this PIN to unlock a decoy wallet.',
+                          onTap: () async {
+                            final pin = await _promptPinSetup(context);
+                            if (pin == null) {
+                              return;
+                            }
+                            final lockService = ref.read(lockServiceProvider);
+                            final isSame = await lockService.verifyPin(pin);
+                            if (isSame) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Duress PIN cannot be the same as the main PIN.')),
+                                );
+                              }
+                              return;
+                            }
+                            await ref.read(decoyPinProvider.notifier).setDecoyPin(pin);
+                            if (!context.mounted) {
+                              return;
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(hasDecoy ? 'Duress PIN updated.' : 'Duress PIN set.')),
+                            );
+                          },
+                        ),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+                      if (decoyPinAsync.valueOrNull == true) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (dialogContext) => AlertDialog(
+                                  title: const Text('Clear Duress PIN?'),
+                                  content: const Text(
+                                    'This will disable the decoy wallet lock screen bypass.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    FilledButton(
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.danger,
+                                      ),
+                                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                                      child: const Text('Clear'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed != true || !context.mounted) {
+                                return;
+                              }
+                              await ref.read(decoyPinProvider.notifier).clearDecoyPin();
+                              if (!context.mounted) {
+                                return;
+                              }
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Duress PIN cleared.')),
+                              );
+                            },
+                            icon: const Icon(Icons.no_accounts_rounded),
+                            label: const Text('Clear Duress PIN'),
+                          ),
+                        ),
+                      ],
+                    ],
                     if (lock.isLockEnabled) ...[
                       const SizedBox(height: AppSpacing.sm),
                       Align(
