@@ -356,7 +356,6 @@ class _SendPageState extends ConsumerState<SendPage> {
                       builder: (builderContext) {
                         final selectedUtxos = ref.watch(selectedUtxosProvider);
                         final utxos = ref.watch(walletUtxosProvider).valueOrNull ?? [];
-                        final lockedSet = ref.watch(lockedUtxosProvider).valueOrNull ?? {};
 
                         int selectedSats = 0;
                         for (final utxo in utxos) {

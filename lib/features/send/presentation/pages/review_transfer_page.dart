@@ -10,7 +10,6 @@ import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
 import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
-import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
 import 'package:root_wallet/features/send/presentation/pages/send_success_page.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
