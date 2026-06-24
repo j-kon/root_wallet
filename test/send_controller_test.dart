@@ -15,7 +15,6 @@ import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
-import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/get_balance.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
