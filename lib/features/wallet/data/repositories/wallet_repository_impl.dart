@@ -20,8 +20,10 @@ class WalletRepositoryImpl implements WalletRepository {
   }
 
   @override
-  Future<WalletIdentity> createWallet() {
-    return _walletService.createWallet();
+  Future<WalletIdentity> createWallet({
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) {
+    return _walletService.createWallet(scriptType: scriptType);
   }
 
   @override

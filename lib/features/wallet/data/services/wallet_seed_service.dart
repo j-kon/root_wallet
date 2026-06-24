@@ -21,11 +21,13 @@ class WalletSeedService {
   final SecureStorage _secureStorage;
   final Future<String> Function() _walletStoragePathLoader;
 
-  Future<WalletIdentity> createWallet() async {
+  Future<WalletIdentity> createWallet({
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) async {
     final phrase = bdk.Mnemonic(wordCount: bdk.WordCount.words12).toString();
-    await _writeWalletSeed(phrase, WalletScriptType.nativeSegwit);
+    await _writeWalletSeed(phrase, scriptType);
     await _deleteWalletDatabase();
-    return _identityFromMnemonic(phrase, WalletScriptType.nativeSegwit);
+    return _identityFromMnemonic(phrase, scriptType);
   }
 
   Future<WalletIdentity> restoreWallet({

@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/core/security/haptics_service.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
@@ -46,7 +46,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     setState(() {
       _enteredPin = '';
     });
-    await ref.read(lockControllerProvider.notifier).verifyPin(pin);
+    final ok = await ref.read(lockControllerProvider.notifier).verifyPin(pin);
+    if (!ok) {
+      HapticsService.errorRumble();
+    }
   }
 
   void _onDigitTap(String digit, AppLockState lock) {
@@ -57,7 +60,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       return;
     }
 
-    HapticFeedback.lightImpact();
+    HapticsService.lightTick();
 
     setState(() {
       _enteredPin += digit;
@@ -72,11 +75,12 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     if (lock.isInCooldown || lock.isBusy || _enteredPin.isEmpty) {
       return;
     }
-    HapticFeedback.lightImpact();
+    HapticsService.lightTick();
     setState(() {
       _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
     });
   }
+
 
   @override
   Widget build(BuildContext context) {

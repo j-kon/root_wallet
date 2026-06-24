@@ -70,7 +70,9 @@ class BdkWalletService {
     AppConstants.testnetEsploraFallbackUrls,
   );
 
-  Future<WalletIdentity> createWallet() {
+  Future<WalletIdentity> createWallet({
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) {
     return _guard('create wallet', () async {
       final phrase = bdk.Mnemonic(wordCount: bdk.WordCount.words12).toString();
 
@@ -81,13 +83,13 @@ class BdkWalletService {
       );
       await _secureStorage.write(
         key: WalletStorageKeys.scriptType,
-        value: WalletScriptType.nativeSegwit.storageValue,
+        value: scriptType.storageValue,
       );
 
       await _resetSession();
       await _deleteWalletDatabase();
 
-      return _identityFromMnemonic(phrase, WalletScriptType.nativeSegwit);
+      return _identityFromMnemonic(phrase, scriptType);
     });
   }
 
@@ -303,6 +305,7 @@ class BdkWalletService {
 
   Future<WalletDiagnostics> diagnostics() async {
     await _loadEndpointPreferences();
+    final scriptType = await _readWalletScriptType();
     return WalletDiagnostics(
       networkLabel: AppConstants.networkDisplayName,
       bdkNetwork: _network.name,
@@ -314,6 +317,7 @@ class BdkWalletService {
       lastBackendFailureAt: _lastBackendFailureAt,
       walletDatabasePath: await _databasePath(),
       walletExists: await hasWallet(),
+      scriptType: scriptType.displayName,
     );
   }
 

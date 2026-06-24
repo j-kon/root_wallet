@@ -7,7 +7,9 @@ import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.d
 
 abstract class WalletRepository {
   Future<bool> hasWallet();
-  Future<WalletIdentity> createWallet();
+  Future<WalletIdentity> createWallet({
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  });
   Future<WalletIdentity> restoreWallet({
     required String mnemonic,
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,

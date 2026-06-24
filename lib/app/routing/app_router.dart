@@ -10,6 +10,7 @@ import 'package:root_wallet/features/settings/presentation/pages/about_page.dart
 import 'package:root_wallet/features/settings/presentation/pages/security_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/wallet_diagnostics_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/coin_control_page.dart';
+import 'package:root_wallet/features/settings/presentation/pages/backup_settings_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/create_wallet_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/restore_wallet_page.dart';
@@ -60,6 +61,8 @@ abstract final class AppRouter {
         return _page(settings, const WalletDiagnosticsPage());
       case AppRoutes.coinControl:
         return _page(settings, const CoinControlPage());
+      case AppRoutes.backupMetadata:
+        return _page(settings, const BackupSettingsPage());
       case AppRoutes.about:
         return _page(settings, const AboutPage());
       default:

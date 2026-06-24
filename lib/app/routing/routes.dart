@@ -17,5 +17,6 @@ abstract final class AppRoutes {
   static const security = '/settings/security';
   static const diagnostics = '/settings/diagnostics';
   static const coinControl = '/settings/coin_control';
+  static const backupMetadata = '/settings/backup';
   static const about = '/settings/about';
 }

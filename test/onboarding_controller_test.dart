@@ -139,8 +139,11 @@ class _FakeWalletSeedService implements WalletSeedService {
   int createCalls = 0;
 
   @override
-  Future<WalletIdentity> createWallet() async {
+  Future<WalletIdentity> createWallet({
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) async {
     createCalls++;
+    lastScriptType = scriptType;
     return createdIdentity!;
   }
 

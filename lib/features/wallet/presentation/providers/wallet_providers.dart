@@ -8,6 +8,8 @@ import 'package:root_wallet/features/wallet/data/datasources/bdk_sync_datasource
 import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
 import 'package:root_wallet/features/wallet/data/mappers/tx_mapper.dart';
+import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/data/repositories/wallet_repository_impl.dart';
 import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
@@ -48,6 +50,12 @@ final walletRepositoryProvider = Provider<WalletRepository>((ref) {
   return WalletRepositoryImpl(
     walletService: ref.watch(bdkWalletServiceProvider),
   );
+});
+
+final walletScriptTypeProvider = FutureProvider<WalletScriptType>((ref) async {
+  final secureStorage = ref.watch(secureStorageProvider);
+  final value = await secureStorage.read(key: WalletStorageKeys.scriptType);
+  return WalletScriptType.fromStorageValue(value);
 });
 
 final createWalletUsecaseProvider = Provider<CreateWallet>(

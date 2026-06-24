@@ -197,7 +197,9 @@ class _StaticWalletRepository implements WalletRepository {
   final WalletOverview overview;
 
   @override
-  Future<WalletIdentity> createWallet() {
+  Future<WalletIdentity> createWallet({
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) {
     throw UnimplementedError();
   }
 

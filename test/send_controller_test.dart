@@ -10,6 +10,7 @@ import 'package:root_wallet/features/send/domain/usecases/preview_tx.dart';
 import 'package:root_wallet/features/send/domain/usecases/sign_tx.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
@@ -178,7 +179,9 @@ class _FakeWalletRepository implements WalletRepository {
   final Balance balance;
 
   @override
-  Future<WalletIdentity> createWallet() {
+  Future<WalletIdentity> createWallet({
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) {
     throw UnimplementedError();
   }
 

@@ -5,6 +5,7 @@ import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
+import 'package:root_wallet/core/security/haptics_service.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
@@ -264,6 +265,9 @@ class ReviewTransferPage extends ConsumerWidget {
                       timestamp: sentAt,
                     );
                 controller.resetAfterSuccess();
+
+                await HapticsService.successPulse();
+
                 if (!context.mounted) {
                   return;
                 }

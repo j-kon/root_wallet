@@ -171,6 +171,10 @@ class WalletDiagnosticsPage extends ConsumerWidget {
                     value: data.diagnostics.walletExists ? 'Yes' : 'No',
                   ),
                   _DiagnosticsRow(
+                    label: 'Wallet script type',
+                    value: data.diagnostics.scriptType,
+                  ),
+                  _DiagnosticsRow(
                     label: 'Cache updated',
                     value: data.cacheUpdatedAt == null
                         ? 'No cached snapshot'

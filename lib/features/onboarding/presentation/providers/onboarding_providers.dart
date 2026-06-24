@@ -61,12 +61,14 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   final Ref _ref;
   final Random _random = Random.secure();
 
-  Future<bool> createWallet() async {
+  Future<bool> createWallet({
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) async {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
       final identity = await _ref
           .read(onboardingWalletSeedServiceProvider)
-          .createWallet();
+          .createWallet(scriptType: scriptType);
       _resetLocalWalletSessionState();
       state = state.copyWith(
         isBusy: false,

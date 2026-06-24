@@ -249,7 +249,9 @@ class _FakeOnboardingController extends OnboardingController {
   final OnboardingState _initialState;
 
   @override
-  Future<bool> createWallet() async => true;
+  Future<bool> createWallet({
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) async => true;
 
   @override
   Future<bool> restoreWallet(

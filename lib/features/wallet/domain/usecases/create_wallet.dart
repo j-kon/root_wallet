@@ -1,4 +1,5 @@
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
 
 class CreateWallet {
@@ -6,7 +7,9 @@ class CreateWallet {
 
   final WalletRepository _repository;
 
-  Future<WalletIdentity> call() {
-    return _repository.createWallet();
+  Future<WalletIdentity> call({
+    WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  }) {
+    return _repository.createWallet(scriptType: scriptType);
   }
 }

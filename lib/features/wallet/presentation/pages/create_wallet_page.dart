@@ -8,14 +8,23 @@ import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
+import 'package:root_wallet/features/wallet/presentation/widgets/script_type_option.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
-class CreateWalletPage extends ConsumerWidget {
+class CreateWalletPage extends ConsumerStatefulWidget {
   const CreateWalletPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CreateWalletPage> createState() => _CreateWalletPageState();
+}
+
+class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
+  WalletScriptType _scriptType = WalletScriptType.nativeSegwit;
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(onboardingControllerProvider);
     final controller = ref.read(onboardingControllerProvider.notifier);
 
@@ -113,6 +122,27 @@ class CreateWalletPage extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  _CreateRestorePanel(
+                    title: 'Address type',
+                    subtitle:
+                        'Pick the address family you want to use. Taproot is recommended for modern features.',
+                    child: Column(
+                      children: WalletScriptType.values
+                          .map(
+                            (type) => ScriptTypeOption(
+                              type: type,
+                              isSelected: _scriptType == type,
+                              onTap: () {
+                                setState(() {
+                                  _scriptType = type;
+                                });
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
                   if (state.errorMessage != null) ...[
                     const SizedBox(height: AppSpacing.md),
                     InfoBanner(
@@ -127,7 +157,7 @@ class CreateWalletPage extends ConsumerWidget {
             PrimaryButton(
               label: state.isBusy ? 'Creating...' : 'Create wallet',
               onPressed: () async {
-                final created = await controller.createWallet();
+                final created = await controller.createWallet(scriptType: _scriptType);
                 if (!context.mounted) {
                   return;
                 }

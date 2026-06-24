@@ -11,6 +11,7 @@ import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
+import 'package:root_wallet/shared/widgets/animated_success_check.dart';
 
 class SendSuccessPageArgs {
   const SendSuccessPageArgs({
@@ -92,41 +93,51 @@ class SendSuccessPage extends ConsumerWidget {
                             ),
                           ),
                           Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              const _SuccessBadge(
-                                icon: Icons.check_circle_outline_rounded,
-                                label: 'Broadcast complete',
+                              const SizedBox(height: AppSpacing.md),
+                              const AnimatedSuccessCheck(size: 80),
+                              const SizedBox(height: AppSpacing.lg),
+                              const Center(
+                                child: _SuccessBadge(
+                                  icon: Icons.check_circle_outline_rounded,
+                                  label: 'Broadcast complete',
+                                ),
                               ),
                               const SizedBox(height: AppSpacing.md),
                               Text(
                                 'Your transfer is now pending on ${AppConstants.bitcoinNetworkDisplayName}.',
+                                textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.headlineSmall
                                     ?.copyWith(fontWeight: FontWeight.w800),
                               ),
                               const SizedBox(height: AppSpacing.xs),
                               Text(
                                 'You can track the TXID below or open it in the public explorer.',
+                                textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                               const SizedBox(height: AppSpacing.lg),
-                              Wrap(
-                                spacing: AppSpacing.sm,
-                                runSpacing: AppSpacing.sm,
-                                children: [
-                                  const _SuccessBadge(
-                                    icon: Icons.schedule_rounded,
-                                    label: 'Pending',
-                                  ),
-                                  _SuccessBadge(
-                                    icon: Icons.payments_outlined,
-                                    label: AppFormatters.sats(totalSats),
-                                  ),
-                                  const _SuccessBadge(
-                                    icon: Icons.language_rounded,
-                                    label: AppConstants.networkDisplayName,
-                                  ),
-                                ],
+                              Center(
+                                child: Wrap(
+                                  spacing: AppSpacing.sm,
+                                  runSpacing: AppSpacing.sm,
+                                  alignment: WrapAlignment.center,
+                                  children: [
+                                    const _SuccessBadge(
+                                      icon: Icons.schedule_rounded,
+                                      label: 'Pending',
+                                    ),
+                                    _SuccessBadge(
+                                      icon: Icons.payments_outlined,
+                                      label: AppFormatters.sats(totalSats),
+                                    ),
+                                    const _SuccessBadge(
+                                      icon: Icons.language_rounded,
+                                      label: AppConstants.networkDisplayName,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),

@@ -50,6 +50,7 @@ class WalletHomePage extends ConsumerWidget {
     final btcUsdRate = ref.watch(btcUsdRateProvider);
     final btcEurRate = ref.watch(btcEurRateProvider);
     final walletLabels = ref.watch(walletLabelsControllerProvider);
+    final scriptTypeAsync = ref.watch(walletScriptTypeProvider);
     final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
     const networkLabel = AppConstants.networkDisplayName;
 
@@ -194,6 +195,13 @@ class WalletHomePage extends ConsumerWidget {
                     _WalletStatusChip(
                       icon: Icons.currency_exchange_rounded,
                       label: marketLabel,
+                    ),
+                    scriptTypeAsync.maybeWhen(
+                      data: (type) => _WalletStatusChip(
+                        icon: Icons.fingerprint_rounded,
+                        label: type.displayName,
+                      ),
+                      orElse: () => const SizedBox.shrink(),
                     ),
                   ],
                 ),

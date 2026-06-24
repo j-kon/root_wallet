@@ -38,6 +38,13 @@ class _AppSecurityGateState extends ConsumerState<AppSecurityGate>
         break;
       case AppLifecycleState.resumed:
         controller.onAppResumed();
+        final lock = ref.read(lockControllerProvider).valueOrNull;
+        if (lock != null &&
+            lock.isLocked &&
+            lock.isBiometricsEnabled &&
+            lock.isBiometricAvailable) {
+          controller.authenticateWithBiometrics();
+        }
         break;
       case AppLifecycleState.detached:
         break;

@@ -12,6 +12,7 @@ class WalletDiagnostics {
     required this.lastBackendFailureAt,
     required this.walletDatabasePath,
     required this.walletExists,
+    required this.scriptType,
   });
 
   final String networkLabel;
@@ -24,6 +25,7 @@ class WalletDiagnostics {
   final DateTime? lastBackendFailureAt;
   final String walletDatabasePath;
   final bool walletExists;
+  final String scriptType;
 
   String get backendFailoverState {
     if (configuredEsploraEndpoints.length <= 1) {
@@ -44,6 +46,7 @@ class WalletDiagnostics {
       'lastBackendFailureAt': lastBackendFailureAt?.toIso8601String(),
       'walletDatabasePath': walletDatabasePath,
       'walletExists': walletExists,
+      'scriptType': scriptType,
       'cacheUpdatedAt': cacheUpdatedAt?.toIso8601String(),
       'walletState': walletState,
       'explorerBaseUrl': AppConstants.testnetExplorerBaseUrl,

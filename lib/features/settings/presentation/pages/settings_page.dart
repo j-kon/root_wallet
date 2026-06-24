@@ -198,6 +198,16 @@ class SettingsPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
+                _SettingsTile(
+                  icon: useCupertino
+                      ? CupertinoIcons.cloud_upload
+                      : Icons.cloud_upload_outlined,
+                  title: 'Backup & restore metadata',
+                  subtitle: 'Export/import encrypted labels, notes and configurations.',
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.backupMetadata),
+                ),
+                const SizedBox(height: AppSpacing.sm),
                 _SettingsToggleTile(
                   icon: useCupertino
                       ? CupertinoIcons.eye_slash
