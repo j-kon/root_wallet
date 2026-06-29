@@ -151,10 +151,23 @@ Root Wallet now uses `bdk_dart` directly from GitHub as its wallet engine:
 bdk_dart:
   git:
     url: https://github.com/bitcoindevkit/bdk-dart.git
-    ref: v1.0.0-rc.1
+    ref: v1.0.0-rc.2
 ```
 
-`bdk_dart` is not published on pub.dev yet. Because it builds native FFI assets, a Rust toolchain with `cargo` is required for local builds. The wallet is configured for Bitcoin testnet only, using Blockstream testnet Esplora (`https://blockstream.info/testnet/api`) and Electrum (`ssl://electrum.blockstream.info:60002`) backends.
+The package entrypoint is:
+
+```dart
+import 'package:bdk_dart/bdk_dart.dart';
+```
+
+The upstream README now documents `bdk_dart: ^1.0.0-rc.2` for pub.dev usage, but this app pins the GitHub `v1.0.0-rc.2` tag for reproducible local builds. Because `bdk_dart` builds native FFI assets, a Rust toolchain with `cargo` is required for local builds. The wallet is configured for Bitcoin testnet only, using Blockstream testnet Esplora (`https://blockstream.info/testnet/api`) and Electrum (`ssl://electrum.blockstream.info:60002`) backends.
+
+Recovery phrase generation and validation use BDK's mnemonic API:
+
+```dart
+final mnemonic = bdk.Mnemonic(wordCount: bdk.WordCount.words12);
+final parsed = bdk.Mnemonic.fromString(mnemonic: phrase);
+```
 
 Root Wallet currently targets Android and iOS wallet functionality, not Flutter Web. Web is unsupported because `bdk_dart` depends on `dart:ffi` and native assets.
 
@@ -299,7 +312,10 @@ Key production dependencies currently integrated:
 - `local_auth`
 - `flutter_secure_storage`
 - `crypto`
+- `encrypt`
 - `share_plus`
+
+`bdk_dart` owns Bitcoin wallet behavior: mnemonics, descriptors, addresses, PSBT signing, sync, transactions, and broadcast. `crypto` and `encrypt` remain app-level security dependencies for PIN hashing, local fingerprints, and encrypted metadata backups.
 
 ## Contributing Mindset
 

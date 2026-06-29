@@ -24,7 +24,9 @@ class WalletSeedService {
   Future<WalletIdentity> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
   }) async {
-    final phrase = bdk.Mnemonic(wordCount: bdk.WordCount.words12).toString();
+    final mnemonic = bdk.Mnemonic(wordCount: bdk.WordCount.words12);
+    final phrase = mnemonic.toString();
+    mnemonic.dispose();
     await _writeWalletSeed(phrase, scriptType);
     await _deleteWalletDatabase();
     return _identityFromMnemonic(phrase, scriptType);

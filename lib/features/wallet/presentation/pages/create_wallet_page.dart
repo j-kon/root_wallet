@@ -10,7 +10,7 @@ import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/script_type_option.dart';
-import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
+import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page_args.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class CreateWalletPage extends ConsumerStatefulWidget {
@@ -157,7 +157,9 @@ class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
             PrimaryButton(
               label: state.isBusy ? 'Creating...' : 'Create wallet',
               onPressed: () async {
-                final created = await controller.createWallet(scriptType: _scriptType);
+                final created = await controller.createWallet(
+                  scriptType: _scriptType,
+                );
                 if (!context.mounted) {
                   return;
                 }
