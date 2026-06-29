@@ -205,9 +205,9 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   Future<void> _prepareChallenge() async {
     final phrase =
         state.recoveryPhrase ??
-        await _ref.read(secureStorageProvider).read(
-          key: WalletStorageKeys.mnemonic,
-        );
+        await _ref
+            .read(secureStorageProvider)
+            .read(key: WalletStorageKeys.mnemonic);
     if (phrase == null || phrase.trim().isEmpty) {
       throw StateError('Recovery phrase is not available.');
     }
