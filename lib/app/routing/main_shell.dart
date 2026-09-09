@@ -150,10 +150,10 @@ class _MainShellState extends State<MainShell>
         : const Color(0xFF5E6F68);
     final selectedSurface = isDark
         ? RootBrandColors.slatePine
-        : const Color(0xFFE5ECE9);
+        : const Color(0xFFE8F6F1);
     final selectedBorder = isDark
         ? RootBrandColors.borderPine
-        : const Color(0x332AAE7F);
+        : RootBrandColors.pineGreen.withValues(alpha: 0.25);
     final shadowColor = isDark
         ? const Color(0x33000000)
         : const Color(0x140E1B18);
@@ -217,7 +217,7 @@ class _MainShellState extends State<MainShell>
                       final totalWidth = constraints.maxWidth;
                       final slotWidth = totalWidth / _destinations.length;
                       const indicatorHMargin = 4.0;
-                      const indicatorVMargin = 8.0;
+                      const indicatorVMargin = 5.0;
                       const indicatorRadius = 27.0;
 
                       return Stack(
@@ -367,23 +367,17 @@ class _MainShellState extends State<MainShell>
   }) {
     final destination = _destinations[index];
     double activeProgress;
-    double iconScale = 1.0;
 
     if (!isAnimating) {
       activeProgress = (index == _currentIndex) ? 1.0 : 0.0;
     } else {
       if (index == _toIndex) {
-        // Target destination: color & label fade in after 0.40
+        // Target destination: color & label smoothly fade in after leading edge
         activeProgress = const Interval(
           0.40,
           1.0,
           curve: Curves.easeOut,
         ).transform(t);
-        // Subtle icon scale pulse (1.0 -> 1.06 -> 1.0) as liquid arrives
-        if (t >= 0.45 && t <= 0.95) {
-          final pulseT = (t - 0.45) / 0.50;
-          iconScale = 1.0 + 0.06 * sin(pulseT * pi);
-        }
       } else if (index == _fromIndex) {
         // Origin destination: smoothly fades out
         activeProgress =
@@ -396,7 +390,6 @@ class _MainShellState extends State<MainShell>
     return _ShellNavItem(
       destination: destination,
       activeProgress: activeProgress,
-      iconScale: iconScale,
       onTap: () => _onTap(index),
       activeIconColor: activeIconColor,
       activeLabelColor: activeLabelColor,
@@ -421,7 +414,6 @@ class _ShellNavItem extends StatelessWidget {
   const _ShellNavItem({
     required this.destination,
     required this.activeProgress,
-    required this.iconScale,
     required this.onTap,
     required this.activeIconColor,
     required this.activeLabelColor,
@@ -430,7 +422,6 @@ class _ShellNavItem extends StatelessWidget {
 
   final _ShellDestination destination;
   final double activeProgress;
-  final double iconScale;
   final VoidCallback onTap;
   final Color activeIconColor;
   final Color activeLabelColor;
@@ -462,27 +453,21 @@ class _ShellNavItem extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Transform.scale(
-                scale: iconScale,
-                child: Icon(
-                  isSelected ? destination.activeIcon : destination.icon,
-                  size: 22,
-                  color: iconColor,
-                ),
+              Icon(
+                isSelected ? destination.activeIcon : destination.icon,
+                size: 22,
+                color: iconColor,
               ),
               const SizedBox(height: 3),
-              Transform.translate(
-                offset: Offset(0, -1.5 * activeProgress),
-                child: Text(
-                  destination.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: labelColor,
-                    fontSize: 10.5,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    letterSpacing: 0.1,
-                  ),
+              Text(
+                destination.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: labelColor,
+                  fontSize: 10.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  letterSpacing: 0.1,
                 ),
               ),
             ],
