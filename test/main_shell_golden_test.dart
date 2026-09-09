@@ -19,11 +19,13 @@ void main() {
     (name: 'wallet_light', tabIndex: 0, brightness: Brightness.light),
     (name: 'receive_light', tabIndex: 1, brightness: Brightness.light),
     (name: 'send_light', tabIndex: 2, brightness: Brightness.light),
-    (name: 'settings_light', tabIndex: 3, brightness: Brightness.light),
+    (name: 'activity_light', tabIndex: 3, brightness: Brightness.light),
+    (name: 'settings_light', tabIndex: 4, brightness: Brightness.light),
     (name: 'wallet_dark', tabIndex: 0, brightness: Brightness.dark),
     (name: 'receive_dark', tabIndex: 1, brightness: Brightness.dark),
     (name: 'send_dark', tabIndex: 2, brightness: Brightness.dark),
-    (name: 'settings_dark', tabIndex: 3, brightness: Brightness.dark),
+    (name: 'activity_dark', tabIndex: 3, brightness: Brightness.dark),
+    (name: 'settings_dark', tabIndex: 4, brightness: Brightness.dark),
   ];
 
   for (final testCase in cases) {
@@ -53,6 +55,7 @@ Future<void> _pumpShellGolden(
   WidgetTester tester, {
   required Brightness brightness,
   required int initialIndex,
+  Size surface = _goldenSurface,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{
     'settings.backup_confirmed': true,
@@ -61,7 +64,7 @@ Future<void> _pumpShellGolden(
   });
 
   tester.view.devicePixelRatio = 1.0;
-  tester.view.physicalSize = _goldenSurface;
+  tester.view.physicalSize = surface;
   addTearDown(() {
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();

@@ -6,6 +6,7 @@ abstract final class AppRoutes {
   static const confirmSeed = '/wallet/backup/confirm';
   static const restoreWallet = '/wallet/restore';
   static const transactionDetails = '/wallet/transaction';
+  static const transactions = '/transactions';
 
   static const send = '/send';
   static const reviewTransfer = '/send/review';

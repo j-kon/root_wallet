@@ -30,11 +30,13 @@ class WalletHomePage extends ConsumerWidget {
     this.onReceiveRequested,
     this.onSendRequested,
     this.onSettingsRequested,
+    this.onActivityRequested,
   });
 
   final VoidCallback? onReceiveRequested;
   final VoidCallback? onSendRequested;
   final VoidCallback? onSettingsRequested;
+  final VoidCallback? onActivityRequested;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -72,10 +74,7 @@ class WalletHomePage extends ConsumerWidget {
               height: 22,
             ),
             const SizedBox(width: RootSpacing.sm),
-            Text(
-              'Wallet',
-              style: Theme.of(context).appBarTheme.titleTextStyle,
-            ),
+            Text('Wallet', style: Theme.of(context).appBarTheme.titleTextStyle),
           ],
         ),
       ),
@@ -351,17 +350,50 @@ class WalletHomePage extends ConsumerWidget {
                 // Recent Activity
                 SectionHeader(
                   title: 'Recent activity',
-                  trailing: Text(
-                    activitySummary,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!context.isVeryCompactWidth) ...[
+                        Text(
+                          activitySummary,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                        if (data.transactions.isNotEmpty)
+                          const SizedBox(width: RootSpacing.sm),
+                      ],
+                      if (data.transactions.isNotEmpty)
+                        InkWell(
+                          onTap:
+                              onActivityRequested ??
+                              () => Navigator.of(
+                                context,
+                              ).pushNamed(AppRoutes.transactions),
+                          borderRadius: BorderRadius.circular(RootRadius.sm),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: RootSpacing.xs,
+                              vertical: 2,
+                            ),
+                            child: Text(
+                              'View all',
+                              style: TextStyle(
+                                color: RootBrandColors.pineGreen,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: RootSpacing.xs),
                 TxList(
-                  items: data.transactions,
+                  items: data.transactions.take(5).toList(),
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   obscureAmounts: hideBalances,

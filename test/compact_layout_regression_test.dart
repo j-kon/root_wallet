@@ -16,9 +16,11 @@ import 'package:root_wallet/features/send/presentation/pages/send_success_page.d
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/settings/presentation/pages/about_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/lock_screen.dart';
+import 'package:root_wallet/app/routing/main_shell.dart';
 import 'package:root_wallet/features/settings/presentation/pages/security_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/settings_page.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
+import 'package:root_wallet/features/transactions/presentation/pages/transactions_page.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
@@ -295,6 +297,43 @@ void main() {
       expect(find.text('Transfer sent'), findsOneWidget);
       expect(find.text('Transaction ID'), findsOneWidget);
     });
+
+    testWidgets('transactions page renders on compact $themeName screens', (
+      tester,
+    ) async {
+      await _pumpCompactPage(
+        tester,
+        brightness: brightness,
+        overrides: _walletPageOverrides(),
+        child: const TransactionsPage(),
+      );
+
+      _expectNoFrameworkErrors(tester);
+      expect(find.text('Transactions'), findsOneWidget);
+      expect(find.text('All'), findsOneWidget);
+      expect(find.text('Received'), findsWidgets);
+      expect(find.text('Sent'), findsOneWidget);
+      expect(find.text('Pending'), findsOneWidget);
+    });
+
+    testWidgets(
+      'main shell 5 destinations render on compact $themeName screens',
+      (tester) async {
+        await _pumpCompactPage(
+          tester,
+          brightness: brightness,
+          overrides: _walletPageOverrides(),
+          child: const MainShell(),
+        );
+
+        _expectNoFrameworkErrors(tester);
+        expect(find.text('Wallet'), findsWidgets);
+        expect(find.text('Receive'), findsWidgets);
+        expect(find.text('Send'), findsWidgets);
+        expect(find.text('Activity'), findsOneWidget);
+        expect(find.text('Settings'), findsOneWidget);
+      },
+    );
   }
 }
 
