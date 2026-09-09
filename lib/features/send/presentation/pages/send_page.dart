@@ -9,6 +9,7 @@ import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
+import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
 import 'package:root_wallet/features/send/presentation/models/scanned_btc_uri.dart';
@@ -244,12 +245,8 @@ class _SendPageState extends ConsumerState<SendPage> {
             left: context.pageHorizontalPadding,
             right: context.pageHorizontalPadding,
             bottom: buttonBottom,
-            child: PrimaryButton(
-              label: state.isPreviewing
-                  ? 'Preparing review...'
-                  : 'Review transfer',
-              onPressed:
-                  state.isSending || state.isPreviewing || !state.canReview
+            child: MagneticPressable(
+              onTap: state.isSending || state.isPreviewing || !state.canReview
                   ? null
                   : () async {
                       final valid = await controller.prepareReview();
@@ -258,6 +255,21 @@ class _SendPageState extends ConsumerState<SendPage> {
                       }
                       Navigator.of(context).pushNamed(AppRoutes.reviewTransfer);
                     },
+              child: PrimaryButton(
+                label: state.isPreviewing
+                    ? 'Preparing review...'
+                    : 'Review transfer',
+                onPressed:
+                    state.isSending || state.isPreviewing || !state.canReview
+                    ? null
+                    : () async {
+                        final valid = await controller.prepareReview();
+                        if (!valid || !context.mounted) {
+                          return;
+                        }
+                        Navigator.of(context).pushNamed(AppRoutes.reviewTransfer);
+                      },
+              ),
             ),
           ),
         ],
@@ -885,17 +897,23 @@ class _RecipientCard extends StatelessWidget {
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    tooltip: 'Paste address',
-                    onPressed: onPaste,
-                    icon: const Icon(Icons.content_paste_rounded, size: 20),
-                    color: RootBrandColors.pineGreen,
+                  MagneticPressable(
+                    onTap: onPaste,
+                    child: IconButton(
+                      tooltip: 'Paste address',
+                      onPressed: onPaste,
+                      icon: const Icon(Icons.content_paste_rounded, size: 20),
+                      color: RootBrandColors.pineGreen,
+                    ),
                   ),
-                  IconButton(
-                    tooltip: 'Scan QR',
-                    onPressed: onScan,
-                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
-                    color: RootBrandColors.pineGreen,
+                  MagneticPressable(
+                    onTap: onScan,
+                    child: IconButton(
+                      tooltip: 'Scan QR',
+                      onPressed: onScan,
+                      icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+                      color: RootBrandColors.pineGreen,
+                    ),
                   ),
                 ],
               ),
@@ -1006,46 +1024,52 @@ class _AmountCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: RootSpacing.xs),
-              // Unit toggle button (BTC ⇄ sats)
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onToggleUnit,
-                  borderRadius: BorderRadius.circular(RootRadius.pill),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+              // Unit toggle button (BTC ⇄ sats) with animated rotation and smooth cross-fade
+              MagneticPressable(
+                onTap: onToggleUnit,
+                pressedScale: 0.94,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF16382C)
+                        : const Color(0xFFE8F3EE),
+                    borderRadius: BorderRadius.circular(RootRadius.pill),
+                    border: Border.all(
+                      color: RootBrandColors.pineGreen.withValues(alpha: 0.35),
+                      width: 1.0,
                     ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF16382C)
-                          : const Color(0xFFE8F3EE),
-                      borderRadius: BorderRadius.circular(RootRadius.pill),
-                      border: Border.all(
-                        color: RootBrandColors.pineGreen.withValues(alpha: 0.3),
-                        width: 1.0,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedRotation(
+                        turns: isSatsMode ? 0.5 : 0.0,
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOutCubic,
+                        child: const Icon(
                           Icons.swap_horiz_rounded,
                           size: 15,
                           color: RootBrandColors.pineGreen,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
+                      ),
+                      const SizedBox(width: 4),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: Text(
                           isSatsMode ? 'Unit: SATS' : 'Unit: BTC',
+                          key: ValueKey(isSatsMode),
                           style: const TextStyle(
                             color: RootBrandColors.pineGreen,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -1211,22 +1235,25 @@ class _CoinSelectionCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: RootSpacing.xs),
-              OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 34),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+              MagneticPressable(
+                onTap: onOpenSheet,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 34),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                   ),
-                ),
-                onPressed: onOpenSheet,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.toll_rounded, size: 15),
-                    const SizedBox(width: 4),
-                    Text(isManual ? 'Edit' : 'Select'),
-                  ],
+                  onPressed: onOpenSheet,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.toll_rounded, size: 15),
+                      const SizedBox(width: 4),
+                      Text(isManual ? 'Edit' : 'Select'),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1441,17 +1468,21 @@ class _QuickAmountButton extends StatelessWidget {
         ? RootBrandColors.borderPine
         : const Color(0xFFD7E3DC);
 
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size(0, 36),
-        padding: const EdgeInsets.symmetric(
-          horizontal: RootSpacing.md,
-          vertical: RootSpacing.xs,
+    return MagneticPressable(
+      onTap: onTap,
+      pressedScale: 0.93,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 36),
+          padding: const EdgeInsets.symmetric(
+            horizontal: RootSpacing.md,
+            vertical: RootSpacing.xs,
+          ),
+          side: BorderSide(color: borderColor),
         ),
-        side: BorderSide(color: borderColor),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
     );
   }
 }

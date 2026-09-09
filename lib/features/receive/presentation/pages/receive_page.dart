@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,7 @@ import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
+import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/features/receive/presentation/widgets/address_qr.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
@@ -27,6 +30,9 @@ class ReceivePage extends ConsumerStatefulWidget {
 
 class _ReceivePageState extends ConsumerState<ReceivePage> {
   bool _isRequestExpanded = false;
+  bool _copiedAddress = false;
+  bool _copiedUri = false;
+  Timer? _copyTimer;
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
 
@@ -39,6 +45,7 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
 
   @override
   void dispose() {
+    _copyTimer?.cancel();
     _amountController.dispose();
     _noteController.dispose();
     super.dispose();
@@ -112,6 +119,12 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                 address: address,
                 payload: paymentUri,
                 requestedAmountBtc: _parsedAmountBtc,
+                onTap: () => _copyValue(
+                  context,
+                  paymentUri,
+                  'Payment URI copied to clipboard.',
+                  isUri: true,
+                ),
               ),
               const SizedBox(height: RootSpacing.md),
 
@@ -121,13 +134,20 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
                 address: address,
                 addressLabel: addressLabel,
                 paymentUri: paymentUri,
+                copiedAddress: _copiedAddress,
+                copiedUri: _copiedUri,
                 onCopyAddress: () => _copyValue(
                   context,
                   address,
                   'Address copied to clipboard.',
+                  isAddress: true,
                 ),
-                onCopyUri: () =>
-                    _copyValue(context, paymentUri, 'Payment URI copied.'),
+                onCopyUri: () => _copyValue(
+                  context,
+                  paymentUri,
+                  'Payment URI copied.',
+                  isUri: true,
+                ),
                 onShare: () => _showShareOptions(
                   context,
                   ref: ref,
@@ -180,13 +200,29 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
   Future<void> _copyValue(
     BuildContext context,
     String value,
-    String message,
-  ) async {
+    String message, {
+    bool isAddress = false,
+    bool isUri = false,
+  }) async {
     HapticFeedback.selectionClick();
     await Clipboard.setData(ClipboardData(text: value));
+    if (isAddress) {
+      _copyTimer?.cancel();
+      setState(() => _copiedAddress = true);
+      _copyTimer = Timer(const Duration(milliseconds: 2000), () {
+        if (mounted) setState(() => _copiedAddress = false);
+      });
+    } else if (isUri) {
+      _copyTimer?.cancel();
+      setState(() => _copiedUri = true);
+      _copyTimer = Timer(const Duration(milliseconds: 2000), () {
+        if (mounted) setState(() => _copiedUri = false);
+      });
+    }
     if (!context.mounted) {
       return;
     }
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -538,6 +574,8 @@ class _ReceiveAddressCard extends StatelessWidget {
     required this.address,
     required this.addressLabel,
     required this.paymentUri,
+    required this.copiedAddress,
+    required this.copiedUri,
     required this.onCopyAddress,
     required this.onCopyUri,
     required this.onShare,
@@ -548,6 +586,8 @@ class _ReceiveAddressCard extends StatelessWidget {
   final String address;
   final String addressLabel;
   final String paymentUri;
+  final bool copiedAddress;
+  final bool copiedUri;
   final VoidCallback onCopyAddress;
   final VoidCallback onCopyUri;
   final VoidCallback onShare;
@@ -595,9 +635,8 @@ class _ReceiveAddressCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: RootSpacing.xs),
-              InkWell(
+              MagneticPressable(
                 onTap: onEditLabel,
-                borderRadius: BorderRadius.circular(RootRadius.sm),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
@@ -638,23 +677,26 @@ class _ReceiveAddressCard extends StatelessWidget {
           ],
           const SizedBox(height: RootSpacing.md),
 
-          // Chunked Monospace Address Display with Tap to Copy
-          InkWell(
+          // Chunked Monospace Address Display with Magnetic Tap to Copy & In-Card Feedback
+          MagneticPressable(
             onTap: onCopyAddress,
-            borderRadius: BorderRadius.circular(RootRadius.md),
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOutCubic,
               width: double.infinity,
               padding: const EdgeInsets.all(RootSpacing.md),
               decoration: BoxDecoration(
                 color: isDark
-                    ? RootBrandColors.slatePine
-                    : const Color(0xFFF6FAF7),
+                    ? (copiedAddress ? const Color(0xFF132A21) : RootBrandColors.slatePine)
+                    : (copiedAddress ? const Color(0xFFEDF7F2) : const Color(0xFFF6FAF7)),
                 borderRadius: BorderRadius.circular(RootRadius.md),
                 border: Border.all(
-                  color: isDark
-                      ? RootBrandColors.borderPine
-                      : const Color(0xFFE0EAE4),
-                  width: 1.0,
+                  color: copiedAddress
+                      ? RootBrandColors.pineGreen
+                      : (isDark
+                          ? RootBrandColors.borderPine
+                          : const Color(0xFFE0EAE4)),
+                  width: copiedAddress ? 1.5 : 1.0,
                 ),
               ),
               child: Column(
@@ -677,28 +719,75 @@ class _ReceiveAddressCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: RootSpacing.xs),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.copy_rounded,
-                            size: 13,
-                            color: isDark
-                                ? RootBrandColors.mutedSage
-                                : const Color(0xFF5E6F68),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Tap to copy',
-                            style: TextStyle(
-                              color: isDark
-                                  ? RootBrandColors.mutedSage
-                                  : const Color(0xFF5E6F68),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        transitionBuilder: (child, anim) => FadeTransition(
+                          opacity: anim,
+                          child: ScaleTransition(scale: anim, child: child),
+                        ),
+                        child: copiedAddress
+                            ? Container(
+                                key: const ValueKey('copied_pill'),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF16382C)
+                                      : const Color(0xFFE8F3EE),
+                                  borderRadius: BorderRadius.circular(
+                                    RootRadius.pill,
+                                  ),
+                                  border: Border.all(
+                                    color: RootBrandColors.pineGreen,
+                                    width: 1.0,
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 13,
+                                      color: RootBrandColors.pineGreen,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Copied!',
+                                      style: TextStyle(
+                                        color: RootBrandColors.pineGreen,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Row(
+                                key: const ValueKey('tap_to_copy'),
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.copy_rounded,
+                                    size: 13,
+                                    color: isDark
+                                        ? RootBrandColors.mutedSage
+                                        : const Color(0xFF5E6F68),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Tap to copy',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? RootBrandColors.mutedSage
+                                          : const Color(0xFF5E6F68),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ],
                   ),
@@ -718,7 +807,7 @@ class _ReceiveAddressCard extends StatelessWidget {
           ),
           const SizedBox(height: RootSpacing.md),
 
-          // Primary Quick Action Buttons
+          // Primary Quick Action Buttons with Magnetic Depth and Animated Status
           LayoutBuilder(
             builder: (context, constraints) {
               final isVeryCompact = constraints.maxWidth < 300;
@@ -726,123 +815,164 @@ class _ReceiveAddressCard extends StatelessWidget {
                 children: [
                   Expanded(
                     flex: 3,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: RootBrandColors.pineGreen,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(RootRadius.md),
+                    child: MagneticPressable(
+                      onTap: onCopyAddress,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: copiedAddress
+                              ? const Color(0xFF1E825C)
+                              : RootBrandColors.pineGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(RootRadius.md),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 4,
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                          horizontal: 4,
-                        ),
-                      ),
-                      onPressed: onCopyAddress,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (!isVeryCompact) ...[
-                            const Icon(Icons.copy_rounded, size: 15),
-                            const SizedBox(width: 4),
-                          ],
-                          const Flexible(
-                            child: Text(
-                              'Copy address',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
+                        onPressed: onCopyAddress,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (!isVeryCompact) ...[
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                child: copiedAddress
+                                    ? const Icon(
+                                        Icons.check_rounded,
+                                        size: 15,
+                                        key: ValueKey('check'),
+                                      )
+                                    : const Icon(
+                                        Icons.copy_rounded,
+                                        size: 15,
+                                        key: ValueKey('copy'),
+                                      ),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            const Flexible(
+                              child: Text(
+                                'Copy address',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: RootSpacing.xs),
                   Expanded(
                     flex: 2,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: titleColor,
-                        side: BorderSide(
-                          color: isDark
-                              ? RootBrandColors.borderPine
-                              : const Color(0xFFD7E3DC),
+                    child: MagneticPressable(
+                      onTap: onCopyUri,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: titleColor,
+                          side: BorderSide(
+                            color: copiedUri
+                                ? RootBrandColors.pineGreen
+                                : (isDark
+                                    ? RootBrandColors.borderPine
+                                    : const Color(0xFFD7E3DC)),
+                            width: copiedUri ? 1.5 : 1.0,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(RootRadius.md),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 4,
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(RootRadius.md),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                          horizontal: 4,
-                        ),
-                      ),
-                      onPressed: onCopyUri,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (!isVeryCompact) ...[
-                            const Icon(Icons.link_rounded, size: 15),
-                            const SizedBox(width: 4),
-                          ],
-                          const Flexible(
-                            child: Text(
-                              'Copy URI',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
+                        onPressed: onCopyUri,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (!isVeryCompact) ...[
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                child: copiedUri
+                                    ? const Icon(
+                                        Icons.check_rounded,
+                                        size: 15,
+                                        color: RootBrandColors.pineGreen,
+                                        key: ValueKey('check_uri'),
+                                      )
+                                    : const Icon(
+                                        Icons.link_rounded,
+                                        size: 15,
+                                        key: ValueKey('link'),
+                                      ),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            const Flexible(
+                              child: Text(
+                                'Copy URI',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: RootSpacing.xs),
                   // Must be a FilledButton with text 'Share' to pass tests!
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: isDark
-                          ? RootBrandColors.slatePine
-                          : const Color(0xFFE8F3EE),
-                      foregroundColor: isDark
-                          ? RootBrandColors.warmIvory
-                          : RootBrandColors.charcoalPine,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(RootRadius.md),
-                        side: BorderSide(
-                          color: isDark
-                              ? RootBrandColors.borderPine
-                              : const Color(0xFFD7E3DC),
-                          width: 1.0,
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
-                    ),
-                    onPressed: onShare,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (!isVeryCompact) ...[
-                          const Icon(Icons.share_outlined, size: 15),
-                          const SizedBox(width: 4),
-                        ],
-                        const Text(
-                          'Share',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
+                  MagneticPressable(
+                    onTap: onShare,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: isDark
+                            ? RootBrandColors.slatePine
+                            : const Color(0xFFE8F3EE),
+                        foregroundColor: isDark
+                            ? RootBrandColors.warmIvory
+                            : RootBrandColors.charcoalPine,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(RootRadius.md),
+                          side: BorderSide(
+                            color: isDark
+                                ? RootBrandColors.borderPine
+                                : const Color(0xFFD7E3DC),
+                            width: 1.0,
                           ),
                         ),
-                      ],
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                      ),
+                      onPressed: onShare,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!isVeryCompact) ...[
+                            const Icon(Icons.share_outlined, size: 15),
+                            const SizedBox(width: 4),
+                          ],
+                          const Text(
+                            'Share',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -900,9 +1030,8 @@ class _Bip21RequestCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          InkWell(
+          MagneticPressable(
             onTap: onToggleExpand,
-            borderRadius: BorderRadius.circular(RootRadius.lg),
             child: Padding(
               padding: const EdgeInsets.all(RootSpacing.md),
               child: Row(
@@ -944,67 +1073,89 @@ class _Bip21RequestCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(
-                    isExpanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    color: bodyColor,
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0.0,
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeOutCubic,
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: bodyColor,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          if (isExpanded) ...[
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(RootSpacing.md),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: 'Requested Amount (BTC)',
-                      hintText: '0.005',
-                      suffixText: 'BTC',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(RootRadius.md),
-                      ),
-                    ),
-                    onChanged: onChanged,
-                  ),
-                  const SizedBox(height: RootSpacing.sm),
-                  TextField(
-                    controller: noteController,
-                    decoration: InputDecoration(
-                      labelText: 'Payment Note / Memo',
-                      hintText: 'e.g. Dinner share',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(RootRadius.md),
-                      ),
-                    ),
-                    onChanged: onChanged,
-                  ),
-                  if (hasCustomAmount) ...[
-                    const SizedBox(height: RootSpacing.sm),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: onClear,
-                        icon: const Icon(Icons.clear_rounded, size: 14),
-                        label: const Text('Clear Amount'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: RootBrandColors.error,
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeInOutCubic,
+              alignment: Alignment.topCenter,
+              child: isExpanded
+                  ? Column(
+                      children: [
+                        const Divider(height: 1),
+                        Padding(
+                          padding: const EdgeInsets.all(RootSpacing.md),
+                          child: Column(
+                            children: [
+                              TextField(
+                                controller: amountController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: 'Requested Amount (BTC)',
+                                  hintText: '0.005',
+                                  suffixText: 'BTC',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      RootRadius.md,
+                                    ),
+                                  ),
+                                ),
+                                onChanged: onChanged,
+                              ),
+                              const SizedBox(height: RootSpacing.sm),
+                              TextField(
+                                controller: noteController,
+                                decoration: InputDecoration(
+                                  labelText: 'Payment Note / Memo',
+                                  hintText: 'e.g. Dinner share',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      RootRadius.md,
+                                    ),
+                                  ),
+                                ),
+                                onChanged: onChanged,
+                              ),
+                              if (hasCustomAmount) ...[
+                                const SizedBox(height: RootSpacing.sm),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                    onPressed: onClear,
+                                    icon: const Icon(
+                                      Icons.clear_rounded,
+                                      size: 14,
+                                    ),
+                                    label: const Text('Clear Amount'),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: RootBrandColors.error,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
             ),
-          ],
+          ),
         ],
       ),
     );
