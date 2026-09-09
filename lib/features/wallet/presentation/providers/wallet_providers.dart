@@ -114,7 +114,10 @@ final walletSnapshotCacheProvider = FutureProvider<WalletSnapshotCache>((
   ref,
 ) async {
   final prefs = await ref.watch(sharedPreferencesProvider.future);
-  return WalletSnapshotCache(prefs, () => ref.read(bdkWalletServiceProvider).isDecoyActive);
+  return WalletSnapshotCache(
+    prefs,
+    () => ref.read(bdkWalletServiceProvider).isDecoyActive,
+  );
 });
 
 final walletLabelStoreProvider = FutureProvider<WalletLabelStore>((ref) async {
@@ -556,5 +559,3 @@ final walletUtxosProvider = FutureProvider<List<bdk.LocalOutput>>((ref) async {
   final service = ref.watch(bdkWalletServiceProvider);
   return service.getUtxos();
 });
-
-

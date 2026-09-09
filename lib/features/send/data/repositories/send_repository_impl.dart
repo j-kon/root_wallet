@@ -71,9 +71,14 @@ class SendRepositoryImpl implements SendRepository {
         final parts = outpointStr.split(':');
         final txid = parts[0];
         final vout = int.parse(parts[1]);
-        return bdk.OutPoint(txid: bdk.Txid.fromString(hex: txid), vout: vout);
+        return bdk.OutPoint(
+          txid: bdk.Txid.fromString(hex: txid),
+          vout: vout,
+        );
       }).toList();
-      txBuilder = txBuilder.addUtxos(outpoints: selectedOutpoints).manuallySelectedOnly();
+      txBuilder = txBuilder
+          .addUtxos(outpoints: selectedOutpoints)
+          .manuallySelectedOnly();
     } else {
       final prefs = await SharedPreferences.getInstance();
       final lockedList = prefs.getStringList('settings.locked_utxos') ?? [];

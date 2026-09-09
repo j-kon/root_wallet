@@ -1,36 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:root_wallet/app/theme/colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/app/theme/typography.dart';
 
 ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
   final isDark = brightness == Brightness.dark;
-  final primary = AppColors.primaryFor(brightness);
-  final secondary = AppColors.secondaryFor(brightness);
-  final surface = AppColors.surfaceFor(brightness);
-  final border = AppColors.borderFor(brightness);
-  final textPrimary = AppColors.textPrimaryFor(brightness);
-  final textSecondary = AppColors.textSecondaryFor(brightness);
-  final glassSurface = AppColors.glassSurfaceFor(brightness);
-  final glassStrong = AppColors.glassSurfaceStrongFor(brightness);
-  final glassBorder = AppColors.glassBorderFor(brightness);
+  final scaffoldBg = isDark
+      ? RootBrandColors.charcoalPine
+      : RootBrandColors.warmIvory;
+  final surface = isDark
+      ? RootBrandColors.nightPine
+      : RootBrandColors.pureWhite;
+  final border = isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC);
+  final textPrimary = isDark
+      ? RootBrandColors.warmIvory
+      : RootBrandColors.charcoalPine;
+  final textSecondary = isDark
+      ? RootBrandColors.mutedSage
+      : const Color(0xFF5E6F68);
 
   final base = ThemeData(
     useMaterial3: true,
     brightness: brightness,
     colorScheme: ColorScheme(
       brightness: brightness,
-      primary: primary,
+      primary: RootBrandColors.pineGreen,
       onPrimary: Colors.white,
-      secondary: AppColors.accent,
-      onSecondary: secondary,
-      error: AppColors.danger,
+      secondary: RootBrandColors.amberAccent,
+      onSecondary: RootBrandColors.nightPine,
+      error: RootBrandColors.error,
       onError: Colors.white,
       surface: surface,
       onSurface: textPrimary,
       outline: border,
     ),
-    scaffoldBackgroundColor: Colors.transparent,
+    scaffoldBackgroundColor: scaffoldBg,
     textTheme: buildTypography(brightness: brightness),
     dividerColor: border,
     splashFactory: InkRipple.splashFactory,
@@ -52,25 +56,23 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     ),
     cardTheme: CardThemeData(
       elevation: 0,
-      color: glassSurface,
+      color: surface,
       margin: EdgeInsets.zero,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        side: BorderSide(color: glassBorder),
+        side: BorderSide(color: border, width: 1.0),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: brightness == Brightness.dark
-          ? AppColors.surfaceRaisedDark.withValues(alpha: 0.86)
-          : AppColors.surface.withValues(alpha: 0.96),
+      fillColor: isDark ? RootBrandColors.deepForest : Colors.white,
       labelStyle: TextStyle(
         color: isDark ? textPrimary.withValues(alpha: 0.90) : textSecondary,
         fontWeight: FontWeight.w600,
       ),
-      floatingLabelStyle: TextStyle(
-        color: primary,
+      floatingLabelStyle: const TextStyle(
+        color: RootBrandColors.pineGreen,
         fontWeight: FontWeight.w700,
       ),
       hintStyle: TextStyle(
@@ -81,19 +83,18 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(
-          color: glassBorder.withValues(alpha: isDark ? 0.54 : 0.82),
-        ),
+        borderSide: BorderSide(color: border, width: 1.0),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(
-          color: glassBorder.withValues(alpha: isDark ? 0.54 : 0.82),
-        ),
+        borderSide: BorderSide(color: border, width: 1.0),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(color: primary, width: 1.4),
+        borderSide: const BorderSide(
+          color: RootBrandColors.pineGreen,
+          width: 1.5,
+        ),
       ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
@@ -102,25 +103,20 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: secondary,
+        backgroundColor: RootBrandColors.pineGreen,
         foregroundColor: Colors.white,
-        disabledBackgroundColor: brightness == Brightness.dark
-            ? AppColors.surfaceMutedDark.withValues(alpha: 0.92)
-            : AppColors.surfaceMuted.withValues(alpha: 0.98),
-        disabledForegroundColor: textSecondary.withValues(alpha: 0.82),
+        disabledBackgroundColor: isDark
+            ? RootBrandColors.slatePine
+            : const Color(0xFFEBECE7),
+        disabledForegroundColor: textSecondary,
         minimumSize: const Size(0, 54),
         elevation: 0,
-        side: BorderSide(
-          color: brightness == Brightness.dark
-              ? AppColors.borderDark.withValues(alpha: 0.56)
-              : AppColors.border.withValues(alpha: 0.72),
-        ),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
         ),
         textStyle: const TextStyle(
-          fontSize: 15,
+          fontSize: 16,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.1,
         ),
@@ -132,9 +128,9 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, 52),
-        side: BorderSide(color: glassBorder),
+        side: BorderSide(color: border, width: 1.0),
         foregroundColor: textPrimary,
-        backgroundColor: glassSurface,
+        backgroundColor: isDark ? RootBrandColors.nightPine : Colors.white,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.md,
@@ -157,53 +153,57 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      backgroundColor: secondary,
+      backgroundColor: isDark
+          ? RootBrandColors.nightPine
+          : RootBrandColors.charcoalPine,
       contentTextStyle: const TextStyle(
         color: Colors.white,
         fontWeight: FontWeight.w500,
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
+        side: BorderSide(color: border, width: 1.0),
       ),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: Colors.transparent,
-      selectedItemColor: primary,
-      unselectedItemColor: textSecondary.withValues(alpha: 0.76),
+      backgroundColor: isDark
+          ? RootBrandColors.nightPine
+          : RootBrandColors.pureWhite,
+      selectedItemColor: RootBrandColors.pineGreen,
+      unselectedItemColor: textSecondary,
       type: BottomNavigationBarType.fixed,
       elevation: 0,
       showSelectedLabels: true,
       showUnselectedLabels: true,
     ),
-    progressIndicatorTheme: ProgressIndicatorThemeData(color: primary),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: RootBrandColors.pineGreen,
+    ),
     switchTheme: SwitchThemeData(
       trackColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return primary.withValues(alpha: isDark ? 0.68 : 0.54);
+          return RootBrandColors.pineGreen;
         }
-        return isDark
-            ? AppColors.surfaceRaisedDark.withValues(alpha: 0.92)
-            : AppColors.surfaceMuted.withValues(alpha: 0.96);
+        return isDark ? RootBrandColors.slatePine : const Color(0xFFD7E3DC);
       }),
       thumbColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return Colors.white;
-        }
-        return isDark ? AppColors.textPrimaryDark : Colors.white;
+        return Colors.white;
       }),
       trackOutlineColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return primary.withValues(alpha: isDark ? 0.42 : 0.28);
+          return RootBrandColors.pineGreen;
         }
-        return border.withValues(alpha: isDark ? 0.74 : 0.90);
+        return border;
       }),
     ),
     chipTheme: base.chipTheme.copyWith(
-      backgroundColor: glassStrong,
+      backgroundColor: isDark
+          ? RootBrandColors.deepForest
+          : RootBrandColors.warmIvory,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
-      side: BorderSide(color: glassBorder),
+      side: BorderSide(color: border, width: 1.0),
       labelStyle: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
     ),
   );

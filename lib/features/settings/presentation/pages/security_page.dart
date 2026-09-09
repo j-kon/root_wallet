@@ -236,7 +236,9 @@ class SecurityPage extends ConsumerWidget {
                       decoyPinAsync.when(
                         data: (hasDecoy) => _SecurityActionTile(
                           icon: Icons.lock_person_rounded,
-                          title: hasDecoy ? 'Change Duress PIN' : 'Set Duress PIN',
+                          title: hasDecoy
+                              ? 'Change Duress PIN'
+                              : 'Set Duress PIN',
                           subtitle: 'Enter this PIN to unlock a decoy wallet.',
                           onTap: () async {
                             final pin = await _promptPinSetup(context);
@@ -248,17 +250,29 @@ class SecurityPage extends ConsumerWidget {
                             if (isSame) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Duress PIN cannot be the same as the main PIN.')),
+                                  const SnackBar(
+                                    content: Text(
+                                      'Duress PIN cannot be the same as the main PIN.',
+                                    ),
+                                  ),
                                 );
                               }
                               return;
                             }
-                            await ref.read(decoyPinProvider.notifier).setDecoyPin(pin);
+                            await ref
+                                .read(decoyPinProvider.notifier)
+                                .setDecoyPin(pin);
                             if (!context.mounted) {
                               return;
                             }
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(hasDecoy ? 'Duress PIN updated.' : 'Duress PIN set.')),
+                              SnackBar(
+                                content: Text(
+                                  hasDecoy
+                                      ? 'Duress PIN updated.'
+                                      : 'Duress PIN set.',
+                                ),
+                              ),
                             );
                           },
                         ),
@@ -280,14 +294,17 @@ class SecurityPage extends ConsumerWidget {
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                                      onPressed: () => Navigator.of(
+                                        dialogContext,
+                                      ).pop(false),
                                       child: const Text('Cancel'),
                                     ),
                                     FilledButton(
                                       style: FilledButton.styleFrom(
                                         backgroundColor: AppColors.danger,
                                       ),
-                                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                                      onPressed: () =>
+                                          Navigator.of(dialogContext).pop(true),
                                       child: const Text('Clear'),
                                     ),
                                   ],
@@ -296,12 +313,16 @@ class SecurityPage extends ConsumerWidget {
                               if (confirmed != true || !context.mounted) {
                                 return;
                               }
-                              await ref.read(decoyPinProvider.notifier).clearDecoyPin();
+                              await ref
+                                  .read(decoyPinProvider.notifier)
+                                  .clearDecoyPin();
                               if (!context.mounted) {
                                 return;
                               }
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Duress PIN cleared.')),
+                                const SnackBar(
+                                  content: Text('Duress PIN cleared.'),
+                                ),
                               );
                             },
                             icon: const Icon(Icons.no_accounts_rounded),

@@ -8,11 +8,11 @@ abstract class SecureStorage {
 
 class FlutterSecureStorageAdapter implements SecureStorage {
   FlutterSecureStorageAdapter([FlutterSecureStorage? storage])
-    : _storage = storage ?? const FlutterSecureStorage(
-        aOptions: AndroidOptions(
-          encryptedSharedPreferences: true,
-        ),
-      );
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions(encryptedSharedPreferences: true),
+          );
 
   final FlutterSecureStorage _storage;
 

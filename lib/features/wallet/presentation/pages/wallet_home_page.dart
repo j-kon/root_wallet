@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/routing/routes.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/app/theme/colors.dart';
-import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/errors/error_mapper.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
-import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
@@ -38,24 +39,46 @@ class WalletHomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = AppColors.isDark(context);
-    final textSecondary = AppColors.textSecondaryOf(context);
+    final textPrimary = isDark
+        ? RootBrandColors.warmIvory
+        : RootBrandColors.charcoalPine;
+    final textSecondary = isDark
+        ? RootBrandColors.mutedSage
+        : const Color(0xFF5E6F68);
     final walletState = ref.watch(walletHomeControllerProvider);
     final walletController = ref.read(walletHomeControllerProvider.notifier);
     final backupConfirmed = ref.watch(backupReminderProvider);
     final hideBalances = ref.watch(balancePrivacyProvider).valueOrNull ?? false;
     final env = ref.watch(appEnvProvider);
     final now = ref.watch(dateTimeNowProvider)();
-    final unit = ref.watch(balanceUnitProvider).valueOrNull ?? BalanceUnit.sats;
     final btcNgnRate = ref.watch(btcNgnRateProvider);
-    final btcUsdRate = ref.watch(btcUsdRateProvider);
-    final btcEurRate = ref.watch(btcEurRateProvider);
     final walletLabels = ref.watch(walletLabelsControllerProvider);
     final scriptTypeAsync = ref.watch(walletScriptTypeProvider);
     final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
     const networkLabel = AppConstants.networkDisplayName;
 
     return AppScaffold(
-      title: 'Wallet',
+      titleWidget: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              isDark
+                  ? 'assets/branding/logo/root-mark-warm-ivory-64.png'
+                  : 'assets/branding/logo/root-mark-pine-green-64.png',
+              width: 22,
+              height: 22,
+            ),
+            const SizedBox(width: RootSpacing.sm),
+            Text(
+              'Wallet',
+              style: Theme.of(context).appBarTheme.titleTextStyle,
+            ),
+          ],
+        ),
+      ),
       actions: [
         IconButton(
           onPressed: walletState.valueOrNull?.isSyncing == true
@@ -70,25 +93,45 @@ class WalletHomePage extends ConsumerWidget {
         ),
         Center(
           child: Padding(
-            padding: const EdgeInsets.only(right: AppSpacing.sm),
-            child: GlassSurface(
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              tint: AppColors.warning.withValues(alpha: isDark ? 0.10 : 0.08),
-              borderColor: AppColors.warning.withValues(
-                alpha: isDark ? 0.26 : 0.18,
-              ),
+            padding: const EdgeInsets.only(right: RootSpacing.xs),
+            child: Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xxs,
+                horizontal: RootSpacing.sm,
+                vertical: 4,
               ),
-              child: Text(
-                networkLabel,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? RootBrandColors.deepForest
+                    : RootBrandColors.warmIvory,
+                borderRadius: BorderRadius.circular(RootRadius.pill),
+                border: Border.all(
                   color: isDark
-                      ? const Color(0xFFFFD48B)
-                      : Colors.brown.shade800,
-                  fontWeight: FontWeight.w700,
+                      ? RootBrandColors.borderPine
+                      : const Color(0xFFD7E3DC),
+                  width: 1.0,
                 ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: RootBrandColors.amberAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: RootSpacing.xs),
+                  Text(
+                    networkLabel,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -123,23 +166,6 @@ class WalletHomePage extends ConsumerWidget {
             loading: () => 'FX rate syncing...',
             error: (error, stackTrace) => 'FX rate unavailable',
           );
-          final marketLabel = switch (unit) {
-            BalanceUnit.eur => btcEurRate.when(
-                data: (rate) => '1 BTC = ${AppFormatters.eur(rate.value)}',
-                loading: () => 'Market data loading',
-                error: (error, stackTrace) => 'Market data unavailable',
-              ),
-            BalanceUnit.usd => btcUsdRate.when(
-                data: (rate) => '1 BTC = ${AppFormatters.usd(rate.value)}',
-                loading: () => 'Market data loading',
-                error: (error, stackTrace) => 'Market data unavailable',
-              ),
-            _ => btcNgnRate.when(
-                data: (rate) => '1 BTC = ${AppFormatters.ngnCompact(rate.value)}',
-                loading: () => 'Market data loading',
-                error: (error, stackTrace) => 'Market data unavailable',
-              ),
-          };
           final activitySummary = data.transactions.isEmpty
               ? 'Ready for your first transaction'
               : '${data.transactions.length} transaction${data.transactions.length == 1 ? '' : 's'} tracked';
@@ -157,55 +183,57 @@ class WalletHomePage extends ConsumerWidget {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
                 context.pageHorizontalPadding,
-                AppSpacing.sm,
+                RootSpacing.xs,
                 context.pageHorizontalPadding,
-                context.contentBottomSpacing,
+                130.0,
               ),
               children: [
-                Text(
-                  'Self-custody dashboard',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: textSecondary,
-                    letterSpacing: 0.2,
+                // Quiet secondary metadata header
+                Padding(
+                  padding: const EdgeInsets.only(
+                    top: RootSpacing.xs,
+                    bottom: RootSpacing.md,
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Your bitcoin, clear and in control.',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.9,
-                    height: 1.05,
-                    fontSize: context.isCompactWidth ? 26 : 30,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    _WalletStatusChip(
-                      icon: Icons.sync_rounded,
-                      label: syncChipLabel,
-                    ),
-                    const _WalletStatusChip(
-                      icon: Icons.language_rounded,
-                      label: networkLabel,
-                    ),
-                    _WalletStatusChip(
-                      icon: Icons.currency_exchange_rounded,
-                      label: marketLabel,
-                    ),
-                    scriptTypeAsync.maybeWhen(
-                      data: (type) => _WalletStatusChip(
-                        icon: Icons.fingerprint_rounded,
-                        label: type.displayName,
+                  child: Row(
+                    children: [
+                      Icon(
+                        data.isSyncing
+                            ? Icons.sync_rounded
+                            : (data.isOffline
+                                  ? Icons.wifi_off_rounded
+                                  : Icons.check_circle_outline_rounded),
+                        size: 14,
+                        color: RootBrandColors.pineGreen,
                       ),
-                      orElse: () => const SizedBox.shrink(),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          syncChipLabel,
+                          style: TextStyle(
+                            color: textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: RootSpacing.sm),
+                      scriptTypeAsync.maybeWhen(
+                        data: (type) => Text(
+                          '·  ${type.displayName}',
+                          style: TextStyle(
+                            color: textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        orElse: () => const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.md),
+                // Total Balance Card
                 BalanceCard(
                   balance: data.balance,
                   fiatAmountLabel: fiatLabel,
@@ -214,24 +242,25 @@ class WalletHomePage extends ConsumerWidget {
                       : 'Available portfolio balance',
                   obscureValues: hideBalances,
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: RootSpacing.md),
+                // Quick actions [ RECEIVE ] [ SEND ]
                 if (context.isVeryCompactWidth) ...[
                   PrimaryActionButton(
-                    icon: Icons.call_received_rounded,
+                    icon: Icons.arrow_downward_rounded,
                     label: 'Receive',
                     subtitle: 'Share an address',
-                    accentColor: AppColors.success,
+                    accentColor: RootBrandColors.pineGreen,
                     onTap:
                         onReceiveRequested ??
                         () =>
                             Navigator.of(context).pushNamed(AppRoutes.receive),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: RootSpacing.sm),
                   PrimaryActionButton(
-                    icon: Icons.send_rounded,
+                    icon: Icons.arrow_upward_rounded,
                     label: 'Send',
                     subtitle: 'Move funds out',
-                    accentColor: AppColors.warning,
+                    accentColor: RootBrandColors.amberAccent,
                     onTap:
                         onSendRequested ??
                         () => Navigator.of(context).pushNamed(AppRoutes.send),
@@ -241,10 +270,10 @@ class WalletHomePage extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: PrimaryActionButton(
-                          icon: Icons.call_received_rounded,
+                          icon: Icons.arrow_downward_rounded,
                           label: 'Receive',
                           subtitle: 'Share an address',
-                          accentColor: AppColors.success,
+                          accentColor: RootBrandColors.pineGreen,
                           onTap:
                               onReceiveRequested ??
                               () => Navigator.of(
@@ -252,13 +281,13 @@ class WalletHomePage extends ConsumerWidget {
                               ).pushNamed(AppRoutes.receive),
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.sm),
+                      const SizedBox(width: RootSpacing.sm),
                       Expanded(
                         child: PrimaryActionButton(
-                          icon: Icons.send_rounded,
+                          icon: Icons.arrow_upward_rounded,
                           label: 'Send',
                           subtitle: 'Move funds out',
-                          accentColor: AppColors.warning,
+                          accentColor: RootBrandColors.amberAccent,
                           onTap:
                               onSendRequested ??
                               () => Navigator.of(
@@ -268,7 +297,8 @@ class WalletHomePage extends ConsumerWidget {
                       ),
                     ],
                   ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: RootSpacing.md),
+                // Security / Backup status card
                 _WalletAttentionCard(
                   icon: isBackupConfirmed
                       ? Icons.verified_user_outlined
@@ -278,7 +308,7 @@ class WalletHomePage extends ConsumerWidget {
                       : 'Secure your recovery phrase',
                   message: isBackupConfirmed
                       ? 'Your backup reminder is complete. Keep your phrase stored offline and private.'
-                      : 'A backup is still outstanding. Completing it now is the single best way to protect access to your wallet.',
+                      : 'A backup is still outstanding. Completing it now protects your sovereignty.',
                   actionLabel: isBackupConfirmed
                       ? 'Review phrase'
                       : 'Back up now',
@@ -290,11 +320,11 @@ class WalletHomePage extends ConsumerWidget {
                     ),
                   ),
                   tone: isBackupConfirmed
-                      ? AppColors.success
-                      : AppColors.warning,
+                      ? RootBrandColors.pineGreen
+                      : RootBrandColors.amberAccent,
                 ),
                 if (data.isOffline) ...[
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: RootSpacing.md),
                   InfoBanner(
                     type: InfoBannerType.warning,
                     message:
@@ -302,7 +332,7 @@ class WalletHomePage extends ConsumerWidget {
                     icon: Icons.wifi_off_rounded,
                   ),
                 ] else if (data.isSyncing) ...[
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: RootSpacing.md),
                   const InfoBanner(
                     type: InfoBannerType.info,
                     message:
@@ -310,14 +340,15 @@ class WalletHomePage extends ConsumerWidget {
                     icon: Icons.sync_rounded,
                   ),
                 ] else ...[
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: RootSpacing.md),
                   InfoBanner(
                     type: InfoBannerType.success,
                     message: liveSyncMessage,
                     icon: Icons.cloud_done_rounded,
                   ),
                 ],
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: RootSpacing.lg),
+                // Recent Activity
                 SectionHeader(
                   title: 'Recent activity',
                   trailing: Text(
@@ -328,7 +359,7 @@ class WalletHomePage extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: RootSpacing.xs),
                 TxList(
                   items: data.transactions,
                   shrinkWrap: true,
@@ -354,55 +385,6 @@ class WalletHomePage extends ConsumerWidget {
   }
 }
 
-class _WalletStatusChip extends StatelessWidget {
-  const _WalletStatusChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final textPrimary = AppColors.textPrimaryOf(context);
-    final maxWidth = context.isCompactWidth
-        ? context.screenWidth * 0.72
-        : 260.0;
-
-    return GlassSurface(
-      borderRadius: BorderRadius.circular(AppRadius.pill),
-      tint: AppColors.glassSurfaceOf(
-        context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.54 : 0.82),
-      shadowColor: Colors.transparent,
-      highlightOpacity: 0.05,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: AppColors.primary),
-            const SizedBox(width: AppSpacing.xs),
-            Flexible(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _WalletAttentionCard extends StatelessWidget {
   const _WalletAttentionCard({
     required this.icon,
@@ -422,49 +404,61 @@ class _WalletAttentionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = AppColors.textSecondaryOf(context);
+    final isDark = AppColors.isDark(context);
+    final textPrimary = isDark
+        ? RootBrandColors.warmIvory
+        : RootBrandColors.charcoalPine;
+    final textSecondary = isDark
+        ? RootBrandColors.mutedSage
+        : const Color(0xFF5E6F68);
+    final cardBg = isDark ? RootBrandColors.nightPine : Colors.white;
+    final border = isDark
+        ? RootBrandColors.borderPine
+        : const Color(0xFFD7E3DC);
 
-    return GlassSurface(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      tint: AppColors.glassSurfaceOf(
-        context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.64 : 0.90),
-      borderColor: tone.withValues(alpha: 0.22),
-      shadowColor: tone.withValues(alpha: 0.05),
-      highlightOpacity: 0.06,
-      padding: const EdgeInsets.all(AppSpacing.md),
+    return Container(
+      padding: const EdgeInsets.all(RootSpacing.md),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(RootRadius.lg),
+        border: Border.all(color: border, width: 1.0),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: tone.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.md),
+              color: isDark
+                  ? RootBrandColors.deepForest
+                  : RootBrandColors.warmIvory,
+              borderRadius: BorderRadius.circular(RootRadius.md),
+              border: Border.all(color: border, width: 1.0),
             ),
-            child: Icon(icon, color: tone),
+            child: Icon(icon, color: tone, size: 20),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: RootSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: textPrimary,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: RootSpacing.xs),
                 Text(
                   message,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: textSecondary,
-                    height: 1.45,
+                    height: 1.4,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: RootSpacing.md),
                 OutlinedButton(onPressed: action, child: Text(actionLabel)),
               ],
             ),

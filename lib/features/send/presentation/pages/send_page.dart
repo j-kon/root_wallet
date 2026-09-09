@@ -163,12 +163,19 @@ class _SendPageState extends ConsumerState<SendPage> {
                         TextField(
                           controller: _addressController,
                           inputFormatters: [
-                            TextInputFormatter.withFunction((oldValue, newValue) {
-                              final sanitized = _sanitizeAddressText(newValue.text);
+                            TextInputFormatter.withFunction((
+                              oldValue,
+                              newValue,
+                            ) {
+                              final sanitized = _sanitizeAddressText(
+                                newValue.text,
+                              );
                               if (sanitized != newValue.text) {
                                 return TextEditingValue(
                                   text: sanitized,
-                                  selection: TextSelection.collapsed(offset: sanitized.length),
+                                  selection: TextSelection.collapsed(
+                                    offset: sanitized.length,
+                                  ),
                                 );
                               }
                               return newValue;
@@ -351,15 +358,18 @@ class _SendPageState extends ConsumerState<SendPage> {
                   const SizedBox(height: AppSpacing.md),
                   _FormSection(
                     title: 'Coin Selection',
-                    subtitle: 'Choose specific inputs or let the wallet auto-select.',
+                    subtitle:
+                        'Choose specific inputs or let the wallet auto-select.',
                     child: Builder(
                       builder: (builderContext) {
                         final selectedUtxos = ref.watch(selectedUtxosProvider);
-                        final utxos = ref.watch(walletUtxosProvider).valueOrNull ?? [];
+                        final utxos =
+                            ref.watch(walletUtxosProvider).valueOrNull ?? [];
 
                         int selectedSats = 0;
                         for (final utxo in utxos) {
-                          final outpoint = '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
+                          final outpoint =
+                              '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
                           if (selectedUtxos.contains(outpoint)) {
                             selectedSats += utxo.txout.value.toSat();
                           }
@@ -375,13 +385,17 @@ class _SendPageState extends ConsumerState<SendPage> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         isManual
                                             ? 'Manual selection'
                                             : 'Automatic selection',
-                                        style: Theme.of(builderContext).textTheme.titleSmall?.copyWith(
+                                        style: Theme.of(builderContext)
+                                            .textTheme
+                                            .titleSmall
+                                            ?.copyWith(
                                               fontWeight: FontWeight.bold,
                                             ),
                                       ),
@@ -390,16 +404,21 @@ class _SendPageState extends ConsumerState<SendPage> {
                                         isManual
                                             ? '${selectedUtxos.length} inputs selected (${AppFormatters.sats(selectedSats)})'
                                             : 'Excluded locked UTXOs automatically.',
-                                        style: Theme.of(builderContext).textTheme.bodySmall?.copyWith(
-                                              color: textSecondary,
-                                            ),
+                                        style: Theme.of(builderContext)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(color: textSecondary),
                                       ),
                                     ],
                                   ),
                                 ),
                                 OutlinedButton.icon(
-                                  onPressed: () => _showCoinSelectionSheet(builderContext),
-                                  icon: const Icon(Icons.toll_rounded, size: 16),
+                                  onPressed: () =>
+                                      _showCoinSelectionSheet(builderContext),
+                                  icon: const Icon(
+                                    Icons.toll_rounded,
+                                    size: 16,
+                                  ),
                                   label: Text(isManual ? 'Edit' : 'Select'),
                                 ),
                               ],
@@ -477,7 +496,7 @@ class _SendPageState extends ConsumerState<SendPage> {
                   : () async {
                       final valid = await controller.prepareReview();
                       if (!valid || !context.mounted) {
-                         return;
+                        return;
                       }
                       Navigator.of(context).pushNamed(AppRoutes.reviewTransfer);
                     },
@@ -504,13 +523,16 @@ class _SendPageState extends ConsumerState<SendPage> {
             return Consumer(
               builder: (consumerContext, ref, child) {
                 final utxosAsync = ref.watch(walletUtxosProvider);
-                final lockedSet = ref.watch(lockedUtxosProvider).valueOrNull ?? {};
+                final lockedSet =
+                    ref.watch(lockedUtxosProvider).valueOrNull ?? {};
                 final selectedSet = ref.watch(selectedUtxosProvider);
 
                 return Container(
                   decoration: BoxDecoration(
                     color: Theme.of(consumerContext).colorScheme.surface,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                   ),
                   child: Column(
                     children: [
@@ -531,12 +553,15 @@ class _SendPageState extends ConsumerState<SendPage> {
                           children: [
                             Text(
                               'Customize Inputs',
-                              style: Theme.of(consumerContext).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              style: Theme.of(consumerContext)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             TextButton(
-                              onPressed: () => ref.read(selectedUtxosProvider.notifier).clear(),
+                              onPressed: () => ref
+                                  .read(selectedUtxosProvider.notifier)
+                                  .clear(),
                               child: const Text('Clear all'),
                             ),
                           ],
@@ -545,16 +570,21 @@ class _SendPageState extends ConsumerState<SendPage> {
                       const Divider(),
                       Expanded(
                         child: utxosAsync.when(
-                          loading: () => const Center(child: CircularProgressIndicator()),
-                          error: (err, stack) => Center(child: Text('Error loading UTXOs: $err')),
+                          loading: () =>
+                              const Center(child: CircularProgressIndicator()),
+                          error: (err, stack) =>
+                              Center(child: Text('Error loading UTXOs: $err')),
                           data: (utxos) {
                             final spendableUtxos = utxos.where((utxo) {
-                              final outpoint = '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
+                              final outpoint =
+                                  '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
                               return !lockedSet.contains(outpoint);
                             }).toList();
 
                             if (spendableUtxos.isEmpty) {
-                              return const Center(child: Text('No spendable UTXOs available.'));
+                              return const Center(
+                                child: Text('No spendable UTXOs available.'),
+                              );
                             }
 
                             return ListView.builder(
@@ -562,8 +592,11 @@ class _SendPageState extends ConsumerState<SendPage> {
                               itemCount: spendableUtxos.length,
                               itemBuilder: (itemContext, index) {
                                 final utxo = spendableUtxos[index];
-                                final outpointStr = '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
-                                final isSelected = selectedSet.contains(outpointStr);
+                                final outpointStr =
+                                    '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
+                                final isSelected = selectedSet.contains(
+                                  outpointStr,
+                                );
                                 final sats = utxo.txout.value.toSat();
 
                                 String addressStr = 'Unknown';
@@ -579,11 +612,15 @@ class _SendPageState extends ConsumerState<SendPage> {
                                   value: isSelected,
                                   onChanged: (_) {
                                     HapticFeedback.lightImpact();
-                                    ref.read(selectedUtxosProvider.notifier).toggleUtxo(outpointStr);
+                                    ref
+                                        .read(selectedUtxosProvider.notifier)
+                                        .toggleUtxo(outpointStr);
                                   },
                                   title: Text(
                                     AppFormatters.sats(sats),
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                   subtitle: Text(
                                     '${AppFormatters.maskAddress(addressStr)}\n${AppFormatters.maskAddress(outpointStr)}',
@@ -635,11 +672,12 @@ class _SendPageState extends ConsumerState<SendPage> {
     if (text.isEmpty) return text;
 
     // Check if the text contains CJK (Chinese, Japanese, Korean) characters
-    final hasCjk = text.runes.any((rune) =>
-        (rune >= 0x4E00 && rune <= 0x9FFF) ||
-        (rune >= 0x3400 && rune <= 0x4DBF) ||
-        (rune >= 0x3000 && rune <= 0x303F) ||
-        (rune >= 0xFF00 && rune <= 0xFFEF)
+    final hasCjk = text.runes.any(
+      (rune) =>
+          (rune >= 0x4E00 && rune <= 0x9FFF) ||
+          (rune >= 0x3400 && rune <= 0x4DBF) ||
+          (rune >= 0x3000 && rune <= 0x303F) ||
+          (rune >= 0xFF00 && rune <= 0xFFEF),
     );
 
     if (!hasCjk) {
@@ -690,7 +728,11 @@ class _SendPageState extends ConsumerState<SendPage> {
     if (text.startsWith('tb1') && text.length >= 42 && text.length <= 62) {
       return true;
     }
-    if ((text.startsWith('m') || text.startsWith('n') || text.startsWith('2')) && text.length >= 26 && text.length <= 35) {
+    if ((text.startsWith('m') ||
+            text.startsWith('n') ||
+            text.startsWith('2')) &&
+        text.length >= 26 &&
+        text.length <= 35) {
       return true;
     }
     return false;

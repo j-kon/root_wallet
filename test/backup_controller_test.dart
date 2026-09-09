@@ -96,53 +96,57 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(container.read(backupControllerProvider).lastBackupTime, isNull);
 
-      final containerWithTime = await buildContainer(prefs: {
-        'settings.last_backup_time': '2026-06-23T12:00:00.000Z',
-      });
+      final containerWithTime = await buildContainer(
+        prefs: {'settings.last_backup_time': '2026-06-23T12:00:00.000Z'},
+      );
       await containerWithTime.read(sharedPreferencesProvider.future);
       containerWithTime.read(backupControllerProvider);
       await Future<void>.delayed(Duration.zero);
       final state = containerWithTime.read(backupControllerProvider);
-      expect(
-        state.lastBackupTime,
-        DateTime.parse('2026-06-23T12:00:00.000Z'),
-      );
+      expect(state.lastBackupTime, DateTime.parse('2026-06-23T12:00:00.000Z'));
     });
 
-    test('backupToFile encrypts and saves labels using active mnemonic key', () async {
-      await secureStorage.write(
-        key: WalletStorageKeys.mnemonic,
-        value: 'about check dynamic elegant first health dynamic dynamic dynamic dynamic dynamic dynamic',
-      );
+    test(
+      'backupToFile encrypts and saves labels using active mnemonic key',
+      () async {
+        await secureStorage.write(
+          key: WalletStorageKeys.mnemonic,
+          value:
+              'about check dynamic elegant first health dynamic dynamic dynamic dynamic dynamic dynamic',
+        );
 
-      final container = await buildContainer(prefs: {
-        'wallet.local_labels.v1': jsonEncode({
-          'addresses': {'tb1qaddress': 'Faucet Payout'},
-          'transactions': {},
-        }),
-      });
-      await container.read(sharedPreferencesProvider.future);
-      // Wait for walletLabelsControllerProvider to load
-      await container.read(walletLabelsControllerProvider.future);
-      final controller = container.read(backupControllerProvider.notifier);
+        final container = await buildContainer(
+          prefs: {
+            'wallet.local_labels.v1': jsonEncode({
+              'addresses': {'tb1qaddress': 'Faucet Payout'},
+              'transactions': {},
+            }),
+          },
+        );
+        await container.read(sharedPreferencesProvider.future);
+        // Wait for walletLabelsControllerProvider to load
+        await container.read(walletLabelsControllerProvider.future);
+        final controller = container.read(backupControllerProvider.notifier);
 
-      await controller.backupToFile();
+        await controller.backupToFile();
 
-      final state = container.read(backupControllerProvider);
-      expect(state.errorMessage, isNull);
-      expect(state.successMessage, contains('saved successfully'));
-      expect(state.lastBackupTime, isNotNull);
+        final state = container.read(backupControllerProvider);
+        expect(state.errorMessage, isNull);
+        expect(state.successMessage, contains('saved successfully'));
+        expect(state.lastBackupTime, isNotNull);
 
-      // Verify backup file exists and can be read/decrypted
-      final file = File('/tmp/root_wallet_test_docs/backup.enc');
-      expect(file.existsSync(), isTrue);
+        // Verify backup file exists and can be read/decrypted
+        final file = File('/tmp/root_wallet_test_docs/backup.enc');
+        expect(file.existsSync(), isTrue);
 
-      final encryptedCombined = file.readAsStringSync();
-      expect(encryptedCombined, isNotEmpty);
-    });
+        final encryptedCombined = file.readAsStringSync();
+        expect(encryptedCombined, isNotEmpty);
+      },
+    );
 
     test('restoreFromFile decrypts and updates label store', () async {
-      const normalMnemonic = 'about check dynamic elegant first health dynamic dynamic dynamic dynamic dynamic dynamic';
+      const normalMnemonic =
+          'about check dynamic elegant first health dynamic dynamic dynamic dynamic dynamic dynamic';
       await secureStorage.write(
         key: WalletStorageKeys.mnemonic,
         value: normalMnemonic,
@@ -154,7 +158,8 @@ void main() {
 
       // Write mock backup file
       final encrypted = BackupEncryptionService.encrypt(
-        plainText: '{"addresses": {"tb1qaddress": "Restored Label"}, "transactions": {}}',
+        plainText:
+            '{"addresses": {"tb1qaddress": "Restored Label"}, "transactions": {}}',
         mnemonic: normalMnemonic,
       );
       final file = File('/tmp/root_wallet_test_docs/backup.enc');
@@ -168,23 +173,35 @@ void main() {
       expect(state.successMessage, contains('restored successfully'));
 
       // Check that controller loaded the restored data
-      final labelsSnapshot = await container.read(walletLabelsControllerProvider.future);
+      final labelsSnapshot = await container.read(
+        walletLabelsControllerProvider.future,
+      );
       expect(labelsSnapshot.addressLabel('tb1qaddress'), 'Restored Label');
     });
 
     test('backup/restore respects decoy mode mnemonic', () async {
-      const normalMnemonic = 'about check dynamic elegant first health dynamic dynamic dynamic dynamic dynamic dynamic';
-      const decoyMnemonic = 'fringe zero basic simple filter useful double double double double double double';
+      const normalMnemonic =
+          'about check dynamic elegant first health dynamic dynamic dynamic dynamic dynamic dynamic';
+      const decoyMnemonic =
+          'fringe zero basic simple filter useful double double double double double double';
 
-      await secureStorage.write(key: WalletStorageKeys.mnemonic, value: normalMnemonic);
-      await secureStorage.write(key: WalletStorageKeys.decoyMnemonic, value: decoyMnemonic);
+      await secureStorage.write(
+        key: WalletStorageKeys.mnemonic,
+        value: normalMnemonic,
+      );
+      await secureStorage.write(
+        key: WalletStorageKeys.decoyMnemonic,
+        value: decoyMnemonic,
+      );
 
-      final container = await buildContainer(prefs: {
-        'wallet.local_labels.v1': jsonEncode({
-          'addresses': {'tb1qaddress': 'Faucet Payout'},
-          'transactions': {},
-        }),
-      });
+      final container = await buildContainer(
+        prefs: {
+          'wallet.local_labels.v1': jsonEncode({
+            'addresses': {'tb1qaddress': 'Faucet Payout'},
+            'transactions': {},
+          }),
+        },
+      );
       await container.read(sharedPreferencesProvider.future);
       await container.read(walletLabelsControllerProvider.future);
       final controller = container.read(backupControllerProvider.notifier);

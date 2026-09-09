@@ -25,7 +25,10 @@ void main() {
 
       expect(identity.network, 'testnet');
       expect(mnemonic, isNotNull);
-      expect(() => bdk.Mnemonic.fromString(mnemonic: mnemonic!), returnsNormally);
+      expect(
+        () => bdk.Mnemonic.fromString(mnemonic: mnemonic!),
+        returnsNormally,
+      );
       expect(mnemonic!.split(' '), hasLength(12));
     },
   );
@@ -43,9 +46,13 @@ void main() {
         allowCustomEsploraEndpoint: false,
       );
 
-      final identity = await service.createWallet(scriptType: WalletScriptType.taproot);
+      final identity = await service.createWallet(
+        scriptType: WalletScriptType.taproot,
+      );
       final mnemonic = await service.getMnemonic();
-      final savedScriptType = await secureStorage.read(key: WalletStorageKeys.scriptType);
+      final savedScriptType = await secureStorage.read(
+        key: WalletStorageKeys.scriptType,
+      );
       final diagnostics = await service.diagnostics();
 
       expect(identity.network, 'testnet');

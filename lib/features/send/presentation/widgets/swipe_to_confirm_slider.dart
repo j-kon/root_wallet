@@ -20,7 +20,8 @@ class SwipeToConfirmSlider extends StatefulWidget {
   State<SwipeToConfirmSlider> createState() => _SwipeToConfirmSliderState();
 }
 
-class _SwipeToConfirmSliderState extends State<SwipeToConfirmSlider> with SingleTickerProviderStateMixin {
+class _SwipeToConfirmSliderState extends State<SwipeToConfirmSlider>
+    with SingleTickerProviderStateMixin {
   double _dragValue = 0.0;
   late final AnimationController _resetController;
   late final Animation<double> _resetAnimation;
@@ -52,7 +53,10 @@ class _SwipeToConfirmSliderState extends State<SwipeToConfirmSlider> with Single
       _resetController.stop();
     }
 
-    final newDragValue = (_dragValue + details.delta.dx).clamp(0.0, maxDragWidth);
+    final newDragValue = (_dragValue + details.delta.dx).clamp(
+      0.0,
+      maxDragWidth,
+    );
     final dragPercent = maxDragWidth > 0 ? newDragValue / maxDragWidth : 0.0;
 
     // Trigger subtle haptics along the drag path
@@ -81,13 +85,17 @@ class _SwipeToConfirmSliderState extends State<SwipeToConfirmSlider> with Single
       widget.onConfirm();
     } else {
       // Snap back
-      _resetAnimation = Tween<double>(begin: _dragValue, end: 0.0).animate(
-        CurvedAnimation(parent: _resetController, curve: Curves.easeOutCubic),
-      )..addListener(() {
-          setState(() {
-            _dragValue = _resetAnimation.value;
+      _resetAnimation =
+          Tween<double>(begin: _dragValue, end: 0.0).animate(
+            CurvedAnimation(
+              parent: _resetController,
+              curve: Curves.easeOutCubic,
+            ),
+          )..addListener(() {
+            setState(() {
+              _dragValue = _resetAnimation.value;
+            });
           });
-        });
       _lastDragFeedbackPercent = 0.0;
       _resetController.forward(from: 0.0);
     }
@@ -98,11 +106,12 @@ class _SwipeToConfirmSliderState extends State<SwipeToConfirmSlider> with Single
     final theme = Theme.of(context);
     final isDark = AppColors.isDark(context);
     final handleSize = 54.0;
-    
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalWidth = constraints.maxWidth;
-        final maxDragWidth = totalWidth - handleSize - 8.0; // 4px padding on each side
+        final maxDragWidth =
+            totalWidth - handleSize - 8.0; // 4px padding on each side
 
         final dragPercent = maxDragWidth > 0 ? _dragValue / maxDragWidth : 0.0;
 
@@ -117,8 +126,8 @@ class _SwipeToConfirmSliderState extends State<SwipeToConfirmSlider> with Single
                 color: _confirmed
                     ? AppColors.success.withValues(alpha: 0.4)
                     : isDark
-                        ? Colors.white.withValues(alpha: 0.12)
-                        : AppColors.secondary.withValues(alpha: 0.14),
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : AppColors.secondary.withValues(alpha: 0.14),
                 width: 1.5,
               ),
             ),
@@ -135,7 +144,7 @@ class _SwipeToConfirmSliderState extends State<SwipeToConfirmSlider> with Single
                           : Colors.grey.shade100,
                     ),
                   ),
-                  
+
                   // Fill Background Color (Green gradient matching confirmed state)
                   Positioned(
                     left: 0,
@@ -146,8 +155,12 @@ class _SwipeToConfirmSliderState extends State<SwipeToConfirmSlider> with Single
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            AppColors.primary.withValues(alpha: 0.2 + (dragPercent * 0.4)),
-                            AppColors.success.withValues(alpha: dragPercent * 0.7),
+                            AppColors.primary.withValues(
+                              alpha: 0.2 + (dragPercent * 0.4),
+                            ),
+                            AppColors.success.withValues(
+                              alpha: dragPercent * 0.7,
+                            ),
                           ],
                         ),
                       ),

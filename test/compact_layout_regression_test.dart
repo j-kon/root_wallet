@@ -338,7 +338,9 @@ Future<void> _pumpCompactPage(
       ProviderScope(
         overrides: [
           secureStorageProvider.overrideWithValue(InMemorySecureStorage()),
-          walletStoragePathProvider.overrideWith((ref) async => '/tmp/wallet_test'),
+          walletStoragePathProvider.overrideWith(
+            (ref) async => '/tmp/wallet_test',
+          ),
           ...overrides,
         ],
         child: MaterialApp(

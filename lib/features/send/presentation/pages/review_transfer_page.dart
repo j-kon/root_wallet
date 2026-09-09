@@ -243,9 +243,7 @@ class ReviewTransferPage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             SwipeToConfirmSlider(
-              label: state.isSending
-                  ? 'Broadcasting...'
-                  : 'Swipe to broadcast',
+              label: state.isSending ? 'Broadcasting...' : 'Swipe to broadcast',
               enabled: !state.isSending,
               onConfirm: () async {
                 final amountSatsToSend = amountSats;

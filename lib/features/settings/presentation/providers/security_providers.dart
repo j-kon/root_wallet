@@ -370,7 +370,7 @@ class LockController extends AsyncNotifier<AppLockState> {
     state = AsyncData(current.copyWith(isBusy: true, clearMessage: true));
 
     final lockService = ref.read(lockServiceProvider);
-    
+
     // Check if decoy PIN matches
     final hasDecoy = await lockService.hasDecoyPin();
     if (hasDecoy) {
@@ -503,19 +503,22 @@ class CustomNodeController extends AsyncNotifier<String?> {
     final trimmed = url.trim();
     final uri = Uri.tryParse(trimmed);
     if (uri == null || !uri.hasScheme || uri.host.isEmpty || uri.port == 0) {
-      throw const FormatException('Enter a valid Electrum URL (e.g. tcp://host:port).');
+      throw const FormatException(
+        'Enter a valid Electrum URL (e.g. tcp://host:port).',
+      );
     }
     if (uri.scheme != 'tcp' && uri.scheme != 'ssl') {
-      throw const FormatException('Only tcp:// or ssl:// protocols are supported.');
+      throw const FormatException(
+        'Only tcp:// or ssl:// protocols are supported.',
+      );
     }
     return trimmed;
   }
 }
 
-final customNodeProvider =
-    AsyncNotifierProvider<CustomNodeController, String?>(
-      CustomNodeController.new,
-    );
+final customNodeProvider = AsyncNotifierProvider<CustomNodeController, String?>(
+  CustomNodeController.new,
+);
 
 class DecoyPinController extends AsyncNotifier<bool> {
   @override
@@ -539,8 +542,6 @@ class DecoyPinController extends AsyncNotifier<bool> {
   }
 }
 
-final decoyPinProvider =
-    AsyncNotifierProvider<DecoyPinController, bool>(
-      DecoyPinController.new,
-    );
-
+final decoyPinProvider = AsyncNotifierProvider<DecoyPinController, bool>(
+  DecoyPinController.new,
+);
