@@ -296,42 +296,12 @@ class WalletDiagnosticsPage extends ConsumerWidget {
     WalletDiagnosticsController controller, {
     required String currentEndpoint,
   }) async {
-    final textController = TextEditingController(text: currentEndpoint);
     final endpoint = await showDialog<String?>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Custom Esplora endpoint'),
-        content: TextField(
-          controller: textController,
-          autofocus: true,
-          keyboardType: TextInputType.url,
-          textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(
-            labelText: 'Endpoint URL',
-            hintText: 'https://mempool.space/testnet/api',
-          ),
-          onSubmitted: (_) =>
-              Navigator.of(dialogContext).pop(textController.text),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(null),
-            child: const Text('Cancel'),
-          ),
-          if (currentEndpoint.trim().isNotEmpty)
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(''),
-              child: const Text('Clear'),
-            ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(textController.text),
-            child: const Text('Save'),
-          ),
-        ],
+      builder: (dialogContext) => _CustomEndpointDialog(
+        currentEndpoint: currentEndpoint,
       ),
     );
-    textController.dispose();
 
     if (endpoint == null || !context.mounted) {
       return;
@@ -480,3 +450,62 @@ class _DiagnosticsChip extends StatelessWidget {
     );
   }
 }
+
+class _CustomEndpointDialog extends StatefulWidget {
+  const _CustomEndpointDialog({required this.currentEndpoint});
+
+  final String currentEndpoint;
+
+  @override
+  State<_CustomEndpointDialog> createState() => _CustomEndpointDialogState();
+}
+
+class _CustomEndpointDialogState extends State<_CustomEndpointDialog> {
+  late final TextEditingController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController(text: widget.currentEndpoint);
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Custom Esplora endpoint'),
+      content: TextField(
+        controller: _textController,
+        autofocus: true,
+        keyboardType: TextInputType.url,
+        textInputAction: TextInputAction.done,
+        decoration: const InputDecoration(
+          labelText: 'Endpoint URL',
+          hintText: 'https://mempool.space/testnet/api',
+        ),
+        onSubmitted: (_) => Navigator.of(context).pop(_textController.text),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Cancel'),
+        ),
+        if (widget.currentEndpoint.trim().isNotEmpty)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(''),
+            child: const Text('Clear'),
+          ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_textController.text),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+

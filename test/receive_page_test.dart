@@ -56,6 +56,38 @@ void main() {
     expect(shareService.sharedTexts, ['bitcoin:tb1qreceiveaddress']);
     expect(shareService.subjects, ['Root Wallet payment request']);
   });
+
+  testWidgets('editing receive address label dialog opens, saves, and animates out cleanly without disposal error', (
+    WidgetTester tester,
+  ) async {
+    await _pumpReceivePage(
+      tester,
+      shareService: _FakeShareService(),
+      urlLauncherService: _FakeUrlLauncherService(),
+    );
+
+    // Tap "Add label"
+    expect(find.text('Add label'), findsOneWidget);
+    await tester.tap(find.text('Add label'));
+    await tester.pumpAndSettle();
+
+    // Verify dialog is shown with TextField
+    expect(find.text('Label Receive Address'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+
+    // Enter label text
+    await tester.enterText(find.byType(TextField), 'Cold storage savings');
+    await tester.pumpAndSettle();
+
+    // Tap "Save Label"
+    await tester.tap(find.widgetWithText(FilledButton, 'Save Label'));
+    // Pump frames to ensure exit animation finishes cleanly without assertion failure
+    await tester.pumpAndSettle();
+
+    // Verify dialog is dismissed and snackbar appears
+    expect(find.text('Label Receive Address'), findsNothing);
+    expect(find.text('Address label saved.'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpReceivePage(
