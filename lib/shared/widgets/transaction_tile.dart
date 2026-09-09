@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/app/theme/colors.dart';
-import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
-import 'package:root_wallet/core/widgets/glass_surface.dart';
 
 class TransactionTile extends StatelessWidget {
   const TransactionTile({
@@ -29,157 +30,233 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = MediaQuery.sizeOf(context).width < 390;
-    final textSecondary = AppColors.textSecondaryOf(context);
-    final statusTextColor = isPending
-        ? (AppColors.isDark(context)
-              ? const Color(0xFFFFD48B)
-              : Colors.brown.shade800)
-        : (AppColors.isDark(context)
-              ? const Color(0xFF91E2C6)
-              : Colors.green.shade900);
-    final accent = isIncoming ? AppColors.success : AppColors.warning;
+    final isDark = AppColors.isDark(context);
+    final isCompact = MediaQuery.sizeOf(context).width < 380;
+
+    final cardBg = isDark
+        ? RootBrandColors.nightPine
+        : RootBrandColors.pureWhite;
+    final cardBorder = isDark
+        ? RootBrandColors.borderPine
+        : const Color(0xFFD7E3DC);
+    final textPrimary = isDark
+        ? RootBrandColors.warmIvory
+        : RootBrandColors.charcoalPine;
+    final textSecondary = isDark
+        ? RootBrandColors.mutedSage
+        : const Color(0xFF5E6F68);
+
+    final accent = isIncoming
+        ? RootBrandColors.pineGreen
+        : RootBrandColors.amberAccent;
     final icon = isIncoming
-        ? Icons.south_west_rounded
-        : Icons.north_east_rounded;
+        ? Icons.arrow_downward_rounded
+        : Icons.arrow_upward_rounded;
     final amountPrefix = isIncoming ? '+' : '-';
-    final directionLabel = isIncoming ? 'Received BTC' : 'Sent BTC';
+    final directionLabel = isIncoming ? 'Received' : 'Sent';
     final statusLabel = isPending ? 'Pending' : 'Confirmed';
-    final amountText = Text(
-      obscureAmount
-          ? AppFormatters.obscuredSats()
-          : '$amountPrefix$amountSats sats',
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-        color: accent,
-        fontWeight: FontWeight.w700,
-      ),
-      textAlign: isCompact ? TextAlign.left : TextAlign.right,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
+
+    final btcDisplay = obscureAmount
+        ? AppFormatters.obscuredBtc()
+        : '$amountPrefix${AppFormatters.btcFromSats(amountSats)}';
+    final satsDisplay = obscureAmount
+        ? AppFormatters.obscuredSats()
+        : '$amountPrefix${AppFormatters.sats(amountSats)}';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      margin: const EdgeInsets.only(bottom: RootSpacing.sm),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(RootRadius.lg),
+        border: Border.all(color: cardBorder, width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? const Color(0x22000000) : const Color(0x0C0E1B18),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: GlassSurface(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            tint: AppColors.glassSurfaceOf(
-              context,
-            ).withValues(alpha: AppColors.isDark(context) ? 0.54 : 0.78),
-            borderColor: accent.withValues(alpha: 0.18),
-            padding: const EdgeInsets.all(AppSpacing.md),
+          borderRadius: BorderRadius.circular(RootRadius.lg),
+          child: Padding(
+            padding: const EdgeInsets.all(RootSpacing.md),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Direction icon box
                 Container(
-                  width: 46,
-                  height: 46,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    color: isDark
+                        ? RootBrandColors.deepForest
+                        : RootBrandColors.warmIvory,
+                    borderRadius: BorderRadius.circular(RootRadius.md),
+                    border: Border.all(
+                      color: isDark
+                          ? RootBrandColors.borderPine
+                          : const Color(0xFFD7E3DC),
+                      width: 1.0,
+                    ),
                   ),
-                  child: Icon(icon, color: accent, size: 22),
+                  child: Icon(icon, color: accent, size: 20),
                 ),
-                const SizedBox(width: AppSpacing.md),
+                const SizedBox(width: RootSpacing.md),
+
+                // Transaction details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Top row: Direction and Primary BTC amount
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Text(
                               directionLabel,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w700),
+                              style: TextStyle(
+                                color: textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                          if (!isCompact) ...[
-                            const SizedBox(width: AppSpacing.sm),
-                            Flexible(child: amountText),
-                          ],
+                          const SizedBox(width: RootSpacing.xs),
+                          Text(
+                            btcDisplay,
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: isCompact ? 13 : 14,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      if (label != null && label!.trim().isNotEmpty) ...[
-                        Text(
-                          label!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: AppSpacing.xxs),
-                      ],
-                      Text(
-                        _compactTxId(txId),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(letterSpacing: 0.15),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      if (isCompact) ...[
-                        amountText,
-                        const SizedBox(height: AppSpacing.sm),
-                      ],
-                      Wrap(
-                        spacing: AppSpacing.xs,
-                        runSpacing: AppSpacing.xs,
-                        crossAxisAlignment: WrapCrossAlignment.center,
+                      const SizedBox(height: 2),
+
+                      // Second row: Optional Label or TxId + Secondary Sats amount
+                      Row(
                         children: [
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: isCompact ? 148 : 220,
+                          Expanded(
+                            child: Text(
+                              (label != null && label!.trim().isNotEmpty)
+                                  ? label!
+                                  : _compactTxId(txId),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color:
+                                    (label != null && label!.trim().isNotEmpty)
+                                    ? textPrimary
+                                    : textSecondary,
+                                fontSize: 12,
+                                fontWeight:
+                                    (label != null && label!.trim().isNotEmpty)
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                letterSpacing: 0.1,
+                              ),
                             ),
+                          ),
+                          const SizedBox(width: RootSpacing.xs),
+                          Text(
+                            satsDisplay,
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: RootSpacing.xs),
+
+                      // Third row: Time & Confirmation pill
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   Icons.schedule_rounded,
-                                  size: 14,
+                                  size: 13,
                                   color: textSecondary,
                                 ),
-                                const SizedBox(width: AppSpacing.xs),
+                                const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
                                     AppDateTime.ymdHm(timestamp),
+                                    style: TextStyle(
+                                      color: textSecondary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w400,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
                                   ),
                                 ),
                               ],
                             ),
                           ),
+                          const SizedBox(width: RootSpacing.xs),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.xs,
+                              horizontal: RootSpacing.xs + 2,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: isPending
-                                  ? AppColors.warning.withValues(alpha: 0.14)
-                                  : AppColors.success.withValues(alpha: 0.14),
+                              color: isDark
+                                  ? (isPending
+                                        ? RootBrandColors.amberAccent
+                                              .withValues(alpha: 0.16)
+                                        : RootBrandColors.pineGreen.withValues(
+                                            alpha: 0.16,
+                                          ))
+                                  : (isPending
+                                        ? const Color(0xFFFFF3E0)
+                                        : const Color(0xFFE8F6F1)),
                               borderRadius: BorderRadius.circular(
-                                AppRadius.pill,
+                                RootRadius.pill,
+                              ),
+                              border: Border.all(
+                                color: isDark
+                                    ? (isPending
+                                          ? RootBrandColors.amberAccent
+                                                .withValues(alpha: 0.4)
+                                          : RootBrandColors.pineGreen
+                                                .withValues(alpha: 0.4))
+                                    : (isPending
+                                          ? RootBrandColors.amberAccent
+                                                .withValues(alpha: 0.3)
+                                          : RootBrandColors.pineGreen
+                                                .withValues(alpha: 0.3)),
+                                width: 1.0,
                               ),
                             ),
                             child: Text(
                               statusLabel,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: statusTextColor,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                              style: TextStyle(
+                                color: isPending
+                                    ? RootBrandColors.amberAccent
+                                    : RootBrandColors.pineGreen,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],

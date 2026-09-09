@@ -53,8 +53,10 @@ abstract final class AppRouter {
         return _page(settings, const SendSuccessPage());
       case AppRoutes.receive:
         return _page(settings, const MainShell(initialIndex: 1));
-      case AppRoutes.settings:
+      case AppRoutes.transactions:
         return _page(settings, const MainShell(initialIndex: 3));
+      case AppRoutes.settings:
+        return _page(settings, const MainShell(initialIndex: 4));
       case AppRoutes.security:
         return _page(settings, const SecurityPage());
       case AppRoutes.diagnostics:

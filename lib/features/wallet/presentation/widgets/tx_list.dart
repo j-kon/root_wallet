@@ -12,6 +12,8 @@ class TxList extends StatelessWidget {
     this.physics,
     this.obscureAmounts = false,
     this.labelForItem,
+    this.emptyTitle,
+    this.emptyMessage,
   });
 
   final List<TxItem> items;
@@ -20,13 +22,15 @@ class TxList extends StatelessWidget {
   final ScrollPhysics? physics;
   final bool obscureAmounts;
   final String? Function(TxItem item)? labelForItem;
+  final String? emptyTitle;
+  final String? emptyMessage;
 
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const EmptyState(
-        title: 'No activity yet',
-        message: 'Receive BTC to see transactions here.',
+      return EmptyState(
+        title: emptyTitle ?? 'No activity yet',
+        message: emptyMessage ?? 'Receive BTC to see transactions here.',
         icon: Icons.receipt_long_outlined,
       );
     }

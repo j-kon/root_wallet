@@ -74,10 +74,7 @@ class BalanceCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: iconBoxBg,
                       borderRadius: BorderRadius.circular(RootRadius.md),
-                      border: Border.all(
-                        color: cardBorder,
-                        width: 1.0,
-                      ),
+                      border: Border.all(color: cardBorder, width: 1.0),
                     ),
                     child: const Icon(
                       Icons.currency_bitcoin_rounded,
@@ -94,10 +91,7 @@ class BalanceCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: chipBg,
                       borderRadius: BorderRadius.circular(RootRadius.pill),
-                      border: Border.all(
-                        color: chipBorder,
-                        width: 1.0,
-                      ),
+                      border: Border.all(color: chipBorder, width: 1.0),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -183,7 +177,9 @@ class BalanceCard extends StatelessWidget {
                     backgroundColor: chipBg,
                     borderColor: chipBorder,
                     textColor: chipText,
-                    iconColor: isDark ? RootBrandColors.warmIvory : RootBrandColors.pineGreen,
+                    iconColor: isDark
+                        ? RootBrandColors.warmIvory
+                        : RootBrandColors.pineGreen,
                   ),
                   _BalanceMetaChip(
                     icon: Icons.shield_outlined,

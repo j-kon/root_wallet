@@ -5,6 +5,7 @@ import 'package:root_wallet/app/theme/app_theme.dart';
 import 'package:root_wallet/features/rates/domain/entities/fx_rate.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
+import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/wallet_home_page.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -87,11 +88,48 @@ void main() {
 
     expect(find.textContaining('Live wallet data refreshed'), findsOneWidget);
   });
+
+  testWidgets('wallet home shows View all and triggers onActivityRequested', (
+    WidgetTester tester,
+  ) async {
+    var activityTapped = false;
+    await _pumpWalletHome(
+      tester,
+      state: WalletHomeState(
+        balance: const Balance(confirmedSats: 25000),
+        transactions: [
+          TxItem(
+            txId: 'tx1234567890abcdef',
+            amountSats: 5000,
+            timestamp: DateTime(2026, 3, 31, 8, 0),
+            isIncoming: true,
+            status: TxItemStatus.confirmed,
+          ),
+        ],
+        receiveAddress: 'tb1qlive',
+        lastSyncedAt: DateTime.now(),
+        isOffline: false,
+        isSyncing: false,
+      ),
+      onActivityRequested: () {
+        activityTapped = true;
+      },
+    );
+
+    await tester.scrollUntilVisible(find.text('View all'), 300);
+    expect(find.text('View all'), findsOneWidget);
+
+    await tester.tap(find.text('View all'));
+    await tester.pumpAndSettle();
+
+    expect(activityTapped, isTrue);
+  });
 }
 
 Future<void> _pumpWalletHome(
   WidgetTester tester, {
   required WalletHomeState state,
+  VoidCallback? onActivityRequested,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await tester.pumpWidget(
@@ -112,7 +150,7 @@ Future<void> _pumpWalletHome(
       child: MaterialApp(
         theme: buildAppTheme(),
         darkTheme: buildAppTheme(brightness: Brightness.dark),
-        home: const WalletHomePage(),
+        home: WalletHomePage(onActivityRequested: onActivityRequested),
       ),
     ),
   );
