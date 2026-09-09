@@ -28,8 +28,9 @@ class _MainShellState extends State<MainShell>
   late int _fromIndex;
   late int _toIndex;
 
+  late double _startFractionalCenter;
+
   late final AnimationController _controller;
-  late final Animation<double> _animation;
 
   static const _destinations = <_ShellDestination>[
     _ShellDestination(
@@ -65,14 +66,11 @@ class _MainShellState extends State<MainShell>
     _currentIndex = widget.initialIndex.clamp(0, _destinations.length - 1);
     _fromIndex = _currentIndex;
     _toIndex = _currentIndex;
+    _startFractionalCenter = _currentIndex + 0.5;
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 260),
-    );
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
+      duration: const Duration(milliseconds: 360),
     );
     _controller.value = 1.0;
   }
@@ -92,13 +90,39 @@ class _MainShellState extends State<MainShell>
     super.dispose();
   }
 
+  double _computeCurrentFractionalCenter() {
+    if (!_controller.isAnimating) {
+      return _toIndex + 0.5;
+    }
+    final t = _controller.value;
+    final tCenter = Curves.easeInOutCubic.transform(t);
+    final targetCenter = _toIndex + 0.5;
+    return lerpDouble(_startFractionalCenter, targetCenter, tCenter) ??
+        targetCenter;
+  }
+
   void _onTap(int index) {
     if (index == _currentIndex && !_controller.isAnimating) {
       return;
     }
 
     HapticFeedback.selectionClick();
+
+    final disableAnimations =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (disableAnimations) {
+      setState(() {
+        _currentIndex = index;
+        _fromIndex = index;
+        _toIndex = index;
+        _startFractionalCenter = index + 0.5;
+      });
+      _controller.value = 1.0;
+      return;
+    }
+
     setState(() {
+      _startFractionalCenter = _computeCurrentFractionalCenter();
       _fromIndex = _currentIndex;
       _toIndex = index;
       _currentIndex = index;
@@ -126,10 +150,10 @@ class _MainShellState extends State<MainShell>
         : const Color(0xFF5E6F68);
     final selectedSurface = isDark
         ? RootBrandColors.slatePine
-        : const Color(0xFFE8F6F1);
+        : const Color(0xFFE5ECE9);
     final selectedBorder = isDark
         ? RootBrandColors.borderPine
-        : RootBrandColors.pineGreen.withValues(alpha: 0.25);
+        : const Color(0x332AAE7F);
     final shadowColor = isDark
         ? const Color(0x33000000)
         : const Color(0x140E1B18);
@@ -193,46 +217,97 @@ class _MainShellState extends State<MainShell>
                       final totalWidth = constraints.maxWidth;
                       final slotWidth = totalWidth / _destinations.length;
                       const indicatorHMargin = 4.0;
-                      const indicatorVMargin = 5.0;
+                      const indicatorVMargin = 8.0;
                       const indicatorRadius = 27.0;
 
                       return Stack(
                         children: [
-                          // Sliding pill indicator
+                          // Liquid Selection Indicator
                           AnimatedBuilder(
-                            animation: _animation,
+                            animation: _controller,
                             builder: (context, _) {
-                              final t = _animation.value;
-                              final centerFrom = (_fromIndex + 0.5) * slotWidth;
-                              final centerTo = (_toIndex + 0.5) * slotWidth;
-                              final currentCenter =
-                                  lerpDouble(centerFrom, centerTo, t) ??
-                                  centerTo;
+                              final t = _controller.value;
+                              final targetCenter = _toIndex + 0.5;
+                              final distance =
+                                  (_toIndex + 0.5 - _startFractionalCenter)
+                                      .abs();
+                              final direction =
+                                  (_toIndex + 0.5 >= _startFractionalCenter)
+                                  ? 1.0
+                                  : -1.0;
 
-                              // Subtle fluid stretch during transition
-                              final stretch =
-                                  sin(t * pi) *
-                                  12.0 *
-                                  (_toIndex != _fromIndex ? 1.0 : 0.0);
-                              final baseWidth =
-                                  slotWidth - (indicatorHMargin * 2);
-                              final pillWidth = baseWidth + stretch;
-                              final pillLeft = currentCenter - (pillWidth / 2);
+                              // 1. Center travel with smooth easeInOutCubic
+                              final tCenter = Curves.easeInOutCubic.transform(
+                                t,
+                              );
+                              final currentCenter =
+                                  lerpDouble(
+                                    _startFractionalCenter,
+                                    targetCenter,
+                                    tCenter,
+                                  ) ??
+                                  targetCenter;
+
+                              // 2. Liquid horizontal stretch scaled by travel distance (1.15x - 1.35x)
+                              final maxStretchFraction =
+                                  0.16 + 0.04 * distance.clamp(1.0, 4.0);
+                              final stretch = maxStretchFraction * sin(t * pi);
+
+                              // 3. Staggered leading/trailing edge bias
+                              // In first half, leading edge shoots forward; in second half, trailing edge catches up
+                              final leadBias = cos(t * pi);
+                              final leadShare =
+                                  0.5 + 0.35 * leadBias * direction;
+                              final trailShare = 1.0 - leadShare;
+
+                              final rightOffset =
+                                  0.5 +
+                                  stretch *
+                                      (direction > 0 ? leadShare : trailShare);
+                              final leftOffset =
+                                  -0.5 -
+                                  stretch *
+                                      (direction > 0 ? trailShare : leadShare);
+
+                              final fractionalLeft = currentCenter + leftOffset;
+                              final fractionalRight =
+                                  currentCenter + rightOffset;
+
+                              final pillLeft =
+                                  (fractionalLeft * slotWidth +
+                                          indicatorHMargin)
+                                      .clamp(
+                                        indicatorHMargin,
+                                        totalWidth - indicatorHMargin - 30.0,
+                                      );
+                              final pillRight =
+                                  (fractionalRight * slotWidth -
+                                          indicatorHMargin)
+                                      .clamp(
+                                        indicatorHMargin + 30.0,
+                                        totalWidth - indicatorHMargin,
+                                      );
+                              final pillWidth = (pillRight - pillLeft).clamp(
+                                30.0,
+                                totalWidth,
+                              );
 
                               return Positioned(
                                 left: pillLeft,
                                 top: indicatorVMargin,
                                 width: pillWidth,
                                 bottom: indicatorVMargin,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: selectedSurface,
-                                    borderRadius: BorderRadius.circular(
-                                      indicatorRadius,
-                                    ),
-                                    border: Border.all(
-                                      color: selectedBorder,
-                                      width: 1.0,
+                                child: RepaintBoundary(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: selectedSurface,
+                                      borderRadius: BorderRadius.circular(
+                                        indicatorRadius,
+                                      ),
+                                      border: Border.all(
+                                        color: selectedBorder,
+                                        width: 1.0,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -240,25 +315,34 @@ class _MainShellState extends State<MainShell>
                             },
                           ),
 
-                          // Row of items
-                          Row(
-                            children: [
-                              for (
-                                var index = 0;
-                                index < _destinations.length;
-                                index++
-                              )
-                                Expanded(
-                                  child: _ShellNavItem(
-                                    destination: _destinations[index],
-                                    selected: index == _currentIndex,
-                                    onTap: () => _onTap(index),
-                                    activeIconColor: activeIconColor,
-                                    activeLabelColor: activeLabelColor,
-                                    inactiveColor: inactiveColor,
-                                  ),
-                                ),
-                            ],
+                          // Synchronized Nav Items
+                          AnimatedBuilder(
+                            animation: _controller,
+                            builder: (context, _) {
+                              final t = _controller.value;
+                              final isAnimating = _controller.isAnimating;
+
+                              return Row(
+                                children: [
+                                  for (
+                                    var index = 0;
+                                    index < _destinations.length;
+                                    index++
+                                  ) ...[
+                                    Expanded(
+                                      child: _buildNavItem(
+                                        index: index,
+                                        t: t,
+                                        isAnimating: isAnimating,
+                                        activeIconColor: activeIconColor,
+                                        activeLabelColor: activeLabelColor,
+                                        inactiveColor: inactiveColor,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ],
                       );
@@ -270,6 +354,53 @@ class _MainShellState extends State<MainShell>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required int index,
+    required double t,
+    required bool isAnimating,
+    required Color activeIconColor,
+    required Color activeLabelColor,
+    required Color inactiveColor,
+  }) {
+    final destination = _destinations[index];
+    double activeProgress;
+    double iconScale = 1.0;
+
+    if (!isAnimating) {
+      activeProgress = (index == _currentIndex) ? 1.0 : 0.0;
+    } else {
+      if (index == _toIndex) {
+        // Target destination: color & label fade in after 0.40
+        activeProgress = const Interval(
+          0.40,
+          1.0,
+          curve: Curves.easeOut,
+        ).transform(t);
+        // Subtle icon scale pulse (1.0 -> 1.06 -> 1.0) as liquid arrives
+        if (t >= 0.45 && t <= 0.95) {
+          final pulseT = (t - 0.45) / 0.50;
+          iconScale = 1.0 + 0.06 * sin(pulseT * pi);
+        }
+      } else if (index == _fromIndex) {
+        // Origin destination: smoothly fades out
+        activeProgress =
+            1.0 - const Interval(0.0, 0.45, curve: Curves.easeIn).transform(t);
+      } else {
+        activeProgress = 0.0;
+      }
+    }
+
+    return _ShellNavItem(
+      destination: destination,
+      activeProgress: activeProgress,
+      iconScale: iconScale,
+      onTap: () => _onTap(index),
+      activeIconColor: activeIconColor,
+      activeLabelColor: activeLabelColor,
+      inactiveColor: inactiveColor,
     );
   }
 }
@@ -289,7 +420,8 @@ class _ShellDestination {
 class _ShellNavItem extends StatelessWidget {
   const _ShellNavItem({
     required this.destination,
-    required this.selected,
+    required this.activeProgress,
+    required this.iconScale,
     required this.onTap,
     required this.activeIconColor,
     required this.activeLabelColor,
@@ -297,7 +429,8 @@ class _ShellNavItem extends StatelessWidget {
   });
 
   final _ShellDestination destination;
-  final bool selected;
+  final double activeProgress;
+  final double iconScale;
   final VoidCallback onTap;
   final Color activeIconColor;
   final Color activeLabelColor;
@@ -305,11 +438,20 @@ class _ShellNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = selected ? activeIconColor : inactiveColor;
-    final labelColor = selected ? activeLabelColor : inactiveColor;
+    final iconColor = Color.lerp(
+      inactiveColor,
+      activeIconColor,
+      activeProgress,
+    )!;
+    final labelColor = Color.lerp(
+      inactiveColor,
+      activeLabelColor,
+      activeProgress,
+    )!;
+    final isSelected = activeProgress > 0.5;
 
     return Semantics(
-      selected: selected,
+      selected: isSelected,
       button: true,
       label: destination.label,
       child: Material(
@@ -320,21 +462,27 @@ class _ShellNavItem extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                selected ? destination.activeIcon : destination.icon,
-                size: 22,
-                color: iconColor,
+              Transform.scale(
+                scale: iconScale,
+                child: Icon(
+                  isSelected ? destination.activeIcon : destination.icon,
+                  size: 22,
+                  color: iconColor,
+                ),
               ),
               const SizedBox(height: 3),
-              Text(
-                destination.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: labelColor,
-                  fontSize: 10.5,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  letterSpacing: 0.1,
+              Transform.translate(
+                offset: Offset(0, -1.5 * activeProgress),
+                child: Text(
+                  destination.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: labelColor,
+                    fontSize: 10.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    letterSpacing: 0.1,
+                  ),
                 ),
               ),
             ],
