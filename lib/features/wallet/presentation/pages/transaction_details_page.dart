@@ -585,7 +585,9 @@ class TransactionDetailsPage extends ConsumerWidget {
     final newRate = await showDialog<int?>(
       context: context,
       builder: (dialogContext) {
-        final textController = TextEditingController(text: '${suggestedRate + 5}');
+        final textController = TextEditingController(
+          text: '${suggestedRate + 5}',
+        );
         return AlertDialog(
           title: const Text('Speed up transaction'),
           content: Column(
@@ -599,15 +601,15 @@ class TransactionDetailsPage extends ConsumerWidget {
               const SizedBox(height: 16),
               Text(
                 'Enter new fee rate (sat/vB):',
-                style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  dialogContext,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: textController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  suffixText: 'sat/vB',
-                ),
+                decoration: const InputDecoration(suffixText: 'sat/vB'),
               ),
               const SizedBox(height: 12),
               Row(
@@ -649,9 +651,9 @@ class TransactionDetailsPage extends ConsumerWidget {
     }
 
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Broadcasting fee bump...')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Broadcasting fee bump...')));
 
       final service = ref.read(bdkWalletServiceProvider);
       final newTxid = await service.bumpFee(
@@ -668,15 +670,17 @@ class TransactionDetailsPage extends ConsumerWidget {
       );
 
       // Refresh wallet
-      await ref.read(walletHomeControllerProvider.notifier).sync(showLoading: true);
+      await ref
+          .read(walletHomeControllerProvider.notifier)
+          .sync(showLoading: true);
       Navigator.of(context).pop();
     } catch (e) {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Fee bump failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Fee bump failed: $e')));
     }
   }
 }
@@ -855,9 +859,18 @@ class _PresetFeeButton extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 2),
-            Text('$rate sat/vB', style: TextStyle(fontSize: 10, color: AppColors.textSecondaryOf(context))),
+            Text(
+              '$rate sat/vB',
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondaryOf(context),
+              ),
+            ),
           ],
         ),
       ),

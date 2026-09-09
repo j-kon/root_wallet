@@ -40,4 +40,3 @@ extension BuildContextX on BuildContext {
       viewPadding.bottom +
       (isShortHeight ? AppSpacing.sm : AppSpacing.md);
 }
-

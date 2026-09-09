@@ -3,17 +3,24 @@ import 'package:root_wallet/core/security/backup_encryption_service.dart';
 
 void main() {
   group('BackupEncryptionService', () {
-    const mnemonic = 'about check dynamic elegant first health dynamic dynamic dynamic dynamic dynamic dynamic';
-    const plainText = '{"labels": {"tb1qaddress": "Test Label"}, "transactions": {}}';
+    const mnemonic =
+        'about check dynamic elegant first health dynamic dynamic dynamic dynamic dynamic dynamic';
+    const plainText =
+        '{"labels": {"tb1qaddress": "Test Label"}, "transactions": {}}';
 
-    test('deriveKey derives identical keys for same mnemonic with different spacing', () {
-      final key1 = BackupEncryptionService.deriveKey(mnemonic);
-      final key2 = BackupEncryptionService.deriveKey('  $mnemonic  ');
-      final key3 = BackupEncryptionService.deriveKey(mnemonic.replaceAll(RegExp(r'\s+'), '   '));
+    test(
+      'deriveKey derives identical keys for same mnemonic with different spacing',
+      () {
+        final key1 = BackupEncryptionService.deriveKey(mnemonic);
+        final key2 = BackupEncryptionService.deriveKey('  $mnemonic  ');
+        final key3 = BackupEncryptionService.deriveKey(
+          mnemonic.replaceAll(RegExp(r'\s+'), '   '),
+        );
 
-      expect(key1.bytes, equals(key2.bytes));
-      expect(key1.bytes, equals(key3.bytes));
-    });
+        expect(key1.bytes, equals(key2.bytes));
+        expect(key1.bytes, equals(key3.bytes));
+      },
+    );
 
     test('encrypt and decrypt round-trip correctly', () {
       final encrypted = BackupEncryptionService.encrypt(
@@ -42,7 +49,8 @@ void main() {
       expect(
         () => BackupEncryptionService.decrypt(
           encryptedCombinedBase64: encrypted,
-          mnemonic: 'wrong mnemonic word list here dynamic dynamic dynamic dynamic dynamic dynamic dynamic',
+          mnemonic:
+              'wrong mnemonic word list here dynamic dynamic dynamic dynamic dynamic dynamic dynamic',
         ),
         throwsArgumentError,
       );

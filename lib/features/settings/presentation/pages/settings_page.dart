@@ -27,7 +27,7 @@ class SettingsPage extends ConsumerWidget {
     final useCupertino = platform == TargetPlatform.iOS;
     final shadow = AppColors.shadowOf(context);
     final themeMode =
-        ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
+        ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.dark;
     final walletState = ref.watch(walletControllerProvider).valueOrNull;
     final lockState = ref.watch(lockControllerProvider).valueOrNull;
     final backupConfirmed =
@@ -203,7 +203,8 @@ class SettingsPage extends ConsumerWidget {
                       ? CupertinoIcons.cloud_upload
                       : Icons.cloud_upload_outlined,
                   title: 'Backup & restore metadata',
-                  subtitle: 'Export/import encrypted labels, notes and configurations.',
+                  subtitle:
+                      'Export/import encrypted labels, notes and configurations.',
                   onTap: () =>
                       Navigator.of(context).pushNamed(AppRoutes.backupMetadata),
                 ),
@@ -297,11 +298,11 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _SettingsTile(
-                  icon: useCupertino
-                      ? CupertinoIcons.link
-                      : Icons.lan_rounded,
+                  icon: useCupertino ? CupertinoIcons.link : Icons.lan_rounded,
                   title: 'Electrum node connection',
-                  subtitle: ref.watch(customNodeProvider).when(
+                  subtitle: ref
+                      .watch(customNodeProvider)
+                      .when(
                         data: (url) => url != null
                             ? 'Using custom server: $url'
                             : 'Configure a custom Electrum server URL.',

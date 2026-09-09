@@ -31,9 +31,16 @@ void main() {
   });
 
   test('verifies bdk.OutPoint and bdk.TxBuilder methods compile', () {
-    final outpoint = bdk.OutPoint(txid: bdk.Txid.fromString(hex: '0000000000000000000000000000000000000000000000000000000000000000'), vout: 0);
-    expect(outpoint.txid.toString(), '0000000000000000000000000000000000000000000000000000000000000000');
+    final outpoint = bdk.OutPoint(
+      txid: bdk.Txid.fromString(
+        hex: '0000000000000000000000000000000000000000000000000000000000000000',
+      ),
+      vout: 0,
+    );
+    expect(
+      outpoint.txid.toString(),
+      '0000000000000000000000000000000000000000000000000000000000000000',
+    );
     expect(outpoint.vout, 0);
   });
 }
-

@@ -35,7 +35,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           secureStorageProvider.overrideWithValue(InMemorySecureStorage()),
-          walletStoragePathProvider.overrideWith((ref) async => '/tmp/wallet_test'),
+          walletStoragePathProvider.overrideWith(
+            (ref) async => '/tmp/wallet_test',
+          ),
           onboardingWalletSeedServiceProvider.overrideWithValue(seedService),
           walletSnapshotCacheProvider.overrideWith((ref) {
             return cacheCompleter.future;
@@ -89,7 +91,9 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         secureStorageProvider.overrideWithValue(InMemorySecureStorage()),
-        walletStoragePathProvider.overrideWith((ref) async => '/tmp/wallet_test'),
+        walletStoragePathProvider.overrideWith(
+          (ref) async => '/tmp/wallet_test',
+        ),
         onboardingWalletSeedServiceProvider.overrideWithValue(seedService),
       ],
     );
@@ -156,4 +160,3 @@ class _FakeWalletSeedService implements WalletSeedService {
     return restoredIdentity!;
   }
 }
-

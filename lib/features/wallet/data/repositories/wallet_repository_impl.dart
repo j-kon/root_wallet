@@ -8,9 +8,8 @@ import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.d
 import 'package:root_wallet/features/wallet/domain/repositories/wallet_repository.dart';
 
 class WalletRepositoryImpl implements WalletRepository {
-  WalletRepositoryImpl({
-    required BdkWalletService walletService,
-  }) : _walletService = walletService;
+  WalletRepositoryImpl({required BdkWalletService walletService})
+    : _walletService = walletService;
 
   final BdkWalletService _walletService;
 

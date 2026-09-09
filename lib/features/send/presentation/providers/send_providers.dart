@@ -200,7 +200,9 @@ class SendController extends StateNotifier<SendState> {
               address: address,
               amountSats: amountSats,
               feeRate: state.draft.feeRate,
-              selectedUtxos: selectedUtxos.isNotEmpty ? selectedUtxos.toList() : null,
+              selectedUtxos: selectedUtxos.isNotEmpty
+                  ? selectedUtxos.toList()
+                  : null,
             ),
           );
       state = state.copyWith(
@@ -249,7 +251,9 @@ class SendController extends StateNotifier<SendState> {
               address: address,
               amountSats: amountSats,
               feeRate: state.draft.feeRate,
-              selectedUtxos: selectedUtxos.isNotEmpty ? selectedUtxos.toList() : null,
+              selectedUtxos: selectedUtxos.isNotEmpty
+                  ? selectedUtxos.toList()
+                  : null,
             ),
           );
       final signed = await _ref.read(signTxUsecaseProvider).call(psbt);

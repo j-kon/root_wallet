@@ -20,7 +20,7 @@ class BackupEncryptionService {
     final iv = enc.IV.fromLength(16); // 16 bytes for AES block size
     final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
     final encrypted = encrypter.encrypt(plainText, iv: iv);
-    
+
     // Combine IV and CipherText bytes so they can be saved/copied together
     final combinedBytes = Uint8List.fromList([...iv.bytes, ...encrypted.bytes]);
     return base64Encode(combinedBytes);
@@ -36,18 +36,18 @@ class BackupEncryptionService {
     if (combinedBytes.length < 16) {
       throw const FormatException('Invalid backup payload (too short)');
     }
-    
+
     final ivBytes = combinedBytes.sublist(0, 16);
     final encryptedBytes = combinedBytes.sublist(16);
-    
+
     final iv = enc.IV(Uint8List.fromList(ivBytes));
     final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
-    
+
     final decrypted = encrypter.decryptBytes(
       enc.Encrypted(Uint8List.fromList(encryptedBytes)),
       iv: iv,
     );
-    
+
     return utf8.decode(decrypted);
   }
 }

@@ -42,7 +42,8 @@ class CoinControlPage extends ConsumerWidget {
           if (utxos.isEmpty) {
             return const EmptyState(
               title: 'No unspent outputs',
-              message: 'Your wallet has no UTXOs yet. Receive some bitcoin to start.',
+              message:
+                  'Your wallet has no UTXOs yet. Receive some bitcoin to start.',
               icon: Icons.toll_rounded,
             );
           }
@@ -55,7 +56,8 @@ class CoinControlPage extends ConsumerWidget {
           for (final utxo in utxos) {
             final value = utxo.txout.value.toSat();
             totalSats += value;
-            final outpointStr = '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
+            final outpointStr =
+                '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
             if (lockedUtxos.contains(outpointStr)) {
               lockedSats += value;
             }
@@ -74,9 +76,9 @@ class CoinControlPage extends ConsumerWidget {
               // Summary card
               GlassSurface(
                 borderRadius: BorderRadius.circular(AppRadius.lg),
-                tint: AppColors.glassSurfaceStrongOf(context).withValues(
-                  alpha: AppColors.isDark(context) ? 0.62 : 0.96,
-                ),
+                tint: AppColors.glassSurfaceStrongOf(
+                  context,
+                ).withValues(alpha: AppColors.isDark(context) ? 0.62 : 0.96),
                 highlightOpacity: 0.05,
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
@@ -121,17 +123,19 @@ class CoinControlPage extends ConsumerWidget {
               const SizedBox(height: AppSpacing.lg),
               Text(
                 'Available outputs (${utxos.length})',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: AppSpacing.sm),
               ...utxos.map((utxo) {
-                final outpointStr = '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
+                final outpointStr =
+                    '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
                 final isLocked = lockedUtxos.contains(outpointStr);
                 final sats = utxo.txout.value.toSat();
-                final isConfirmed = utxo.chainPosition is bdk.ConfirmedChainPosition;
-                
+                final isConfirmed =
+                    utxo.chainPosition is bdk.ConfirmedChainPosition;
+
                 String addressStr = 'Unknown';
                 try {
                   final address = bdk.Address.fromScript(
@@ -148,7 +152,9 @@ class CoinControlPage extends ConsumerWidget {
                   child: GlassSurface(
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     tint: isLocked
-                        ? Colors.red.withValues(alpha: AppColors.isDark(context) ? 0.05 : 0.02)
+                        ? Colors.red.withValues(
+                            alpha: AppColors.isDark(context) ? 0.05 : 0.02,
+                          )
                         : AppColors.glassSurfaceOf(context).withValues(
                             alpha: AppColors.isDark(context) ? 0.58 : 0.95,
                           ),
@@ -164,7 +170,8 @@ class CoinControlPage extends ConsumerWidget {
                           children: [
                             Text(
                               AppFormatters.sats(sats),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
                                     fontWeight: FontWeight.w800,
                                     color: isLocked ? AppColors.danger : null,
                                   ),
@@ -178,8 +185,12 @@ class CoinControlPage extends ConsumerWidget {
                                     .toggleUtxo(outpointStr);
                               },
                               icon: Icon(
-                                isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
-                                color: isLocked ? AppColors.danger : AppColors.textSecondaryOf(context),
+                                isLocked
+                                    ? Icons.lock_rounded
+                                    : Icons.lock_open_rounded,
+                                color: isLocked
+                                    ? AppColors.danger
+                                    : AppColors.textSecondaryOf(context),
                               ),
                             ),
                           ],
@@ -187,7 +198,8 @@ class CoinControlPage extends ConsumerWidget {
                         const SizedBox(height: AppSpacing.xs),
                         Text(
                           AppFormatters.btcFromSats(sats),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
                                 color: AppColors.textSecondaryOf(context),
                               ),
                         ),
@@ -219,7 +231,8 @@ class CoinControlPage extends ConsumerWidget {
                           children: [
                             Text(
                               'Status',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
                                     color: AppColors.textSecondaryOf(context),
                                   ),
                             ),
@@ -236,9 +249,12 @@ class CoinControlPage extends ConsumerWidget {
                               ),
                               child: Text(
                                 isConfirmed ? 'Confirmed' : 'Pending',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
                                       fontWeight: FontWeight.bold,
-                                      color: isConfirmed ? AppColors.success : AppColors.warning,
+                                      color: isConfirmed
+                                          ? AppColors.success
+                                          : AppColors.warning,
                                       fontSize: 10,
                                     ),
                               ),
@@ -259,11 +275,7 @@ class CoinControlPage extends ConsumerWidget {
 }
 
 class _StatItem extends StatelessWidget {
-  const _StatItem({
-    required this.label,
-    required this.value,
-    this.color,
-  });
+  const _StatItem({required this.label, required this.value, this.color});
 
   final String label;
   final String value;
@@ -277,16 +289,16 @@ class _StatItem extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondaryOf(context),
-              ),
+            color: AppColors.textSecondaryOf(context),
+          ),
         ),
         const SizedBox(height: 2),
         Text(
           value,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
       ],
     );
@@ -312,8 +324,8 @@ class _InfoRow extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondaryOf(context),
-              ),
+            color: AppColors.textSecondaryOf(context),
+          ),
         ),
         GestureDetector(
           onTap: onCopy,
@@ -323,9 +335,9 @@ class _InfoRow extends StatelessWidget {
               Text(
                 value,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimaryOf(context),
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimaryOf(context),
+                ),
               ),
               const SizedBox(width: 4),
               Icon(

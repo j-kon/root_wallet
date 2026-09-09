@@ -26,7 +26,9 @@ void main() {
       ProviderScope(
         overrides: [
           secureStorageProvider.overrideWithValue(InMemorySecureStorage()),
-          walletStoragePathProvider.overrideWith((ref) async => '/tmp/wallet_test'),
+          walletStoragePathProvider.overrideWith(
+            (ref) async => '/tmp/wallet_test',
+          ),
           onboardingControllerProvider.overrideWith((ref) {
             onboardingController = _FakeOnboardingController(ref);
             return onboardingController;

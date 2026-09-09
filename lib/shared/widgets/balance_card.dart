@@ -1,17 +1,16 @@
-import 'dart:io' show Platform;
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/app/theme/colors.dart';
-import 'package:root_wallet/app/theme/layout.dart';
-import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
-class BalanceCard extends StatefulWidget {
+class BalanceCard extends StatelessWidget {
   const BalanceCard({
     super.key,
     required this.btcAmount,
     required this.fiatAmountLabel,
-    this.subtitle = 'Available balance',
+    this.subtitle = 'Available portfolio balance',
     this.onTap,
   });
 
@@ -21,236 +20,182 @@ class BalanceCard extends StatefulWidget {
   final VoidCallback? onTap;
 
   @override
-  State<BalanceCard> createState() => _BalanceCardState();
-}
-
-class _BalanceCardState extends State<BalanceCard> with SingleTickerProviderStateMixin {
-  late final AnimationController _glowController;
-  Offset _tilt = Offset.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _glowController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 12),
-    );
-    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
-      _glowController.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _glowController.dispose();
-    super.dispose();
-  }
-
-  void _handlePointerMove(PointerEvent event) {
-    final RenderBox? box = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
-    final localPos = box.globalToLocal(event.position);
-    final center = Offset(box.size.width / 2, box.size.height / 2);
-    setState(() {
-      _tilt = Offset(
-        ((localPos.dx - center.dx) / center.dx).clamp(-1.0, 1.0),
-        ((localPos.dy - center.dy) / center.dy).clamp(-1.0, 1.0),
-      );
-    });
-  }
-
-  void _handlePointerUp(PointerEvent event) {
-    setState(() {
-      _tilt = Offset.zero;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final isCompact = context.isCompactWidth;
+    final isDark = AppColors.isDark(context);
 
-    return Listener(
-      onPointerMove: _handlePointerMove,
-      onPointerUp: _handlePointerUp,
-      onPointerCancel: _handlePointerUp,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: GlassSurface(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          blur: 30,
-          tint: AppColors.glassSurfaceStrongOf(context).withValues(
-            alpha: AppColors.isDark(context) ? 0.58 : 0.74,
+    final cardBg = isDark
+        ? RootBrandColors.nightPine
+        : RootBrandColors.pureWhite;
+    final cardBorder = isDark
+        ? RootBrandColors.borderPine
+        : const Color(0xFFD7E3DC);
+    final iconBoxBg = isDark
+        ? RootBrandColors.deepForest
+        : RootBrandColors.warmIvory;
+    final chipBg = isDark
+        ? RootBrandColors.deepForest
+        : RootBrandColors.warmIvory;
+    final chipBorder = isDark
+        ? RootBrandColors.borderPine
+        : const Color(0xFFD7E3DC);
+    final chipText = isDark
+        ? RootBrandColors.warmIvory
+        : RootBrandColors.charcoalPine;
+    final textPrimary = isDark
+        ? RootBrandColors.warmIvory
+        : RootBrandColors.charcoalPine;
+    final textSecondary = isDark
+        ? RootBrandColors.mutedSage
+        : const Color(0xFF5E6F68);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(RootRadius.xl),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(RootRadius.xl),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(RootRadius.xl),
+            border: Border.all(color: cardBorder, width: 1.0),
           ),
-          borderColor: AppColors.glassBorderOf(context),
-          shadowColor: AppColors.glassGlowOf(context),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: AnimatedBuilder(
-                    animation: _glowController,
-                    builder: (context, child) {
-                      final Alignment beginAlignment;
-                      final Alignment endAlignment;
-                      if (Platform.environment.containsKey('FLUTTER_TEST')) {
-                        beginAlignment = Alignment.topLeft;
-                        endAlignment = Alignment.bottomRight;
-                      } else {
-                        final angle = _glowController.value * 2 * math.pi;
-                        beginAlignment = Alignment(
-                          math.cos(angle) + _tilt.dx * 0.25,
-                          math.sin(angle) + _tilt.dy * 0.25,
-                        );
-                        endAlignment = Alignment(
-                          math.cos(angle + math.pi) + _tilt.dx * 0.25,
-                          math.sin(angle + math.pi) + _tilt.dy * 0.25,
-                        );
-                      }
-
-                      return DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: beginAlignment,
-                            end: endAlignment,
-                            colors: const <Color>[
-                              AppColors.secondary,
-                              AppColors.primaryDeep,
-                              AppColors.primary,
-                            ],
-                            stops: const <double>[0, 0.55, 1],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Positioned(
-                  top: -34 + (_tilt.dy * 16),
-                  right: -18 - (_tilt.dx * 16),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    curve: Curves.easeOut,
-                    width: 142,
-                    height: 142,
+          padding: EdgeInsets.all(isCompact ? RootSpacing.lg : RootSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: iconBoxBg,
+                      borderRadius: BorderRadius.circular(RootRadius.md),
+                      border: Border.all(
+                        color: cardBorder,
+                        width: 1.0,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.currency_bitcoin_rounded,
+                      color: RootBrandColors.amberAccent,
+                      size: 22,
                     ),
                   ),
-                ),
-                Positioned(
-                  bottom: -72 + (_tilt.dy * 20),
-                  left: -16 + (_tilt.dx * 20),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    curve: Curves.easeOut,
-                    width: 154,
-                    height: 154,
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: RootSpacing.sm,
+                      vertical: RootSpacing.xs,
+                    ),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.accent.withValues(alpha: 0.12),
+                      color: chipBg,
+                      borderRadius: BorderRadius.circular(RootRadius.pill),
+                      border: Border.all(
+                        color: chipBorder,
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: RootBrandColors.pineGreen,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: RootSpacing.xs),
+                        Text(
+                          'Self-custody',
+                          style: TextStyle(
+                            color: chipText,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ],
+              ),
+              SizedBox(height: isCompact ? RootSpacing.md : RootSpacing.lg),
+              Text(
+                subtitle.toUpperCase(),
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.4,
                 ),
-                Padding(
-                  padding: EdgeInsets.all(
-                    isCompact ? AppSpacing.md : AppSpacing.lg,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.16),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.currency_bitcoin_rounded,
-                              color: AppColors.accent,
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm,
-                              vertical: AppSpacing.xs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(AppRadius.pill),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.16),
-                              ),
-                            ),
-                            child: Text(
-                              'Self-custody',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: isCompact ? AppSpacing.lg : AppSpacing.xl),
-                      Text(
-                        widget.subtitle.toUpperCase(),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.72),
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          widget.btcAmount,
-                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: isCompact ? 34 : 40,
-                                letterSpacing: -1.4,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Protected locally, ready when you are.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.76),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      Wrap(
-                        spacing: AppSpacing.sm,
-                        runSpacing: AppSpacing.sm,
-                        children: [
-                          _BalanceMetaChip(
-                            icon: Icons.show_chart_rounded,
-                            label: widget.fiatAmountLabel,
-                          ),
-                          const _BalanceMetaChip(
-                            icon: Icons.lock_outline_rounded,
-                            label: 'Keys on-device',
-                          ),
-                        ],
-                      ),
-                    ],
+              ),
+              const SizedBox(height: RootSpacing.xs),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  btcAmount,
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: isCompact ? 34 : 40,
+                    letterSpacing: -1.2,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: RootSpacing.xs),
+              Wrap(
+                spacing: RootSpacing.sm,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    fiatAmountLabel,
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    '·  Tap to switch unit',
+                    style: TextStyle(
+                      color: textSecondary.withValues(alpha: 0.65),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: RootSpacing.lg),
+              Wrap(
+                spacing: RootSpacing.sm,
+                runSpacing: RootSpacing.sm,
+                children: [
+                  _BalanceMetaChip(
+                    icon: Icons.show_chart_rounded,
+                    label: fiatAmountLabel,
+                    backgroundColor: chipBg,
+                    borderColor: chipBorder,
+                    textColor: chipText,
+                    iconColor: isDark ? RootBrandColors.warmIvory : RootBrandColors.pineGreen,
+                  ),
+                  _BalanceMetaChip(
+                    icon: Icons.shield_outlined,
+                    label: 'Keys on-device',
+                    backgroundColor: chipBg,
+                    borderColor: chipBorder,
+                    textColor: chipText,
+                    iconColor: RootBrandColors.pineGreen,
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -258,12 +203,22 @@ class _BalanceCardState extends State<BalanceCard> with SingleTickerProviderStat
   }
 }
 
-
 class _BalanceMetaChip extends StatelessWidget {
-  const _BalanceMetaChip({required this.icon, required this.label});
+  const _BalanceMetaChip({
+    required this.icon,
+    required this.label,
+    required this.backgroundColor,
+    required this.borderColor,
+    required this.textColor,
+    this.iconColor,
+  });
 
   final IconData icon;
   final String label;
+  final Color backgroundColor;
+  final Color borderColor;
+  final Color textColor;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -277,26 +232,26 @@ class _BalanceMetaChip extends StatelessWidget {
       constraints: BoxConstraints(maxWidth: maxWidth),
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
+          horizontal: RootSpacing.sm,
+          vertical: RootSpacing.xs,
         ),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(RootRadius.pill),
+          border: Border.all(color: borderColor, width: 1.0),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 16),
-            const SizedBox(width: AppSpacing.xs),
+            Icon(icon, color: iconColor ?? textColor, size: 15),
+            const SizedBox(width: RootSpacing.xs),
             Flexible(
               child: Text(
                 label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: textColor,
                   fontWeight: FontWeight.w600,
-                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
+                  fontSize: context.isVeryCompactWidth ? 11.5 : 12.0,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

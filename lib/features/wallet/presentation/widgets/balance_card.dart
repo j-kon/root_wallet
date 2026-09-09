@@ -24,9 +24,12 @@ class BalanceCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unit = ref.watch(balanceUnitProvider).valueOrNull ?? BalanceUnit.sats;
-    final ngnRate = ref.watch(btcNgnRateProvider).valueOrNull?.value ?? 171500000.0;
-    final usdRate = ref.watch(btcUsdRateProvider).valueOrNull?.value ?? 64250.12;
-    final eurRate = ref.watch(btcEurRateProvider).valueOrNull?.value ?? 59020.40;
+    final ngnRate =
+        ref.watch(btcNgnRateProvider).valueOrNull?.value ?? 171500000.0;
+    final usdRate =
+        ref.watch(btcUsdRateProvider).valueOrNull?.value ?? 64250.12;
+    final eurRate =
+        ref.watch(btcEurRateProvider).valueOrNull?.value ?? 59020.40;
 
     final btcValue = balance.confirmedSats / 100000000.0;
 

@@ -81,7 +81,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
     final lockAsync = ref.watch(lockControllerProvider);
