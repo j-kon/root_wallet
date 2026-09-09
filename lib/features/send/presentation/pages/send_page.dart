@@ -100,143 +100,151 @@ class _SendPageState extends ConsumerState<SendPage> {
         ? 'Looks like a valid testnet address'
         : 'Address format needs review';
 
+    final navBarTop =
+        (context.viewPadding.bottom > 0 ? 16.0 : 12.0) + 70.0;
+    final buttonBottom = navBarTop + 10.0;
+    final listBottomPadding = buttonBottom + 52.0 + RootSpacing.md;
+
     return AppScaffold(
       title: 'Send BTC',
-      body: Padding(
-        padding: EdgeInsets.fromLTRB(
-          context.pageHorizontalPadding,
-          RootSpacing.md,
-          context.pageHorizontalPadding,
-          RootSpacing.sm,
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                children: [
-                  // 1. Spendable Balance & Network Overview Card
-                  _BalanceOverviewCard(
-                    isDark: isDark,
-                    spendableSats: spendableSats,
-                    pendingSats: pendingSats,
-                    isLoading: balance == null,
-                  ),
-                  const SizedBox(height: RootSpacing.md),
-
-                  // 2. Recipient Section Card
-                  _RecipientCard(
-                    isDark: isDark,
-                    controller: _addressController,
-                    hasAddress: hasAddress,
-                    hasValidAddress: state.draft.hasValidAddress,
-                    looksLikeMainnet: state.draft.looksLikeMainnetAddress,
-                    statusLabel: addressStatusLabel,
-                    onAddressChanged: (val) {
-                      controller.setAddress(val);
-                      // If an amount was parsed from BIP-21 URI, sync amount field
-                      final updated = ref.read(sendControllerProvider);
-                      if (updated.draft.amountBtcText.isNotEmpty &&
-                          _amountController.text !=
-                              updated.draft.amountBtcText) {
-                        _amountController.text = _isSatsMode
-                            ? (updated.amountSats?.toString() ?? '')
-                            : updated.draft.amountBtcText;
-                      }
-                    },
-                    onPaste: () => _pasteAddress(controller),
-                    onScan: () => _scanAddress(context, controller),
-                  ),
-                  const SizedBox(height: RootSpacing.md),
-
-                  // 3. Amount Section Card with Dual BTC/Sat Switcher
-                  _AmountCard(
-                    isDark: isDark,
-                    controller: _amountController,
-                    isSatsMode: _isSatsMode,
-                    state: state,
-                    spendableSats: spendableSats,
-                    estimatedNgn: estimatedNgn,
-                    onToggleUnit: () => _toggleUnitMode(controller),
-                    onAmountChanged: (text) {
-                      if (_isSatsMode) {
-                        final parsedSats = int.tryParse(text.trim());
-                        if (parsedSats != null) {
-                          final btcStr = _normalizeBtcAmount(
-                            parsedSats / AppConstants.satoshisPerBitcoin,
-                          );
-                          controller.setAmountBtc(btcStr);
-                        } else if (text.trim().isEmpty) {
-                          controller.setAmountBtc('');
-                        }
-                      } else {
-                        controller.setAmountBtc(text);
-                      }
-                    },
-                    onApplyQuickPercent: (fraction) {
-                      if (spendableSats <= 0) return;
-                      final targetSats = ((spendableSats * fraction).floor())
-                          .clamp(0, spendableSats);
-                      _applyAmountSats(targetSats, controller);
-                    },
-                    onApplyMax: () {
-                      if (spendableSats <= state.estimatedFeeSats) return;
-                      final maxSats = spendableSats - state.estimatedFeeSats;
-                      _applyAmountSats(maxSats, controller);
-                    },
-                  ),
-                  const SizedBox(height: RootSpacing.md),
-
-                  // 4. Network Fee Priority Card
-                  _FormSection(
-                    isDark: isDark,
-                    title: 'Network fee',
-                    subtitle:
-                        'Choose the balance between confirmation urgency and cost.',
-                    child: const FeeSelector(),
-                  ),
-                  const SizedBox(height: RootSpacing.md),
-
-                  // 5. Coin Control / Selection Card
-                  _CoinSelectionCard(
-                    isDark: isDark,
-                    onOpenSheet: () => _showCoinSelectionSheet(context),
-                  ),
-                  const SizedBox(height: RootSpacing.md),
-
-                  // 6. Transfer Summary Card (Tested by compact_layout_regression_test)
-                  _TransferSummaryCard(
-                    isDark: isDark,
-                    state: state,
-                    totalSats: totalSats,
-                    remainingSats: remainingSats,
-                  ),
-
-                  // 7. Error / Warning Alerts
-                  if (exceedsSpendable) ...[
-                    const SizedBox(height: RootSpacing.md),
-                    _SolidAlertBanner(
-                      isDark: isDark,
-                      type: _AlertType.warning,
-                      message:
-                          'This transfer exceeds your confirmed balance after fees. Reduce the amount or wait for pending funds to settle.',
-                      icon: Icons.account_balance_wallet_outlined,
-                    ),
-                  ],
-                  if (state.errorMessage != null) ...[
-                    const SizedBox(height: RootSpacing.md),
-                    _SolidAlertBanner(
-                      isDark: isDark,
-                      type: _AlertType.error,
-                      message: state.errorMessage!,
-                    ),
-                  ],
-                ],
+      body: Stack(
+        children: [
+          // 1. Full-height scrollable list passing behind floating action
+          Positioned.fill(
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                context.pageHorizontalPadding,
+                RootSpacing.md,
+                context.pageHorizontalPadding,
+                listBottomPadding,
               ),
-            ),
-            const SizedBox(height: RootSpacing.md),
+              children: [
+                // 1. Spendable Balance & Network Overview Card
+                _BalanceOverviewCard(
+                  isDark: isDark,
+                  spendableSats: spendableSats,
+                  pendingSats: pendingSats,
+                  isLoading: balance == null,
+                ),
+                const SizedBox(height: RootSpacing.md),
 
-            // Sticky Bottom Primary Action Button
-            PrimaryButton(
+                // 2. Recipient Section Card
+                _RecipientCard(
+                  isDark: isDark,
+                  controller: _addressController,
+                  hasAddress: hasAddress,
+                  hasValidAddress: state.draft.hasValidAddress,
+                  looksLikeMainnet: state.draft.looksLikeMainnetAddress,
+                  statusLabel: addressStatusLabel,
+                  onAddressChanged: (val) {
+                    controller.setAddress(val);
+                    // If an amount was parsed from BIP-21 URI, sync amount field
+                    final updated = ref.read(sendControllerProvider);
+                    if (updated.draft.amountBtcText.isNotEmpty &&
+                        _amountController.text !=
+                            updated.draft.amountBtcText) {
+                      _amountController.text = _isSatsMode
+                          ? (updated.amountSats?.toString() ?? '')
+                          : updated.draft.amountBtcText;
+                    }
+                  },
+                  onPaste: () => _pasteAddress(controller),
+                  onScan: () => _scanAddress(context, controller),
+                ),
+                const SizedBox(height: RootSpacing.md),
+
+                // 3. Amount Section Card with Dual BTC/Sat Switcher
+                _AmountCard(
+                  isDark: isDark,
+                  controller: _amountController,
+                  isSatsMode: _isSatsMode,
+                  state: state,
+                  spendableSats: spendableSats,
+                  estimatedNgn: estimatedNgn,
+                  onToggleUnit: () => _toggleUnitMode(controller),
+                  onAmountChanged: (text) {
+                    if (_isSatsMode) {
+                      final parsedSats = int.tryParse(text.trim());
+                      if (parsedSats != null) {
+                        final btcStr = _normalizeBtcAmount(
+                          parsedSats / AppConstants.satoshisPerBitcoin,
+                        );
+                        controller.setAmountBtc(btcStr);
+                      } else if (text.trim().isEmpty) {
+                        controller.setAmountBtc('');
+                      }
+                    } else {
+                      controller.setAmountBtc(text);
+                    }
+                  },
+                  onApplyQuickPercent: (fraction) {
+                    if (spendableSats <= 0) return;
+                    final targetSats = ((spendableSats * fraction).floor())
+                        .clamp(0, spendableSats);
+                    _applyAmountSats(targetSats, controller);
+                  },
+                  onApplyMax: () {
+                    if (spendableSats <= state.estimatedFeeSats) return;
+                    final maxSats = spendableSats - state.estimatedFeeSats;
+                    _applyAmountSats(maxSats, controller);
+                  },
+                ),
+                const SizedBox(height: RootSpacing.md),
+
+                // 4. Network Fee Priority Card
+                _FormSection(
+                  isDark: isDark,
+                  title: 'Network fee',
+                  subtitle:
+                      'Choose the balance between confirmation urgency and cost.',
+                  child: const FeeSelector(),
+                ),
+                const SizedBox(height: RootSpacing.md),
+
+                // 5. Coin Control / Selection Card
+                _CoinSelectionCard(
+                  isDark: isDark,
+                  onOpenSheet: () => _showCoinSelectionSheet(context),
+                ),
+                const SizedBox(height: RootSpacing.md),
+
+                // 6. Transfer Summary Card (Tested by compact_layout_regression_test)
+                _TransferSummaryCard(
+                  isDark: isDark,
+                  state: state,
+                  totalSats: totalSats,
+                  remainingSats: remainingSats,
+                ),
+
+                // 7. Error / Warning Alerts
+                if (exceedsSpendable) ...[
+                  const SizedBox(height: RootSpacing.md),
+                  _SolidAlertBanner(
+                    isDark: isDark,
+                    type: _AlertType.warning,
+                    message:
+                        'This transfer exceeds your confirmed balance after fees. Reduce the amount or wait for pending funds to settle.',
+                    icon: Icons.account_balance_wallet_outlined,
+                  ),
+                ],
+                if (state.errorMessage != null) ...[
+                  const SizedBox(height: RootSpacing.md),
+                  _SolidAlertBanner(
+                    isDark: isDark,
+                    type: _AlertType.error,
+                    message: state.errorMessage!,
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // 2. Fixed Floating Primary Action Button (Transparent Background)
+          Positioned(
+            left: context.pageHorizontalPadding,
+            right: context.pageHorizontalPadding,
+            bottom: buttonBottom,
+            child: PrimaryButton(
               label: state.isPreviewing
                   ? 'Preparing review...'
                   : 'Review transfer',
@@ -251,9 +259,8 @@ class _SendPageState extends ConsumerState<SendPage> {
                       Navigator.of(context).pushNamed(AppRoutes.reviewTransfer);
                     },
             ),
-            SizedBox(height: context.navBarButtonSpacing),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
