@@ -12,49 +12,10 @@ class BackupSettingsPage extends ConsumerWidget {
   const BackupSettingsPage({super.key});
 
   Future<void> _showImportDialog(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController();
     final result = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Import Encrypted Backup'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Paste your encrypted Base64 backup text below. Importing will overwrite your current address labels and transaction notes.',
-              style: TextStyle(fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: controller,
-              maxLines: 4,
-              autofocus: true,
-              style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                hintText: 'Paste backup payload here...',
-                hintStyle: TextStyle(
-                  color: AppColors.textSecondaryOf(context),
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: const Text('Import'),
-          ),
-        ],
-      ),
+      builder: (dialogContext) => const _ImportBackupDialog(),
     );
-    controller.dispose();
 
     if (result != null && result.trim().isNotEmpty) {
       await ref
@@ -269,3 +230,69 @@ class BackupSettingsPage extends ConsumerWidget {
     );
   }
 }
+
+class _ImportBackupDialog extends StatefulWidget {
+  const _ImportBackupDialog();
+
+  @override
+  State<_ImportBackupDialog> createState() => _ImportBackupDialogState();
+}
+
+class _ImportBackupDialogState extends State<_ImportBackupDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Import Encrypted Backup'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Paste your encrypted Base64 backup text below. Importing will overwrite your current address labels and transaction notes.',
+            style: TextStyle(fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _controller,
+            maxLines: 4,
+            autofocus: true,
+            style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              hintText: 'Paste backup payload here...',
+              hintStyle: TextStyle(
+                color: AppColors.textSecondaryOf(context),
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text),
+          child: const Text('Import'),
+        ),
+      ],
+    );
+  }
+}
+

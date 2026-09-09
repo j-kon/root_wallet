@@ -484,59 +484,13 @@ class TransactionDetailsPage extends ConsumerWidget {
     required String currentLabel,
     required String currentNote,
   }) async {
-    final labelController = TextEditingController(text: currentLabel);
-    final noteController = TextEditingController(text: currentNote);
     final result = await showDialog<({String label, String note})?>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Private transaction note'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: labelController,
-              autofocus: true,
-              maxLength: 80,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Label',
-                hintText: 'e.g. Faucet test',
-              ),
-            ),
-            TextField(
-              controller: noteController,
-              maxLength: 280,
-              minLines: 2,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                hintText: 'Why this transaction matters',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(null),
-            child: const Text('Cancel'),
-          ),
-          if (currentLabel.trim().isNotEmpty || currentNote.trim().isNotEmpty)
-            TextButton(
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop((label: '', note: '')),
-              child: const Text('Remove'),
-            ),
-          FilledButton(
-            onPressed: () => Navigator.of(
-              dialogContext,
-            ).pop((label: labelController.text, note: noteController.text)),
-            child: const Text('Save'),
-          ),
-        ],
+      builder: (dialogContext) => _EditTransactionMetadataDialog(
+        currentLabel: currentLabel,
+        currentNote: currentNote,
       ),
     );
-    labelController.dispose();
-    noteController.dispose();
 
     if (result == null || !context.mounted) {
       return;
@@ -584,66 +538,9 @@ class TransactionDetailsPage extends ConsumerWidget {
 
     final newRate = await showDialog<int?>(
       context: context,
-      builder: (dialogContext) {
-        final textController = TextEditingController(
-          text: '${suggestedRate + 5}',
-        );
-        return AlertDialog(
-          title: const Text('Speed up transaction'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Replace-by-Fee (RBF) allows you to increase the network fee to get faster confirmation.',
-                style: Theme.of(dialogContext).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Enter new fee rate (sat/vB):',
-                style: Theme.of(
-                  dialogContext,
-                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: textController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(suffixText: 'sat/vB'),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _PresetFeeButton(
-                    label: 'Standard (+5)',
-                    rate: suggestedRate + 5,
-                    onTap: () => textController.text = '${suggestedRate + 5}',
-                  ),
-                  _PresetFeeButton(
-                    label: 'Fast (+10)',
-                    rate: suggestedRate + 10,
-                    onTap: () => textController.text = '${suggestedRate + 10}',
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(null),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final val = int.tryParse(textController.text);
-                Navigator.of(dialogContext).pop(val);
-              },
-              child: const Text('Broadcast'),
-            ),
-          ],
-        );
-      },
+      builder: (dialogContext) => _SpeedUpTransactionDialog(
+        suggestedRate: suggestedRate,
+      ),
     );
 
     if (newRate == null || !context.mounted) {
@@ -877,3 +774,178 @@ class _PresetFeeButton extends StatelessWidget {
     );
   }
 }
+
+class _EditTransactionMetadataDialog extends StatefulWidget {
+  const _EditTransactionMetadataDialog({
+    required this.currentLabel,
+    required this.currentNote,
+  });
+
+  final String currentLabel;
+  final String currentNote;
+
+  @override
+  State<_EditTransactionMetadataDialog> createState() =>
+      _EditTransactionMetadataDialogState();
+}
+
+class _EditTransactionMetadataDialogState
+    extends State<_EditTransactionMetadataDialog> {
+  late final TextEditingController _labelController;
+  late final TextEditingController _noteController;
+
+  @override
+  void initState() {
+    super.initState();
+    _labelController = TextEditingController(text: widget.currentLabel);
+    _noteController = TextEditingController(text: widget.currentNote);
+  }
+
+  @override
+  void dispose() {
+    _labelController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Private transaction note'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _labelController,
+            autofocus: true,
+            maxLength: 80,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Label',
+              hintText: 'e.g. Faucet test',
+            ),
+          ),
+          TextField(
+            controller: _noteController,
+            maxLength: 280,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Note',
+              hintText: 'Why this transaction matters',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Cancel'),
+        ),
+        if (widget.currentLabel.trim().isNotEmpty ||
+            widget.currentNote.trim().isNotEmpty)
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).pop((label: '', note: '')),
+            child: const Text('Remove'),
+          ),
+        FilledButton(
+          onPressed: () => Navigator.of(
+            context,
+          ).pop((label: _labelController.text, note: _noteController.text)),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpeedUpTransactionDialog extends StatefulWidget {
+  const _SpeedUpTransactionDialog({required this.suggestedRate});
+
+  final int suggestedRate;
+
+  @override
+  State<_SpeedUpTransactionDialog> createState() =>
+      _SpeedUpTransactionDialogState();
+}
+
+class _SpeedUpTransactionDialogState
+    extends State<_SpeedUpTransactionDialog> {
+  late final TextEditingController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController =
+        TextEditingController(text: '${widget.suggestedRate + 5}');
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Speed up transaction'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Replace-by-Fee (RBF) allows you to increase the network fee to get faster confirmation.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Enter new fee rate (sat/vB):',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _textController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(suffixText: 'sat/vB'),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _PresetFeeButton(
+                label: 'Standard (+5)',
+                rate: widget.suggestedRate + 5,
+                onTap: () =>
+                    _textController.text = '${widget.suggestedRate + 5}',
+              ),
+              _PresetFeeButton(
+                label: 'Fast (+10)',
+                rate: widget.suggestedRate + 10,
+                onTap: () =>
+                    _textController.text = '${widget.suggestedRate + 10}',
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final val = int.tryParse(_textController.text);
+            Navigator.of(context).pop(val);
+          },
+          child: const Text('Broadcast'),
+        ),
+      ],
+    );
+  }
+}
+

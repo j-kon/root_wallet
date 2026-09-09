@@ -204,78 +204,14 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
   }) async {
     HapticFeedback.selectionClick();
     final isDark = AppColors.isDark(context);
-    final controller = TextEditingController(text: currentLabel);
 
     final label = await showDialog<String?>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: isDark
-            ? RootBrandColors.nightPine
-            : RootBrandColors.pureWhite,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(RootRadius.lg),
-          side: BorderSide(
-            color: isDark
-                ? RootBrandColors.borderPine
-                : const Color(0xFFD7E3DC),
-            width: 1.0,
-          ),
-        ),
-        title: Text(
-          'Label Receive Address',
-          style: TextStyle(
-            color: isDark
-                ? RootBrandColors.warmIvory
-                : RootBrandColors.charcoalPine,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 80,
-          textInputAction: TextInputAction.done,
-          decoration: InputDecoration(
-            labelText: 'Private label',
-            hintText: 'e.g. Cold storage replenishment',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(RootRadius.md),
-            ),
-          ),
-          onSubmitted: (_) => Navigator.of(dialogContext).pop(controller.text),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(null),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: isDark
-                    ? RootBrandColors.mutedSage
-                    : const Color(0xFF5E6F68),
-              ),
-            ),
-          ),
-          if (currentLabel.trim().isNotEmpty)
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(''),
-              child: const Text(
-                'Remove',
-                style: TextStyle(color: RootBrandColors.error),
-              ),
-            ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: RootBrandColors.pineGreen,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: const Text('Save Label'),
-          ),
-        ],
+      builder: (dialogContext) => _LabelReceiveAddressDialog(
+        currentLabel: currentLabel,
+        isDark: isDark,
       ),
     );
-    controller.dispose();
 
     if (label == null || !context.mounted) {
       return;
@@ -1240,3 +1176,105 @@ class _StatusPill extends StatelessWidget {
     );
   }
 }
+
+class _LabelReceiveAddressDialog extends StatefulWidget {
+  const _LabelReceiveAddressDialog({
+    required this.currentLabel,
+    required this.isDark,
+  });
+
+  final String currentLabel;
+  final bool isDark;
+
+  @override
+  State<_LabelReceiveAddressDialog> createState() =>
+      _LabelReceiveAddressDialogState();
+}
+
+class _LabelReceiveAddressDialogState
+    extends State<_LabelReceiveAddressDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.currentLabel);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: widget.isDark
+          ? RootBrandColors.nightPine
+          : RootBrandColors.pureWhite,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(RootRadius.lg),
+        side: BorderSide(
+          color: widget.isDark
+              ? RootBrandColors.borderPine
+              : const Color(0xFFD7E3DC),
+          width: 1.0,
+        ),
+      ),
+      title: Text(
+        'Label Receive Address',
+        style: TextStyle(
+          color: widget.isDark
+              ? RootBrandColors.warmIvory
+              : RootBrandColors.charcoalPine,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 80,
+        textInputAction: TextInputAction.done,
+        decoration: InputDecoration(
+          labelText: 'Private label',
+          hintText: 'e.g. Cold storage replenishment',
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(RootRadius.md),
+          ),
+        ),
+        onSubmitted: (_) => Navigator.of(context).pop(_controller.text),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: Text(
+            'Cancel',
+            style: TextStyle(
+              color: widget.isDark
+                  ? RootBrandColors.mutedSage
+                  : const Color(0xFF5E6F68),
+            ),
+          ),
+        ),
+        if (widget.currentLabel.trim().isNotEmpty)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(''),
+            child: const Text(
+              'Remove',
+              style: TextStyle(color: RootBrandColors.error),
+            ),
+          ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: RootBrandColors.pineGreen,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Save Label'),
+        ),
+      ],
+    );
+  }
+}
+
