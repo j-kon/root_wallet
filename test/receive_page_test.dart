@@ -88,6 +88,60 @@ void main() {
     expect(find.text('Label Receive Address'), findsNothing);
     expect(find.text('Address label saved.'), findsOneWidget);
   });
+
+  testWidgets('share receive options bottom sheet displays all items without pixel overflow on standard screen', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          walletHomeControllerProvider.overrideWith(
+            () => _FakeWalletHomeController(
+              WalletHomeState(
+                balance: const Balance(confirmedSats: 50000),
+                transactions: const [],
+                receiveAddress: 'tb1qreceiveaddress',
+                lastSyncedAt: DateTime(2026, 3, 31, 12),
+                isOffline: false,
+                isSyncing: false,
+              ),
+            ),
+          ),
+          shareServiceProvider.overrideWithValue(_FakeShareService()),
+          urlLauncherServiceProvider.overrideWithValue(_FakeUrlLauncherService()),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(),
+          darkTheme: buildAppTheme(brightness: Brightness.dark),
+          home: const ReceivePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Scroll to share button and tap it
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Share'));
+    await tester.pumpAndSettle();
+
+    // Verify all 5 share options are rendered without bottom overflow
+    expect(find.text('Share Receive Options'), findsOneWidget);
+    expect(find.text('Share address'), findsOneWidget);
+    expect(find.text('Share payment request'), findsOneWidget);
+    expect(find.text('Copy address'), findsWidgets);
+    expect(find.text('Copy payment URI'), findsOneWidget);
+    expect(find.text('Open payment request'), findsOneWidget);
+
+    // Dismiss sheet
+    await tester.tap(find.text('Share Receive Options'));
+    await tester.pumpAndSettle();
+  });
 }
 
 Future<void> _pumpReceivePage(

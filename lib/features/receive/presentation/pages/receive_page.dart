@@ -240,6 +240,7 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
 
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: isDark
           ? RootBrandColors.nightPine
@@ -251,31 +252,40 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
       ),
       builder: (modalContext) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: RootSpacing.md),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: RootSpacing.lg,
-                    vertical: RootSpacing.xs,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Share Receive Options',
-                      style: TextStyle(
-                        color: isDark
-                            ? RootBrandColors.warmIvory
-                            : RootBrandColors.charcoalPine,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(modalContext).height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: RootSpacing.md),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: RootSpacing.lg,
+                      vertical: RootSpacing.xs,
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Share Receive Options',
+                        style: TextStyle(
+                          color: isDark
+                              ? RootBrandColors.warmIvory
+                              : RootBrandColors.charcoalPine,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const Divider(height: 1),
+                  Divider(
+                    height: 1,
+                    color: isDark
+                        ? RootBrandColors.borderPine
+                        : const Color(0xFFD7E3DC),
+                  ),
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -436,9 +446,10 @@ class _ReceivePageState extends ConsumerState<ReceivePage> {
               ],
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 }
 
