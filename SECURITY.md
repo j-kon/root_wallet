@@ -6,13 +6,15 @@ Root Wallet takes security and user sovereignty seriously. As a self-custodial, 
 
 ## 1. Supported Versions
 
-We release security patches and updates for the active release branch. Please ensure you are running the latest tagged version.
+Root Wallet is currently under active Testnet development.
 
-| Version | Supported |
+| Version | Status |
 |---|---|
-| Latest Release (v1.0.x) | :white_check_mark: Yes |
-| Pre-release / Dev branches | :construction: Best-effort |
-| Legacy / Older Releases | :x: No (Please upgrade) |
+| main / current Testnet development | Supported on a best-effort basis |
+| tagged pre-releases | Supported when explicitly documented |
+| Mainnet releases | Not yet available |
+
+Root Wallet has not yet released a production Mainnet version.
 
 ---
 
@@ -23,10 +25,9 @@ We deeply appreciate responsible disclosure from security researchers, auditors,
 If you discover a security vulnerability, **please do NOT open a public GitHub issue**.
 
 ### Preferred Reporting Channel
-- **GitHub Private Vulnerability Reporting:** Submit reports privately via the GitHub Security Advisory tab:
+- **GitHub Private Vulnerability Reporting:** Please use GitHub Private Vulnerability Reporting when available:
   `https://github.com/j-kon/root_wallet/security/advisories/new`
-- **Security Contact Email:** `security@rootwallet.app`
-- **PGP Encryption:** For sensitive disclosures via email, please request our PGP key or provide your public key for encrypted communications.
+- **Maintainer Contact:** If private vulnerability reporting is temporarily unavailable, contact the project maintainer through a verified contact method listed on the repository.
 
 ### What to Include in Your Report
 To help us evaluate and resolve the issue quickly, please provide:
@@ -39,8 +40,8 @@ To help us evaluate and resolve the issue quickly, please provide:
 
 ## 3. Response & Resolution Commitments
 
-- **Initial Response:** Within **48 hours** of receiving your report, acknowledging receipt and opening a private communication channel.
-- **Triage & Assessment:** Within **7 days**, confirming severity and scope.
+We aim to acknowledge responsible security reports as soon as reasonably possible and will coordinate remediation and disclosure based on severity.
+
 - **Patch Development:** Coordinated fixes developed in private repositories or security advisories.
 - **Public Disclosure:** Coordinated release and disclosure schedule after a patch has been published and distributed to users.
 - **Credit & Attribution:** We gladly credit researchers in release notes and changelogs (unless anonymity is requested).

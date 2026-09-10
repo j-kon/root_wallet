@@ -13,7 +13,7 @@ abstract final class AppConstants {
   static const minPinLength = 6;
   static const minSendAmountSats = 546;
   static const splashMinimumDuration = Duration(milliseconds: 1800);
-  static const supportUrl = 'https://support.rootwallet.app';
+  static const supportUrl = 'https://github.com/j-kon/root_wallet/issues';
   static const walletDatabaseSchemaVersion = 2;
   static const walletSnapshotSchemaVersion = 1;
   static const walletAddressDiscoveryStopGap = 20;

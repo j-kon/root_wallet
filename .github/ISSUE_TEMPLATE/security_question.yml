@@ -1,0 +1,58 @@
+name: Security Question / Discussion
+description: Ask a question about Root Wallet's cryptographic implementation, threat model, or security architecture.
+title: "[Security Question]: "
+labels: ["security", "documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🚨 IS THIS A SECURITY VULNERABILITY?
+        **STOP! Do NOT submit reports of exploitable vulnerabilities or key extraction bugs here.**
+
+        Public issues are visible to everyone immediately. Please observe this boundary:
+
+        **APPROPRIATE FOR THIS PUBLIC FORM:**
+        - Questions about our threat model or defense-in-depth architecture
+        - Questions about cryptographic algorithms (e.g. Argon2id parameters, AES-256-GCM envelope)
+        - Documentation clarifications in `docs/security_model.md` or `SECURITY_AUDIT.md`
+
+        **DO NOT POST HERE (REPORT PRIVATELY):**
+        - Exploitable security vulnerabilities or flaw demonstrations
+        - Private key, mnemonic, or seed extraction issues
+        - Transaction tampering or fee manipulation bypasses
+        - Lockout, PIN, or biometric gate bypasses
+        - Secret leakage across application boundaries
+
+        👉 **To report vulnerabilities privately, please review our [Security Policy](https://github.com/j-kon/root_wallet/blob/main/SECURITY.md) and use GitHub Private Vulnerability Reporting (or contact the maintainer through a verified contact method listed on the repository).**
+
+  - type: textarea
+    id: topic
+    attributes:
+      label: Security Topic / Component
+      description: Which security component are you asking about? (e.g., Argon2id KDF, AES-256-GCM backups, BDK descriptors, clipboard auto-clearing)
+      placeholder: "e.g., How does the Argon2id memory-hard parameter scaling work?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Detailed Question or Discussion Point
+      description: Please share your question or observation clearly.
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Relevant Documentation References
+      description: Links to files in docs/ or code references.
+      placeholder: "e.g., docs/security_model.md or SECURITY_AUDIT.md"
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Verification
+      options:
+        - label: I confirm this is a general inquiry or public architecture discussion, NOT an exploitable vulnerability.
+          required: true

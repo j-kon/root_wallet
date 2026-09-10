@@ -1,0 +1,113 @@
+name: Bug Report
+description: Report a reproducible bug or unexpected behavior in Root Wallet.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### ⚠️ CRITICAL PRIVACY & SECURITY NOTICE
+        **NEVER share any of the following in this public issue tracker:**
+        - **Recovery phrases / seed words (12 or 24 words)**
+        - **Private keys or extended private keys (`xprv`, `tprv`)**
+        - **Wallet PINs or lock codes**
+        - **Descriptors containing secret key material**
+        - **Encrypted or unencrypted wallet backup files**
+
+        *If you believe you have discovered a security vulnerability, please report it confidentially via our [Security Policy](https://github.com/j-kon/root_wallet/blob/main/SECURITY.md).*
+
+  - type: input
+    id: version
+    attributes:
+      label: Root Wallet Version
+      description: What version of Root Wallet are you running? (Check Settings > About)
+      placeholder: "e.g., 1.0.0+1 (Git commit: abc1234)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Operating System / Platform
+      description: Select the platform where the issue occurred.
+      options:
+        - iOS
+        - Android
+        - macOS (Development)
+        - Linux (Development)
+    validations:
+      required: true
+
+  - type: input
+    id: os_device
+    attributes:
+      label: Device & OS Version
+      description: Device model and OS version.
+      placeholder: "e.g., iPhone 15 Pro (iOS 17.5) or Google Pixel 8 (Android 14)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network Environment
+      description: Which Bitcoin network environment was active?
+      options:
+        - Bitcoin Testnet (default)
+        - Development / custom configuration
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the Bug
+      description: Clear, concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can maintainers reproduce the issue step-by-step?
+      placeholder: |
+        1. Open Root Wallet
+        2. Navigate to 'Send'
+        3. Enter testnet address 'tb1q...'
+        4. See error '...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs or Error Output (Sanitized)
+      description: Paste any safe console or diagnostic output. Please verify that NO seed words or private keys are in the snippet!
+      render: shell
+
+  - type: checkboxes
+    id: checklists
+    attributes:
+      label: Safety & Confirmation Checklist
+      options:
+        - label: I confirm that this report DOES NOT contain any secret keys, seed words, PINs, or private descriptors.
+          required: true
+        - label: I searched existing GitHub issues and this bug has not been reported previously.
+          required: true

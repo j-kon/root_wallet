@@ -453,7 +453,7 @@ class SettingsPage extends ConsumerWidget {
       context,
       ref,
       AppConstants.supportUrl,
-      copiedMessage: 'Support URL copied.',
+      copiedMessage: 'Support link copied.',
     );
   }
 

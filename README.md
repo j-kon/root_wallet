@@ -1,151 +1,104 @@
 # Root Wallet
 
-Root Wallet is a self-custody Bitcoin wallet focused on public testnet flows, clean architecture, and a polished Flutter user experience.
+**Own Bitcoin from the root.**
 
-It is built for real wallet behavior on testnet:
-- create and restore wallet flows
-- recovery phrase backup and confirmation
-- receive address + QR
-- send -> review -> broadcast
-- transaction history and details
-- app lock, PIN, biometrics, and recovery re-auth
-- liquid-glass light and dark themes
+Root Wallet is a publicly developed, self-custody Bitcoin wallet whose source code is available for review, built with Flutter and the [Bitcoin Dev Kit (BDK)](https://bitcoindevkit.org/).
 
-## Product Snapshot
+> [!WARNING]
+> **ROOT WALLET IS CURRENTLY TESTNET SOFTWARE.**  
+> It is not currently recommended for storing real Bitcoin. Mainnet is disabled by a compile-time constant and enforced by runtime network guards. Root Wallet is under active development and security review on the Bitcoin Testnet.
 
-Root Wallet is intentionally opinionated:
-- self-custody first
-- public Bitcoin testnet by default
-- Riverpod for app orchestration
-- feature-first clean architecture
-- no SDK or network calls inside widgets
-- UI regression coverage for the main app shell and onboarding/security flows
+---
 
-## Screenshot Gallery
+## 1. Product Overview
 
-The README screenshot assets live in [`docs/screenshots`](docs/screenshots/README.md). The current gallery is sourced from the app's verified golden baselines so the visuals stay aligned with the shipped UI.
+Root Wallet is built from first principles for sovereign Bitcoiners who value self-custody, cryptographic transparency, and noise-free software.
 
-<table>
-  <tr>
-    <td align="center">
-      <img src="docs/screenshots/welcome-light.png" alt="Welcome screen" width="220" />
-      <br />
-      <strong>Welcome</strong>
-      <br />
-      First-run onboarding
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/wallet-home-light.png" alt="Wallet home screen" width="220" />
-      <br />
-      <strong>Wallet Home</strong>
-      <br />
-      Portfolio overview and activity
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/receive-dark.png" alt="Receive screen" width="220" />
-      <br />
-      <strong>Receive</strong>
-      <br />
-      Testnet address and QR handoff
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs/screenshots/send-dark.png" alt="Send screen" width="220" />
-      <br />
-      <strong>Send</strong>
-      <br />
-      Amount, fee, and review flow
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/settings-dark.png" alt="Settings screen" width="220" />
-      <br />
-      <strong>Settings</strong>
-      <br />
-      App controls and wallet operations
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/security-light.png" alt="Security screen" width="220" />
-      <br />
-      <strong>Security</strong>
-      <br />
-      App lock, biometrics, and re-auth
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs/screenshots/create-wallet-light.png" alt="Create wallet screen" width="220" />
-      <br />
-      <strong>Create Wallet</strong>
-      <br />
-      First wallet setup
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/backup-phrase-dark.png" alt="Backup phrase screen" width="220" />
-      <br />
-      <strong>Backup Phrase</strong>
-      <br />
-      Recovery phrase protection
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/lock-screen-dark.png" alt="Lock screen" width="220" />
-      <br />
-      <strong>App Lock</strong>
-      <br />
-      PIN and biometric gate
-    </td>
-  </tr>
-</table>
+- **Bitcoin-Only:** Exclusively focused on Bitcoin. No altcoins, no tokens, no cross-chain bridges, and no speculative noise.
+- **Self-Custodial:** Your keys, your Bitcoin. Private keys and recovery phrases are generated locally and designed to remain on your device. Network communication is focused on blockchain synchronization and transaction broadcasting.
+- **Powered by BDK:** Built on the Rust [Bitcoin Dev Kit](https://github.com/bitcoindevkit/bdk) via [`bdk_dart`](https://github.com/bitcoindevkit/bdk-dart).
+- **Privacy-Conscious:** Zero third-party telemetry, zero trackers, zero account registration, and local-only storage without cloud dependencies.
+- **Beginner-Friendly on the Surface, Advanced Underneath:** Streamlined for everyday payments while exposing power tools (Taproot, coin control, RBF, custom backends) when you need them.
+- **Intentional Design:** Strictly uses flat, solid brand colors. Zero distracting gradients, glowing borders, or glassmorphism.
 
-## Documentation Map
+---
 
-- Project architecture: [docs/architecture.md](docs/architecture.md)
-- Development workflow: [docs/development_guide.md](docs/development_guide.md)
-- Testing and QA: [docs/testing_and_qa.md](docs/testing_and_qa.md)
-- Privacy and security notes: [docs/privacy_security.md](docs/privacy_security.md)
-- Mobile permission notes: [docs/mobile_permissions.md](docs/mobile_permissions.md)
-- Troubleshooting: [docs/troubleshooting.md](docs/troubleshooting.md)
-- Device sign-off checklist: [docs/device_qa_checklist.md](docs/device_qa_checklist.md)
-- Release checklist: [docs/release_checklist.md](docs/release_checklist.md)
-- Release notes: [docs/release_notes.md](docs/release_notes.md)
-- Changelog: [CHANGELOG.md](CHANGELOG.md)
+## 2. Screenshots
 
-## Feature Overview
+| Home | Receive | Send |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/wallet-home-light.png" alt="Wallet Home" width="230" /> | <img src="docs/screenshots/receive-dark.png" alt="Receive Address" width="230" /> | <img src="docs/screenshots/send-dark.png" alt="Send Bitcoin" width="230" /> |
 
-### Wallet
-- Create or restore a Bitcoin testnet wallet
-- Sync balance and recent activity
-- Persist wallet data and cache wallet snapshots
-- View transaction details and open explorer links
+| Security & Lock | Backup Phrase | Settings |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/lock-screen-dark.png" alt="Lock Screen" width="230" /> | <img src="docs/screenshots/backup-phrase-dark.png" alt="Backup Phrase" width="230" /> | <img src="docs/screenshots/settings-dark.png" alt="Settings" width="230" /> |
 
-### Receive
-- Generate a testnet receive address
-- Display QR code with `qr_flutter`
-- Copy raw address or `bitcoin:` URI
-- Native share integration via `share_plus`
+*Explore more screenshots and light mode visuals in the [`docs/screenshots/`](docs/screenshots/) directory.*
 
-### Send
-- Manual paste or QR scan via `mobile_scanner`
-- Parse raw addresses and `bitcoin:` URIs
-- Fee selection and transfer review
-- Broadcast on public testnet
+---
 
-### Security
-- PIN hashing and secure storage
-- App lock and re-auth
-- Optional biometrics via `local_auth`
-- Recovery phrase reveal protection
-- Android screen capture protection while viewing recovery words
+## 3. Why Root Wallet?
 
-### Diagnostics
-- Inspect active Testnet Esplora backend
-- Inspect BDK network family and wallet database path
-- Inspect cached wallet snapshot age and transaction count
-- Copy debug context without exposing recovery words or private keys
+Most consumer wallets today have become financial supermarkets—cluttered with altcoins, custodial exchange integrations, intrusive KYC prompts, and privacy-leaking analytics SDKs.
 
-## BDK integration
+Root Wallet returns to the original promise of Bitcoin:
+- **Zero Accounts:** No email, phone number, or identity verification required.
+- **Noise-Free Interface:** Designed like an editorial instrument rather than a casino game.
+- **Cryptographic Independence:** Verifiable public source code that anyone can review, compile, and run independently.
 
-Root Wallet now uses `bdk_dart` directly from GitHub as its wallet engine:
+---
+
+## 4. Features
+
+### Everyday Payments (Simple Mode)
+- **Instant Wallet Creation & Restore:** Generate 12-word BIP-39 recovery phrases or restore existing wallets.
+- **Receive:** Clean QR codes, BIP-21 URI formatting, and native sharing.
+- **Send:** Scan camera QR codes or paste addresses, customize network fees, and review transaction details prior to broadcast.
+- **Transaction History:** Confirmation tracking during wallet synchronization, transaction detail inspector, and block explorer shortcuts.
+
+### Advanced Bitcoin Capabilities
+- **Script Type Flexibility:** Native SegWit (P2WPKH, `tb1q...`) and Taproot (P2TR, `tb1p...`) support.
+- **Granular Coin Control:** Inspect individual UTXOs, freeze/lock specific coins, and break address reuse.
+- **Replace-By-Fee (RBF):** Signal RBF on outgoing transactions to bump transaction priority.
+- **Custom Node Overrides:** Support for configuring custom backend endpoints.
+
+---
+
+## 5. Security Architecture
+
+Root Wallet's defense-in-depth architecture applies multiple layers of protection against common physical and digital attack vectors:
+
+- **Argon2id Memory-Hard PIN KDF:** Application unlock PINs are verified using Argon2id (`m=16MB, t=3, p=1`) with persistent brute-force lockout ladders.
+- **Authenticated Backup V2 (AES-256-GCM):** Encrypted metadata backups use pure-Dart AES-256-GCM with HKDF-SHA256 key derivation to provide integrity verification and mitigate padding oracle attacks.
+- **Ephemeral Mnemonic Lifecycle:** Root Wallet minimizes the amount of time recovery phrases are retained in application state and removes references after sensitive flows complete.
+- **Multitasking Screen Protection:** iOS app-switcher and Android screen-capture protections reduce exposure in screenshots and app-switcher previews.
+- **Auto-Clearing Clipboard:** Sensitive clipboard copies (such as seed phrases) are automatically sanitized after 60 seconds.
+
+For complete technical specifications, see [`docs/security_model.md`](docs/security_model.md) and our internal [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md).
+
+---
+
+## 6. Architecture & Clean Code
+
+The codebase is strictly structured around feature-first clean architecture and Riverpod:
+
+```
+lib/
+├── app/          # App shell, routing, Riverpod DI, theme, security gate
+├── core/         # Hardware wrappers, network environment, crypto services
+├── features/     # Isolated modules: wallet, send, receive, settings, onboarding
+└── shared/       # Cross-cutting reusable UI widgets and utilities
+```
+
+- **Separation of Concerns:** Zero direct BDK or network calls inside Flutter widgets.
+- **Design Tokens:** Strict enforcement of solid brand tokens in [`RootBrandColors`](lib/app/theme/brand/root_brand_colors.dart).
+- Read the full architecture document: [`docs/architecture.md`](docs/architecture.md).
+
+---
+
+## 7. BDK Integration
+
+Root Wallet uses [`bdk_dart`](https://github.com/bitcoindevkit/bdk-dart) pinned to `v1.0.0-rc.2`:
 
 ```yaml
 bdk_dart:
@@ -154,176 +107,90 @@ bdk_dart:
     ref: v1.0.0-rc.2
 ```
 
-The package entrypoint is:
+Upstream dependencies are locked via [`tool/ci/bdk_dart_Cargo.lock`](tool/ci/bdk_dart_Cargo.lock) to ensure reproducible compilation against stable Rust toolchains (`rustc 1.85.1`).
 
-```dart
-import 'package:bdk_dart/bdk_dart.dart';
-```
+Read the complete dependency analysis: [`docs/bdk_dependency_chain.md`](docs/bdk_dependency_chain.md).
 
-The upstream README now documents `bdk_dart: ^1.0.0-rc.2` for pub.dev usage, but this app pins the GitHub `v1.0.0-rc.2` tag for reproducible local builds. Because `bdk_dart` builds native FFI assets, a Rust toolchain with `cargo` is required for local builds. The wallet is configured for Bitcoin testnet only, using Blockstream testnet Esplora (`https://blockstream.info/testnet/api`) and Electrum (`ssl://electrum.blockstream.info:60002`) backends.
+---
 
-Recovery phrase generation and validation use BDK's mnemonic API:
+## 8. Testnet Status & Safety Locks
 
-```dart
-final mnemonic = bdk.Mnemonic(wordCount: bdk.WordCount.words12);
-final parsed = bdk.Mnemonic.fromString(mnemonic: phrase);
-```
+To protect users while security reviews and hardening proceed:
+- `AppConstants.isMainnetAllowed = false` is compiled into the app.
+- Mainnet selection is disabled in the current build configuration and rejected by runtime network checks.
+- Default backends point to public Bitcoin Testnet infrastructure:
+  - Esplora: `https://blockstream.info/testnet/api`
+  - Electrum: `ssl://electrum.blockstream.info:60002`
+  - Explorer: `https://mempool.space/testnet`
 
-Root Wallet currently targets Android and iOS wallet functionality, not Flutter Web. Web is unsupported because `bdk_dart` depends on `dart:ffi` and native assets.
+---
 
-## Architecture at a Glance
+## 9. Development & Local Setup
 
-The app is organized around feature modules and clean boundaries:
+### Prerequisites
+- **Flutter SDK:** Version `3.41.4` (managed via [`.fvmrc`](.fvmrc)) with Dart `^3.10.7`.
+- **Rust Toolchain:** Stable `rustc` and `cargo` (recommended `1.85.1+`).
 
-- `lib/app`
-  - application shell
-  - routing
-  - theme
-  - global providers
-- `lib/core`
-  - platform wrappers
-  - security
-  - shared widgets
-  - errors, constants, and utilities
-- `lib/features`
-  - `wallet`
-  - `receive`
-  - `send`
-  - `settings`
-  - `onboarding`
-  - `rates`
-- `lib/shared`
-  - cross-feature widgets, extensions, and models
-
-Detailed structure and boundary rules live in [docs/architecture.md](docs/architecture.md).
-
-## Routes
-
-Key routes currently defined in [routes.dart](lib/app/routing/routes.dart):
-
-- `/`
-- `/welcome`
-- `/wallet/create`
-- `/wallet/backup`
-- `/wallet/backup/confirm`
-- `/wallet/restore`
-- `/wallet/transaction`
-- `/receive`
-- `/send`
-- `/send/review`
-- `/send/success`
-- `/settings`
-- `/settings/security`
-- `/settings/diagnostics`
-- `/settings/about`
-
-## Toolchain Requirements
-
-Root Wallet currently declares:
-
-```yaml
-environment:
-  sdk: ^3.10.7
-```
-
-That means the local Flutter install must bundle a compatible Dart SDK. If your Flutter installation is older, analysis and tests may fail before the app code even runs.
-
-Recommended local baseline:
-- Flutter `3.41.4` from [.fvmrc](.fvmrc), or another Flutter release with Dart `3.10.x` or newer
-- Rust toolchain with `cargo` for `bdk_dart` native assets
-- native assets enabled in Flutter tooling when required by dependencies
-
-See [docs/troubleshooting.md](docs/troubleshooting.md) for the exact failure modes we have already encountered.
-
-## Core Commands
-
+### Quick Start
 ```bash
+# 1. Clone repository
+git clone https://github.com/j-kon/root_wallet.git
+cd root_wallet/root_wallet
+
+# 2. Install dependencies
 flutter pub get
-dart run flutter_native_splash:create
+
+# 3. Verify static analysis
 flutter analyze
+
+# 4. Run automated test suites
+flutter test test/security/
 flutter test --exclude-tags golden
+
+# 5. Launch in simulator/device
 flutter run
 ```
 
-## Visual Regression Workflow
+---
 
-The repo maintains golden coverage for the highest-value UI surfaces:
+## 10. Contributing
 
-- Main app shell and top-level tabs:
-  - [test/main_shell_golden_test.dart](test/main_shell_golden_test.dart)
-- Onboarding and security flows:
-  - [test/onboarding_security_golden_test.dart](test/onboarding_security_golden_test.dart)
+We welcome contributions from Bitcoin developers, security researchers, designers, and testers!
 
-Run the curated suites:
+Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) for our contribution workflow, branch conventions, and testing requirements. All participants must abide by our [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
-```bash
-flutter test test/main_shell_golden_test.dart
-flutter test test/onboarding_security_golden_test.dart
-```
+---
 
-Hosted CI excludes `golden` tagged tests because strict pixel baselines can
-drift across Flutter patch versions and hosted runner renderers. Run golden
-suites locally when visual changes are intentional.
+## 11. Security Disclosures
 
-Refresh baselines only when the visual change is intentional:
+If you discover a security vulnerability or cryptographic flaw in Root Wallet, **DO NOT file a public issue**.
 
-```bash
-flutter test test/main_shell_golden_test.dart --update-goldens
-flutter test test/onboarding_security_golden_test.dart --update-goldens
-```
+Please report vulnerabilities confidentially in accordance with our [Security Policy](SECURITY.md) using GitHub Private Vulnerability Reporting or via verified maintainer contacts.
 
-If a golden fails:
+---
 
-1. Check `test/failures/`
-2. Review whether the visual change is intended
-3. Update the baseline only after reviewing the diff
+## 12. Roadmap
 
-## QA Expectations
+Root Wallet is being developed in six sequential phases:
+- **Phase 1: Testnet Wallet Foundation** *(Completed)*
+- **Phase 2: Security Hardening & Threat Model Remediation** *(Completed / Ongoing Review)*
+- **Phase 3: Open-Source Public Foundation** *(Current)*
+- **Phase 4: Privacy & Network Tooling (Tor / Custom Nodes)**
+- **Phase 5: Mainnet Release Candidate & Third-Party Audit**
+- **Phase 6: Advanced Bitcoin Tooling (Hardware Wallets / PSBT)**
 
-Before shipping UI-heavy changes:
+See the full roadmap: [`ROADMAP.md`](ROADMAP.md).
 
-1. Run `flutter analyze`
-2. Run `flutter test --exclude-tags golden`
-3. Run the relevant golden suites if visuals changed
-4. Verify light and dark mode
-5. Verify at least one compact device profile
-6. Run through the device checklist in [docs/device_qa_checklist.md](docs/device_qa_checklist.md)
+---
 
-## Network Assumption
+## 13. License
 
-Root Wallet is currently configured around public Bitcoin testnet infrastructure:
+**License decision in progress.**
 
-- testnet Electrum base: `ssl://electrum.blockstream.info:60002`
-- testnet Esplora base: `https://blockstream.info/testnet/api`
-- testnet explorer base: `https://mempool.space/testnet`
+Root Wallet's core maintainers are currently evaluating formal adoption of dual licensing (**MIT OR Apache-2.0**) to mirror upstream Bitcoin Dev Kit conventions. For legal analysis and trade-off considerations, see [`docs/license_decision.md`](docs/license_decision.md).
 
-This app is not configured for mainnet by default.
+---
 
-## Dependency Use
+## 14. Disclaimer
 
-Key production dependencies currently integrated:
-
-- `bdk_dart`
-- `flutter_riverpod`
-- `qr_flutter`
-- `mobile_scanner`
-- `url_launcher`
-- `shared_preferences`
-- `local_auth`
-- `flutter_secure_storage`
-- `crypto`
-- `encrypt`
-- `share_plus`
-
-`bdk_dart` owns Bitcoin wallet behavior: mnemonics, descriptors, addresses, PSBT signing, sync, transactions, and broadcast. `crypto` and `encrypt` remain app-level security dependencies for PIN hashing, local fingerprints, and encrypted metadata backups.
-
-## Contributing Mindset
-
-This repo prefers:
-
-- clean architecture boundaries over quick shortcuts
-- Riverpod state ownership over widget-local business logic
-- reusable design system changes over one-off screen patches
-- test coverage for critical flows and visual baselines for core UI
-
-If you are changing behavior or visuals, leave the repo easier to reason about than you found it.
+Root Wallet is experimental software provided under development for testing and educational purposes on the Bitcoin Testnet. Use at your own risk. The developers assume no liability for lost funds, lost recovery phrases, or software malfunctions. Never commit real funds or enter real mainnet private keys into testnet software.
