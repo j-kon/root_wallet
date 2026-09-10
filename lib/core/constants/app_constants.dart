@@ -3,6 +3,9 @@ abstract final class AppConstants {
   static const appTagline = 'Secure self-custody, without the noise.';
   static const appVersionName = '1.0.0';
   static const appBuildNumber = '1';
+  /// Safety flag: controls whether Bitcoin mainnet can be selected or initialized.
+  /// Kept false for testnet-first security milestone.
+  static const bool isMainnetAllowed = false;
   static const networkDisplayName = 'Testnet';
   static const bitcoinNetworkDisplayName = 'Bitcoin testnet';
   static const defaultCurrency = 'BTC';
