@@ -1,0 +1,47 @@
+name: Security Question / Discussion
+description: Ask a question about Root Wallet's cryptographic implementation, threat model, or security architecture.
+title: "[Security Question]: "
+labels: ["security", "documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🚨 IS THIS A SECURITY VULNERABILITY?
+        **STOP! Do NOT submit reports of security vulnerabilities, exploits, or key extraction bugs here.**
+
+        Public issues are visible to everyone immediately. If you have discovered or suspect a vulnerability in Root Wallet:
+        👉 **Please review our [Security Policy](https://github.com/j-kon/root_wallet/blob/main/SECURITY.md) and report confidentially to `security@rootwallet.app`.**
+
+        Use this template *only* for public architectural discussions, threat model questions, or documentation clarifications.
+
+  - type: textarea
+    id: topic
+    attributes:
+      label: Security Topic / Component
+      description: Which security component are you asking about? (e.g., Argon2id KDF, AES-256-GCM backups, BDK descriptors, clipboard auto-clearing)
+      placeholder: "e.g., How does the Argon2id memory-hard parameter scaling work?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Detailed Question or Discussion Point
+      description: Please share your question or observation clearly.
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Relevant Documentation References
+      description: Links to files in docs/ or code references.
+      placeholder: "e.g., docs/security_model.md or SECURITY_AUDIT.md"
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Verification
+      options:
+        - label: I confirm this is a general inquiry or public architecture discussion, NOT an exploitable vulnerability.
+          required: true

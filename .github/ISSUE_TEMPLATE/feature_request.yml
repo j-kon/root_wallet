@@ -1,0 +1,61 @@
+name: Feature Proposal
+description: Suggest an enhancement or new capability for Root Wallet.
+title: "[Feature]: "
+labels: ["enhancement", "proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 💡 Root Wallet Feature Principles
+        Before proposing a feature, please remember Root Wallet's non-negotiable boundaries:
+        - **Bitcoin-Only:** We will not support altcoins, tokens, or multi-chain abstractions.
+        - **Self-Custodial:** We will not build custodial accounts or server-side key management.
+        - **Privacy First:** We will not integrate analytics, surveillance tooling, or external tracking SDKs.
+        - **Design Integrity:** Root Wallet uses **solid colors only** (no gradients, glow effects, or glassmorphism).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a specific problem or friction point?
+      placeholder: "I find it difficult to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution / Enhancement
+      description: Describe the solution you would like to see in Root Wallet.
+      placeholder: "I propose that Root Wallet adds..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What alternative solutions or workarounds have you considered?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: target_experience
+    attributes:
+      label: Target Experience
+      description: Does this belong in the primary Simple interface or in Advanced Capabilities?
+      options:
+        - Simple Mode (Primary everyday flow)
+        - Advanced Capabilities (Settings, Diagnostics, Coin Control, Expert Tools)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: principles_check
+    attributes:
+      label: Alignment Checklist
+      options:
+        - label: This proposal is strictly Bitcoin-only.
+          required: true
+        - label: This proposal preserves user self-custody and local key privacy.
+          required: true
