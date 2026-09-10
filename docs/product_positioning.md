@@ -1,14 +1,14 @@
 # Root Wallet: Product Positioning & Philosophy
 
 **Core Brand Statement:** "Own Bitcoin from the root."  
-**Supporting Message:** "Publicly developed self-custody, without the noise."  
+**Supporting Message:** "Open-source self-custody, without the noise."  
 **Primary Value Proposition:** Beginner-friendly on the surface. Powerful underneath.
 
 ---
 
 ## 1. What Root Wallet Is
 
-Root Wallet is a modern, self-custodial, publicly developed Bitcoin wallet whose source code is available for review, built for sovereign individuals who refuse to compromise on security, privacy, or usability. Powered by the Rust-based Bitcoin Dev Kit (BDK) and built with Flutter, Root Wallet bridges the gap between accessible everyday spending and deep cryptographic transparency.
+Root Wallet is a modern, self-custodial, open-source Bitcoin wallet built for sovereign individuals who refuse to compromise on security, privacy, or usability. Powered by the Rust-based Bitcoin Dev Kit (BDK) and built with Flutter, Root Wallet bridges the gap between accessible everyday spending and deep cryptographic transparency.
 
 ### Core Pillars
 1. **Bitcoin-Only:** We exclusively focus on the Bitcoin monetary network. We do not participate in altcoin speculation, DeFi tokens, or cross-chain ecosystems.

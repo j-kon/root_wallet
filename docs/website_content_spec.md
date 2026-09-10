@@ -67,7 +67,7 @@ All layout backgrounds, containers, text, and interactive elements must utilize 
 - **Headline:**  
   `Own Bitcoin from the root.`
 - **Supporting Subheading:**  
-  `A publicly developed, self-custody Bitcoin wallet built with the Bitcoin Dev Kit. Sovereign, noise-free, and engineered for privacy from the first block.`
+  `An open-source, self-custody Bitcoin wallet built with the Bitcoin Dev Kit. Sovereign, noise-free, and engineered for privacy from the first block.`
 - **Call-to-Action Group:**
   - Primary Button: `Join Testnet` (Solid Pine Green button with white text)
   - Secondary Button: `View Source` (Subtle 1px Border Pine outline with Warm Ivory text and GitHub icon)
@@ -81,7 +81,7 @@ All layout backgrounds, containers, text, and interactive elements must utilize 
 
 ### Section 3: Trust Strip
 A restrained 4-column horizontal banner with minimal icons and high-contrast labels:
-1. **Public Code:** Verified source. Review every commit.
+1. **Open Source:** Dual-licensed under MIT OR Apache-2.0. Review every commit.
 2. **Self Custody:** Your keys, your rules. Zero custodial intermediaries.
 3. **Bitcoin Only:** Focused entirely on sound money. No altcoin distractions.
 4. **Built with BDK:** Powered by the industry-standard Rust Bitcoin Dev Kit.
@@ -136,10 +136,10 @@ Highlighting power tools designed for experienced users:
 
 ---
 
-### Section 8: Public Source Code & Transparency
+### Section 8: Open Source Code & Transparency
 - **Headline:** `Don't trust us. Verify.`
 - **Copy:**  
-  `Every feature, cryptographic implementation, and commit in Root Wallet is open for public review and verification.`
+  `Every feature, cryptographic implementation, and commit in Root Wallet is open-source (MIT OR Apache-2.0) and available for public review and verification.`
 - **Direct Links:**
   - [Source Code Repository](https://github.com/j-kon/root_wallet)
   - [Security Threat Model](https://github.com/j-kon/root_wallet/blob/main/docs/security_model.md)

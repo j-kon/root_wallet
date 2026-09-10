@@ -89,6 +89,6 @@ Any future revisions to this policy will be committed transparently to the publi
 
 ## 8. Contact & Verification
 
-If you have questions regarding this privacy policy or wish to inspect the implementation of our data handling in the public codebase:
+If you have questions regarding this privacy policy or wish to inspect the implementation of our data handling in the open-source codebase:
 - **Repository:** https://github.com/j-kon/root_wallet
 - **Contact:** Contact the project maintainer privately using a verified contact method listed on the repository or open a public issue for general policy questions.

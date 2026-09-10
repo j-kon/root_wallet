@@ -34,7 +34,7 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
 **Status: CURRENT MILESTONE 🚀**
 
 - [x] Public repository audit and open-source readiness assessment.
-- [x] License evaluation (Dual MIT OR Apache-2.0 recommendation).
+- [x] Formal open-source dual licensing adopted (MIT OR Apache-2.0).
 - [x] Professional contributor guide (`CONTRIBUTING.md`) and Contributor Covenant (`CODE_OF_CONDUCT.md`).
 - [x] Standardized GitHub Issue forms (bug reports, feature proposals, security questions) and Pull Request template.
 - [x] Transparent public security model and user-facing `/security` website specification.
