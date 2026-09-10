@@ -82,7 +82,7 @@ class BackupController extends StateNotifier<BackupState> {
           const WalletLabelsSnapshot();
       final plainText = jsonEncode(labelsSnapshot.toJson());
 
-      final encrypted = BackupEncryptionService.encrypt(
+      final encrypted = await BackupEncryptionService.encrypt(
         plainText: plainText,
         mnemonic: mnemonic,
       );
@@ -128,7 +128,7 @@ class BackupController extends StateNotifier<BackupState> {
 
       final encrypted = await file.readAsString();
 
-      final plainText = BackupEncryptionService.decrypt(
+      final plainText = await BackupEncryptionService.decrypt(
         encryptedCombinedBase64: encrypted,
         mnemonic: mnemonic,
       );
@@ -140,6 +140,13 @@ class BackupController extends StateNotifier<BackupState> {
       );
       await store.write(newSnapshot);
       ref.invalidate(walletLabelsControllerProvider);
+
+      // Re-save backup file using V2 authenticated format
+      final reEncryptedV2 = await BackupEncryptionService.encrypt(
+        plainText: plainText,
+        mnemonic: mnemonic,
+      );
+      await file.writeAsString(reEncryptedV2);
 
       state = state.copyWith(
         isProcessing: false,
@@ -172,7 +179,7 @@ class BackupController extends StateNotifier<BackupState> {
           const WalletLabelsSnapshot();
       final plainText = jsonEncode(labelsSnapshot.toJson());
 
-      final encrypted = BackupEncryptionService.encrypt(
+      final encrypted = await BackupEncryptionService.encrypt(
         plainText: plainText,
         mnemonic: mnemonic,
       );
@@ -203,7 +210,7 @@ class BackupController extends StateNotifier<BackupState> {
         throw Exception('Mnemonic is not initialized.');
       }
 
-      final plainText = BackupEncryptionService.decrypt(
+      final plainText = await BackupEncryptionService.decrypt(
         encryptedCombinedBase64: encryptedBase64,
         mnemonic: mnemonic,
       );
