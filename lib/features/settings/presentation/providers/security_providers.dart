@@ -173,10 +173,23 @@ class LockController extends AsyncNotifier<AppLockState> {
     );
     final hasPin = await lockService.hasPin();
     final isBiometricAvailable = await lockService.isBiometricAvailable();
+    final failedAttempts = await lockService.getFailedAttempts();
+    final remainingCooldownSeconds =
+        await lockService.getRemainingCooldownSeconds();
+
+    DateTime? cooldownEndsAt;
+    if (remainingCooldownSeconds > 0) {
+      cooldownEndsAt =
+          DateTime.now().add(Duration(seconds: remainingCooldownSeconds));
+    }
 
     ref.onDispose(() {
       _cooldownTicker?.cancel();
     });
+
+    if (cooldownEndsAt != null) {
+      _startCooldownTicker(cooldownEndsAt);
+    }
 
     return AppLockState(
       isLockEnabled: isLockEnabled,
@@ -186,7 +199,11 @@ class LockController extends AsyncNotifier<AppLockState> {
       hasPin: hasPin,
       isLocked: isLockEnabled && hasPin,
       isBusy: false,
-      failedAttempts: 0,
+      failedAttempts: failedAttempts,
+      cooldownEndsAt: cooldownEndsAt,
+      message: cooldownEndsAt != null
+          ? 'Lockout active. Try again in ${remainingCooldownSeconds}s.'
+          : null,
     );
   }
 
@@ -376,6 +393,7 @@ class LockController extends AsyncNotifier<AppLockState> {
     if (hasDecoy) {
       final isDecoy = await lockService.verifyDecoyPin(pin);
       if (isDecoy) {
+        await lockService.resetLockout();
         ref.read(bdkWalletServiceProvider).setDecoyActive(true);
         _cooldownTicker?.cancel();
         state = AsyncData(
@@ -404,6 +422,7 @@ class LockController extends AsyncNotifier<AppLockState> {
     }
 
     if (ok) {
+      await lockService.resetLockout();
       ref.read(bdkWalletServiceProvider).setDecoyActive(false);
       _cooldownTicker?.cancel();
       state = AsyncData(
@@ -423,16 +442,21 @@ class LockController extends AsyncNotifier<AppLockState> {
       return true;
     }
 
-    final attempts = next.failedAttempts + 1;
-    if (attempts >= 5) {
-      final cooldownEnd = DateTime.now().add(const Duration(seconds: 15));
+    final attempts = await lockService.recordFailedAttempt();
+    final delaySeconds = lockService.delayForAttempts(attempts);
+
+    if (delaySeconds > 0) {
+      final cooldownEnd = DateTime.now().add(Duration(seconds: delaySeconds));
       _startCooldownTicker(cooldownEnd);
+      final delayText = delaySeconds >= 60
+          ? '${(delaySeconds / 60).round()}m'
+          : '${delaySeconds}s';
       state = AsyncData(
         next.copyWith(
           isBusy: false,
           failedAttempts: attempts,
           cooldownEndsAt: cooldownEnd,
-          message: 'Too many attempts. Try again in 15s.',
+          message: 'Too many attempts. Try again in $delayText.',
         ),
       );
       return false;
@@ -462,7 +486,6 @@ class LockController extends AsyncNotifier<AppLockState> {
         timer.cancel();
         state = AsyncData(
           current.copyWith(
-            failedAttempts: 0,
             clearCooldown: true,
             clearMessage: true,
           ),
