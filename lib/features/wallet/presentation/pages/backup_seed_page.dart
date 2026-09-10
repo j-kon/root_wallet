@@ -231,7 +231,47 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
                   isCopied: _isCopied,
                   onCopy: () async {
                     HapticFeedback.lightImpact();
-                    await Clipboard.setData(ClipboardData(text: phrase));
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (dialogContext) => AlertDialog(
+                        backgroundColor: isDark
+                            ? RootBrandColors.nightPine
+                            : RootBrandColors.pureWhite,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(RootRadius.lg),
+                          side: BorderSide(
+                            color: isDark
+                                ? RootBrandColors.borderPine
+                                : const Color(0xFFD7E3DC),
+                            width: 1.0,
+                          ),
+                        ),
+                        title: const Text('Copy Recovery Phrase?'),
+                        content: const Text(
+                          'Clipboard contents can be read by other apps, keyboard extensions, and cloud clipboard sync.\n\nRoot Wallet will automatically clear the recovery phrase from the clipboard after 60 seconds.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: RootBrandColors.pineGreen,
+                            ),
+                            onPressed: () => Navigator.of(dialogContext).pop(true),
+                            child: const Text('Copy & Auto-Clear (60s)'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed != true || !context.mounted) return;
+
+                    await ref.read(clipboardServiceProvider).copySensitive(
+                          phrase,
+                          timeout: const Duration(seconds: 60),
+                        );
+                    if (!mounted) return;
                     setState(() => _isCopied = true);
                     _copyTimer?.cancel();
                     _copyTimer = Timer(const Duration(seconds: 2), () {
@@ -239,7 +279,11 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
                     });
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Recovery phrase copied.')),
+                      const SnackBar(
+                        content: Text(
+                          'Recovery phrase copied. Clipboard will clear in 60 seconds.',
+                        ),
+                      ),
                     );
                   },
                 ),

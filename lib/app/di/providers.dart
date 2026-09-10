@@ -9,6 +9,7 @@ import 'package:root_wallet/core/network/api_client.dart';
 import 'package:root_wallet/core/platform/share_service.dart';
 import 'package:root_wallet/core/platform/url_launcher_service.dart';
 import 'package:root_wallet/core/security/biometric_service.dart';
+import 'package:root_wallet/core/security/clipboard_service.dart';
 import 'package:root_wallet/core/security/lock_service.dart';
 import 'package:root_wallet/core/security/pin_lock_service.dart';
 import 'package:root_wallet/core/security/screen_protection_service.dart';
@@ -56,6 +57,12 @@ final lockServiceProvider = Provider<LockService>(
 final screenProtectionServiceProvider = Provider<ScreenProtectionService>(
   (ref) => const ScreenProtectionService(),
 );
+
+final clipboardServiceProvider = Provider<ClipboardService>((ref) {
+  final service = ClipboardService();
+  ref.onDispose(service.dispose);
+  return service;
+});
 
 final sharedPreferencesProvider = FutureProvider<SharedPreferences>((
   ref,
