@@ -60,9 +60,8 @@ The MIT License is the most widely adopted permissive open-source license in the
 Apache-2.0 is a modern, enterprise-grade permissive license designed to protect open-source projects and their users against patent litigation.
 
 - **Advantages:**
-  - **Express Patent License (Section 3):** Apache-2.0 includes an express patent license under its terms: each contributor grants users and downstream developers a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable patent license for any patents necessarily infringed by their contributions.
-  - **Patent Termination Provisions:** Apache-2.0 contains patent termination provisions. If any entity initiates patent litigation against Root Wallet users or contributors alleging that Root Wallet or a contribution constitutes patent infringement, any patent licenses granted to that entity under Apache-2.0 terminate as of the date such litigation is filed.
-  - **Explicit Trademark Reservation (Section 6):** Explicitly states that the license does not grant rights to use the trade names, trademarks, service marks, or product names of the project.
+  - **Express Patent License & Termination (Section 3):** Apache-2.0 includes an express patent license for applicable patent claims contributed to the work. If a licensee institutes patent litigation alleging that the Work or a Contribution incorporated into the Work infringes a patent, the patent licenses granted to that licensee under Apache-2.0 for that Work terminate as specified in Section 3.
+  - **Explicit Trademark Reservation (Section 6):** Apache-2.0 Section 6 does not grant permission to use the licensor's trade names, trademarks, service marks, or product names except as required for reasonable and customary use in describing the origin of the work.
 - **Disadvantages:**
   - **GPLv2 Incompatibility:** Apache-2.0 code cannot be directly incorporated into strictly GPLv2-only codebases (though it is compatible with GPLv3).
   - **Length & Perceived Complexity:** Slightly longer and more formal than MIT.
@@ -76,8 +75,8 @@ Under dual licensing, Root Wallet code is distributed under the user's choice of
 - **Advantages:**
   - **Rust and BDK Native Convention:** Both Rust itself and BDK (`bitcoindevkit/bdk`, `bitcoindevkit/bdk-dart`) use the standard `MIT OR Apache-2.0` dual license. Adopting this structure provides absolute parity with our core underlying engine.
   - **Maximum Flexibility for Downstream Users:** Downstream developers can choose the MIT terms if they require maximum simplicity and GPLv2 compatibility, or choose the Apache-2.0 terms if their legal department requires express patent grants and patent retaliation provisions.
-  - **Independent Alternatives (MIT OR Apache-2.0):** Apache-2.0 includes an express patent license under its terms and contains patent termination provisions. The user may choose either MIT OR Apache-2.0. Note that the two licenses are independent alternatives, not cumulative grants: choosing the MIT option does NOT automatically grant the Apache-2.0 patent terms.
-  - **Trademark Reservation:** Section 6 of Apache-2.0 explicitly preserves trademark and brand ownership without requiring a separate trademark policy.
+  - **Independent Alternatives (MIT OR Apache-2.0):** Apache-2.0 includes an express patent license for applicable patent claims contributed to the work. If a licensee institutes patent litigation alleging that the Work or a Contribution incorporated into the Work infringes a patent, the patent licenses granted to that licensee under Apache-2.0 for that Work terminate as specified in Section 3. The user may choose either MIT OR Apache-2.0. Note that the two licenses are independent alternatives, not cumulative grants: choosing the MIT option does NOT automatically grant the Apache-2.0 patent terms.
+  - **Trademark Reservation:** Apache-2.0 Section 6 does not grant permission to use the licensor's trade names, trademarks, service marks, or product names except as required for reasonable and customary use in describing the origin of the work. A separate Root Wallet trademark or brand policy may still be adopted later if the project needs additional usage guidance.
 - **Disadvantages:**
   - Requires maintaining both license files in the repository (`LICENSE-MIT` and `LICENSE-APACHE`) and referencing the choice in documentation.
 
@@ -89,8 +88,8 @@ Under dual licensing, Root Wallet code is distributed under the user's choice of
 |---|---|---|---|
 | **Ecosystem Familiarity (Bitcoin)** | Very High | Moderate | High |
 | **BDK Upstream Parity** | High | High | **Exact Match** |
-| **Patent Defense Clause** | None | Strong | Strong (when Apache option is chosen) |
-| **Trademark Protection** | Default Common Law | Express Clause | Express (via Apache option / brand notice) |
+| **Patent Termination Clause** | None | Section 3 terms | Section 3 terms (when Apache option is chosen) |
+| **Trademark Reservation** | Default Common Law | Section 6 terms | Section 6 terms (when Apache option is chosen) |
 | **Commercial Reuse Friction** | Minimal | Minimal | Minimal |
 | **GPL Compatibility** | GPLv2 + GPLv3 | GPLv3 only | GPLv2 + GPLv3 |
 
