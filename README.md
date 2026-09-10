@@ -27,7 +27,7 @@ Root Wallet is built from first principles for sovereign Bitcoiners who value se
 
 | Home | Receive | Send |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/wallet-home-dark.png" alt="Wallet Home" width="230" /> | <img src="docs/screenshots/receive-dark.png" alt="Receive Address" width="230" /> | <img src="docs/screenshots/send-dark.png" alt="Send Bitcoin" width="230" /> |
+| <img src="docs/screenshots/wallet-home-light.png" alt="Wallet Home" width="230" /> | <img src="docs/screenshots/receive-dark.png" alt="Receive Address" width="230" /> | <img src="docs/screenshots/send-dark.png" alt="Send Bitcoin" width="230" /> |
 
 | Security & Lock | Backup Phrase | Settings |
 | :---: | :---: | :---: |
