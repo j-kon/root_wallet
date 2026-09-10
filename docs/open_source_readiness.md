@@ -43,7 +43,7 @@ Findings are categorized into four standardized tiers:
 | **Privacy Policy Draft** (`docs/privacy_policy_draft.md`) | Absent | `MISSING` | Legal foundation distinguishing local client storage from public Bitcoin network/Esplora traffic observations. |
 | **Landing Page Content & Design Spec** (`docs/website_content_spec.md`) | Absent | `MISSING` | Specifications for upcoming marketing site adhering strictly to the solid color brand design tokens. |
 | **Repository Governance Guidelines** (`docs/repository_governance.md`) | Absent | `MISSING` | Recommended branch protection, PR review requirements, and signed commit rules. |
-| **Open Source License** (`LICENSE`) | Absent | `BLOCKER` | Repository currently has no formal LICENSE file. A license decision must be analyzed and approved before public release. |
+| **Open Source License** (`LICENSE`) | Adopted (MIT OR Apache-2.0) | `READY` | Formally dual-licensed under MIT OR Apache-2.0 via `LICENSE`, `LICENSE-MIT`, and `LICENSE-APACHE`. |
 | **Application Identifiers** (`android/`, `ios/`) | `com.example.root_wallet` | `BLOCKER` (for store release) | Template bundle identifiers must be updated to official reverse-domain IDs (`com.rootwallet.app`) prior to production store builds. |
 | **Store Signing Configurations** (`android/`, `ios/`) | Debug keys in release | `BLOCKER` (for store release) | Android release keystore and Apple Developer distribution certificates must be provisioned before store submission. |
 
@@ -70,4 +70,4 @@ Findings are categorized into four standardized tiers:
 3. **Modernize `README.md`:**
    - Align terminology with solid brand identity.
    - Prominently feature Testnet status notice.
-   - Reference contributor guides, roadmap, and state "License decision in progress."
+   - Reference contributor guides, roadmap, and display dual licensing (MIT OR Apache-2.0).

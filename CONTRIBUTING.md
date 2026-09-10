@@ -2,7 +2,7 @@
 
 Welcome, and thank you for your interest in contributing to Root Wallet!
 
-Root Wallet is a publicly developed, self-custodial, Bitcoin-only mobile wallet whose source code is available for review, built with Flutter and powered by the Bitcoin Dev Kit (BDK). We hold our codebase to the highest standards of cryptographic correctness, clean architecture, privacy preservation, and intentional design.
+Root Wallet is an open-source, self-custodial, Bitcoin-only mobile wallet built with Flutter and powered by the Bitcoin Dev Kit (BDK). We hold our codebase to the highest standards of cryptographic correctness, clean architecture, privacy preservation, and intentional design.
 
 Before submitting code, please review these guidelines.
 
@@ -158,3 +158,10 @@ If your PR intentionally modifies UI layout or typography:
 > **DO NOT report security vulnerabilities or cryptographic concerns through public GitHub issues.**
 
 For responsible security disclosures, please follow our [Security Policy](SECURITY.md) to report vulnerabilities privately via GitHub Private Vulnerability Reporting or through a verified maintainer contact method.
+
+---
+
+## 8. Contributor Licensing
+
+Unless explicitly stated otherwise, contributions submitted for inclusion in Root Wallet are provided under the project's **MIT OR Apache-2.0** dual-license terms.
+

@@ -2,7 +2,7 @@
 
 **Own Bitcoin from the root.**
 
-Root Wallet is a publicly developed, self-custody Bitcoin wallet whose source code is available for review, built with Flutter and the [Bitcoin Dev Kit (BDK)](https://bitcoindevkit.org/).
+Root Wallet is an open-source, self-custody Bitcoin wallet built with Flutter and Bitcoin Dev Kit.
 
 > [!WARNING]
 > **ROOT WALLET IS CURRENTLY TESTNET SOFTWARE.**  
@@ -185,9 +185,19 @@ See the full roadmap: [`ROADMAP.md`](ROADMAP.md).
 
 ## 13. License
 
-**License decision in progress.**
+Root Wallet is dual-licensed under either:
 
-Root Wallet's core maintainers are currently evaluating formal adoption of dual licensing (**MIT OR Apache-2.0**) to mirror upstream Bitcoin Dev Kit conventions. For legal analysis and trade-off considerations, see [`docs/license_decision.md`](docs/license_decision.md).
+- [MIT License](LICENSE-MIT)
+- [Apache License 2.0](LICENSE-APACHE)
+
+at your option.
+
+See:
+- [`LICENSE-MIT`](LICENSE-MIT)
+- [`LICENSE-APACHE`](LICENSE-APACHE)
+- Root notice: [`LICENSE`](LICENSE)
+
+SPDX-License-Identifier: `MIT OR Apache-2.0`
 
 ---
 

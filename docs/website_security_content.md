@@ -73,7 +73,7 @@ We believe in complete transparency about what happens over the network:
 
 - **Internal Hardening Complete:** All 14 vulnerability findings from our initial architectural assessment have been systematically remediated (see our internal [Security Audit Report](../SECURITY_AUDIT.md)).
 - **Upcoming Milestone:** Prior to mainnet release, Root Wallet will engage an independent third-party cybersecurity firm to conduct a comprehensive cryptographic and code security audit.
-- **Public Codebase:** Root Wallet source code is publicly available for review. Pull requests undergo automated static analysis, security tests, and regression suites.
+- **Open-Source Codebase:** Root Wallet is open-source (dual-licensed under MIT OR Apache-2.0). Pull requests undergo automated static analysis, security tests, and regression suites.
 
 ---
 
