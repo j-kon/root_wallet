@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/routing/routes.dart';
-import 'package:root_wallet/app/theme/layout.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
+import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
-import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
+import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
@@ -32,110 +35,230 @@ class _ConfirmSeedPageState extends ConsumerState<ConfirmSeedPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(onboardingControllerProvider);
     final controller = ref.read(onboardingControllerProvider.notifier);
+    final isDark = AppColors.isDark(context);
 
     return AppScaffold(
       title: 'Confirm recovery phrase',
       body: Padding(
         padding: EdgeInsets.fromLTRB(
           context.pageHorizontalPadding,
-          AppSpacing.md,
+          RootSpacing.md,
           context.pageHorizontalPadding,
-          AppSpacing.sm,
+          RootSpacing.sm,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GlassSurface(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              tint: AppColors.glassSurfaceStrongOf(
-                context,
-              ).withValues(alpha: AppColors.isDark(context) ? 0.62 : 0.95),
-              highlightOpacity: 0.05,
-              padding: EdgeInsets.all(
-                context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
+            // 1. Solid Header Verification Card
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? RootBrandColors.nightPine : RootBrandColors.pureWhite,
+                borderRadius: BorderRadius.circular(RootRadius.lg),
+                border: Border.all(
+                  color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+                  width: 1.0,
+                ),
               ),
-              child: Stack(
+              padding: EdgeInsets.all(
+                context.isCompactWidth ? RootSpacing.md : RootSpacing.lg,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Positioned(
-                    top: -34,
-                    right: -20,
-                    child: _SeedOrb(
-                      size: 136,
-                      color: AppColors.primary.withValues(alpha: 0.18),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -40,
-                    left: -34,
-                    child: _SeedOrb(
-                      size: 108,
-                      color: AppColors.accent.withValues(alpha: 0.12),
-                    ),
-                  ),
-                  Column(
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _SeedBadge(
-                        icon: Icons.fact_check_outlined,
-                        label: 'Backup verification',
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: RootBrandColors.pineGreen.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(RootRadius.md),
+                          border: Border.all(
+                            color: RootBrandColors.pineGreen.withValues(alpha: 0.35),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.fact_check_outlined,
+                          size: 22,
+                          color: RootBrandColors.pineGreen,
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        'Enter the requested words to confirm you backed up your phrase.',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'This confirmation step helps prevent incomplete backups before you enter the wallet.',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      const SizedBox(width: RootSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Backup verification',
+                              style: TextStyle(
+                                color: RootBrandColors.pineGreen,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Enter the requested words to confirm you backed up your phrase.',
+                              style: TextStyle(
+                                color: isDark
+                                    ? RootBrandColors.warmIvory
+                                    : RootBrandColors.charcoalPine,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'This confirmation step helps prevent incomplete backups before you enter the wallet.',
+                              style: TextStyle(
+                                color: isDark
+                                    ? RootBrandColors.mutedSage
+                                    : const Color(0xFF5E6F68),
+                                fontSize: 13,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
+
+            const SizedBox(height: RootSpacing.md),
+
             if (state.errorMessage != null) ...[
               InfoBanner(
                 type: InfoBannerType.error,
                 message: state.errorMessage!,
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: RootSpacing.md),
             ],
+
             if (state.challengeIndices.isEmpty)
-              const Center(child: CircularProgressIndicator())
+              const Expanded(
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              )
             else
               Expanded(
                 child: ListView(
                   children: [
                     for (final index in state.challengeIndices) ...[
-                      GlassSurface(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        tint: AppColors.glassSurfaceOf(context).withValues(
-                          alpha: AppColors.isDark(context) ? 0.58 : 0.95,
+                      Container(
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? RootBrandColors.nightPine
+                              : RootBrandColors.pureWhite,
+                          borderRadius: BorderRadius.circular(RootRadius.lg),
+                          border: Border.all(
+                            color: isDark
+                                ? RootBrandColors.borderPine
+                                : const Color(0xFFD7E3DC),
+                            width: 1.0,
+                          ),
                         ),
-                        highlightOpacity: 0.05,
-                        padding: const EdgeInsets.all(AppSpacing.md),
+                        padding: const EdgeInsets.all(RootSpacing.md),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Word #$index',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: RootBrandColors.pineGreen
+                                        .withValues(alpha: 0.14),
+                                    borderRadius:
+                                        BorderRadius.circular(RootRadius.sm),
+                                  ),
+                                  child: Text(
+                                    '#$index',
+                                    style: const TextStyle(
+                                      color: RootBrandColors.pineGreen,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Word #$index',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? RootBrandColors.warmIvory
+                                        : RootBrandColors.charcoalPine,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: AppSpacing.xs),
+                            const SizedBox(height: 4),
                             Text(
                               'Type the exact word from your recovery phrase.',
-                              style: Theme.of(context).textTheme.bodySmall,
+                              style: TextStyle(
+                                color: isDark
+                                    ? RootBrandColors.mutedSage
+                                    : const Color(0xFF5E6F68),
+                                fontSize: 12,
+                              ),
                             ),
-                            const SizedBox(height: AppSpacing.md),
+                            const SizedBox(height: RootSpacing.md),
                             TextField(
                               autocorrect: false,
+                              enableSuggestions: false,
                               textCapitalization: TextCapitalization.none,
+                              style: TextStyle(
+                                color: isDark
+                                    ? RootBrandColors.warmIvory
+                                    : RootBrandColors.charcoalPine,
+                                fontFamily: 'monospace',
+                                fontWeight: FontWeight.w600,
+                              ),
                               decoration: InputDecoration(
                                 labelText: 'Seed word #$index',
+                                hintText: 'Enter word',
+                                filled: true,
+                                fillColor: isDark
+                                    ? RootBrandColors.slatePine
+                                    : const Color(0xFFF6F8F7),
+                                border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(RootRadius.md),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? RootBrandColors.borderPine
+                                        : const Color(0xFFD7E3DC),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(RootRadius.md),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? RootBrandColors.borderPine
+                                        : const Color(0xFFD7E3DC),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(RootRadius.md),
+                                  borderSide: const BorderSide(
+                                    color: RootBrandColors.pineGreen,
+                                    width: 1.5,
+                                  ),
+                                ),
                               ),
                               onChanged: (value) {
                                 _answers[index] = value.trim();
@@ -145,104 +268,49 @@ class _ConfirmSeedPageState extends ConsumerState<ConfirmSeedPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: RootSpacing.md),
                     ],
                   ],
                 ),
               ),
-            const SizedBox(height: AppSpacing.md),
-            PrimaryButton(
-              label: state.isBusy ? 'Confirming...' : 'Confirm backup',
-              onPressed: state.isBusy || state.challengeIndices.isEmpty
+
+            const SizedBox(height: RootSpacing.md),
+
+            MagneticPressable(
+              onTap: state.isBusy || state.challengeIndices.isEmpty
                   ? null
                   : () async {
+                      HapticFeedback.mediumImpact();
                       final confirmed = await controller.confirmBackup(
                         _answers,
                       );
-                      if (!confirmed || !context.mounted) {
-                        return;
-                      }
+                      if (!confirmed || !context.mounted) return;
 
                       Navigator.of(context).pushNamedAndRemoveUntil(
                         AppRoutes.walletHome,
                         (route) => false,
                       );
                     },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+              child: PrimaryButton(
+                label: state.isBusy ? 'Confirming...' : 'Confirm backup',
+                onPressed: state.isBusy || state.challengeIndices.isEmpty
+                    ? null
+                    : () async {
+                        HapticFeedback.mediumImpact();
+                        final confirmed = await controller.confirmBackup(
+                          _answers,
+                        );
+                        if (!confirmed || !context.mounted) return;
 
-class _SeedBadge extends StatelessWidget {
-  const _SeedBadge({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final maxWidth = context.isVeryCompactWidth
-        ? 184.0
-        : context.isCompactWidth
-        ? 224.0
-        : 260.0;
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth),
-      child: GlassSurface(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        tint: AppColors.glassSurfaceOf(
-          context,
-        ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.88),
-        borderColor: AppColors.glassBorderOf(context).withValues(alpha: 0.72),
-        shadowColor: Colors.transparent,
-        highlightOpacity: 0.03,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: AppColors.primaryOf(context)),
-            const SizedBox(width: AppSpacing.xs),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textPrimaryOf(context),
-                  fontWeight: FontWeight.w700,
-                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
-                ),
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                          AppRoutes.walletHome,
+                          (route) => false,
+                        );
+                      },
               ),
             ),
+            SizedBox(height: context.navBarBottomSpacing),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SeedOrb extends StatelessWidget {
-  const _SeedOrb({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
         ),
       ),
     );

@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/routing/routes.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/app/theme/colors.dart';
-import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
-import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
+import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
-import 'package:root_wallet/features/wallet/presentation/widgets/script_type_option.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page_args.dart';
+import 'package:root_wallet/features/wallet/presentation/widgets/script_type_option.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class CreateWalletPage extends ConsumerStatefulWidget {
@@ -27,92 +30,134 @@ class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(onboardingControllerProvider);
     final controller = ref.read(onboardingControllerProvider.notifier);
+    final isDark = AppColors.isDark(context);
 
     return AppScaffold(
       title: 'Create wallet',
       body: Padding(
         padding: EdgeInsets.fromLTRB(
           context.pageHorizontalPadding,
-          AppSpacing.md,
+          RootSpacing.md,
           context.pageHorizontalPadding,
-          AppSpacing.sm,
+          RootSpacing.sm,
         ),
         child: Column(
           children: [
             Expanded(
               child: ListView(
                 children: [
-                  GlassSurface(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    tint: AppColors.glassSurfaceStrongOf(context).withValues(
-                      alpha: AppColors.isDark(context) ? 0.62 : 0.95,
+                  // 1. Fresh Wallet Setup Hero Card
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? RootBrandColors.nightPine
+                          : RootBrandColors.pureWhite,
+                      borderRadius: BorderRadius.circular(RootRadius.lg),
+                      border: Border.all(
+                        color: isDark
+                            ? RootBrandColors.borderPine
+                            : const Color(0xFFD7E3DC),
+                        width: 1.0,
+                      ),
                     ),
-                    highlightOpacity: 0.05,
                     padding: EdgeInsets.all(
-                      context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
+                      context.isCompactWidth ? RootSpacing.md : RootSpacing.lg,
                     ),
-                    child: Stack(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Positioned(
-                          top: -34,
-                          right: -20,
-                          child: _FlowOrb(
-                            size: 140,
-                            color: AppColors.primary.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: -40,
-                          left: -34,
-                          child: _FlowOrb(
-                            size: 110,
-                            color: AppColors.accent.withValues(alpha: 0.12),
-                          ),
-                        ),
-                        Column(
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const _FlowBadge(
-                              icon: Icons.auto_awesome_rounded,
-                              label: 'Fresh wallet setup',
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: RootBrandColors.pineGreen
+                                    .withValues(alpha: 0.14),
+                                borderRadius:
+                                    BorderRadius.circular(RootRadius.md),
+                                border: Border.all(
+                                  color: RootBrandColors.pineGreen
+                                      .withValues(alpha: 0.35),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.auto_awesome_rounded,
+                                size: 22,
+                                color: RootBrandColors.pineGreen,
+                              ),
                             ),
-                            const SizedBox(height: AppSpacing.md),
-                            Text(
-                              'Create a new wallet identity with a safer first-run flow.',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Text(
-                              'We will generate a new recovery phrase locally, then guide you through backup before first receive.',
-                              style: Theme.of(context).textTheme.bodyMedium,
+                            const SizedBox(width: RootSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Fresh wallet setup',
+                                    style: TextStyle(
+                                      color: RootBrandColors.pineGreen,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Create a new wallet identity with a safer first-run flow.',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? RootBrandColors.warmIvory
+                                          : RootBrandColors.charcoalPine,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'We will generate a new recovery phrase locally, then guide you through backup before first receive.',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? RootBrandColors.mutedSage
+                                          : const Color(0xFF5E6F68),
+                                      fontSize: 13,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.md),
+
+                  const SizedBox(height: RootSpacing.md),
+
+                  // 2. What Happens Next Step Flow Panel
                   _CreateRestorePanel(
                     title: 'What happens next',
                     subtitle:
                         'A short, security-first flow keeps the setup intentional.',
-                    child: const Column(
-                      children: [
+                    child: Column(
+                      children: const [
                         _FlowStep(
                           icon: Icons.vpn_key_outlined,
                           title: 'Generate phrase',
                           message:
                               'A new recovery phrase is created on-device for this wallet.',
                         ),
-                        SizedBox(height: AppSpacing.sm),
+                        SizedBox(height: RootSpacing.sm),
                         _FlowStep(
                           icon: Icons.visibility_outlined,
                           title: 'Review backup',
                           message:
                               'You will immediately verify and store the phrase offline.',
                         ),
-                        SizedBox(height: AppSpacing.sm),
+                        SizedBox(height: RootSpacing.sm),
                         _FlowStep(
                           icon: Icons.shield_outlined,
                           title: 'Secure before use',
@@ -122,7 +167,10 @@ class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.md),
+
+                  const SizedBox(height: RootSpacing.md),
+
+                  // 3. Address Type Selection Panel
                   _CreateRestorePanel(
                     title: 'Address type',
                     subtitle:
@@ -134,17 +182,17 @@ class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
                               type: type,
                               isSelected: _scriptType == type,
                               onTap: () {
-                                setState(() {
-                                  _scriptType = type;
-                                });
+                                HapticFeedback.selectionClick();
+                                setState(() => _scriptType = type);
                               },
                             ),
                           )
                           .toList(),
                     ),
                   ),
+
                   if (state.errorMessage != null) ...[
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: RootSpacing.md),
                     InfoBanner(
                       type: InfoBannerType.error,
                       message: state.errorMessage!,
@@ -153,32 +201,57 @@ class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            PrimaryButton(
-              label: state.isBusy ? 'Creating...' : 'Create wallet',
-              onPressed: () async {
-                final created = await controller.createWallet(
-                  scriptType: _scriptType,
-                );
-                if (!context.mounted) {
-                  return;
-                }
 
-                if (!created) {
-                  return;
-                }
-                final recoveryPhrase = ref
-                    .read(onboardingControllerProvider)
-                    .recoveryPhrase;
-                Navigator.of(context).pushReplacementNamed(
-                  AppRoutes.backupSeed,
-                  arguments: BackupSeedPageArgs(
-                    requireReauth: false,
-                    isOnboardingFlow: true,
-                    recoveryPhrase: recoveryPhrase,
-                  ),
-                );
-              },
+            const SizedBox(height: RootSpacing.md),
+
+            MagneticPressable(
+              onTap: state.isBusy
+                  ? null
+                  : () async {
+                      HapticFeedback.mediumImpact();
+                      final created = await controller.createWallet(
+                        scriptType: _scriptType,
+                      );
+                      if (!context.mounted) return;
+                      if (!created) return;
+
+                      final recoveryPhrase = ref
+                          .read(onboardingControllerProvider)
+                          .recoveryPhrase;
+                      Navigator.of(context).pushReplacementNamed(
+                        AppRoutes.backupSeed,
+                        arguments: BackupSeedPageArgs(
+                          requireReauth: false,
+                          isOnboardingFlow: true,
+                          recoveryPhrase: recoveryPhrase,
+                        ),
+                      );
+                    },
+              child: PrimaryButton(
+                label: state.isBusy ? 'Creating...' : 'Create wallet',
+                onPressed: state.isBusy
+                    ? null
+                    : () async {
+                        HapticFeedback.mediumImpact();
+                        final created = await controller.createWallet(
+                          scriptType: _scriptType,
+                        );
+                        if (!context.mounted) return;
+                        if (!created) return;
+
+                        final recoveryPhrase = ref
+                            .read(onboardingControllerProvider)
+                            .recoveryPhrase;
+                        Navigator.of(context).pushReplacementNamed(
+                          AppRoutes.backupSeed,
+                          arguments: BackupSeedPageArgs(
+                            requireReauth: false,
+                            isOnboardingFlow: true,
+                            recoveryPhrase: recoveryPhrase,
+                          ),
+                        );
+                      },
+              ),
             ),
             SizedBox(height: context.navBarBottomSpacing),
           ],
@@ -201,25 +274,39 @@ class _CreateRestorePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassSurface(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      tint: AppColors.glassSurfaceOf(
-        context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.95),
-      highlightOpacity: 0.05,
-      padding: const EdgeInsets.all(AppSpacing.md),
+    final isDark = AppColors.isDark(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? RootBrandColors.nightPine : RootBrandColors.pureWhite,
+        borderRadius: BorderRadius.circular(RootRadius.lg),
+        border: Border.all(
+          color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+          width: 1.0,
+        ),
+      ),
+      padding: const EdgeInsets.all(RootSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: isDark ? RootBrandColors.warmIvory : RootBrandColors.charcoalPine,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68),
+              fontSize: 12.5,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: RootSpacing.md),
           child,
         ],
       ),
@@ -240,108 +327,58 @@ class _FlowStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 42,
-          height: 42,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(AppRadius.md),
+            color: isDark ? RootBrandColors.slatePine : const Color(0xFFE8EFEA),
+            borderRadius: BorderRadius.circular(RootRadius.md),
+            border: Border.all(
+              color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+              width: 1.0,
+            ),
           ),
-          child: Icon(icon, color: AppColors.primary),
+          child: Icon(
+            icon,
+            size: 19,
+            color: isDark ? RootBrandColors.warmIvory : RootBrandColors.charcoalPine,
+          ),
         ),
-        const SizedBox(width: AppSpacing.md),
+        const SizedBox(width: RootSpacing.md),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: isDark
+                      ? RootBrandColors.warmIvory
+                      : RootBrandColors.charcoalPine,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              const SizedBox(height: AppSpacing.xxs),
-              Text(message, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 2),
+              Text(
+                message,
+                style: TextStyle(
+                  color: isDark
+                      ? RootBrandColors.mutedSage
+                      : const Color(0xFF5E6F68),
+                  fontSize: 12,
+                  height: 1.3,
+                ),
+              ),
             ],
           ),
         ),
       ],
-    );
-  }
-}
-
-class _FlowBadge extends StatelessWidget {
-  const _FlowBadge({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final maxWidth = context.isVeryCompactWidth
-        ? 184.0
-        : context.isCompactWidth
-        ? 224.0
-        : 260.0;
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth),
-      child: GlassSurface(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        tint: AppColors.glassSurfaceOf(
-          context,
-        ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.88),
-        borderColor: AppColors.glassBorderOf(context).withValues(alpha: 0.72),
-        shadowColor: Colors.transparent,
-        highlightOpacity: 0.03,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: AppColors.primaryOf(context)),
-            const SizedBox(width: AppSpacing.xs),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textPrimaryOf(context),
-                  fontWeight: FontWeight.w700,
-                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FlowOrb extends StatelessWidget {
-  const _FlowOrb({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
-        ),
-      ),
     );
   }
 }

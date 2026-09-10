@@ -1,12 +1,16 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/app/theme/colors.dart';
-import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
-import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
+import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/core/widgets/pin_entry_dialog.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
@@ -19,6 +23,7 @@ class SecurityPage extends ConsumerWidget {
     final lockAsync = ref.watch(lockControllerProvider);
     final controller = ref.read(lockControllerProvider.notifier);
     final decoyPinAsync = ref.watch(decoyPinProvider);
+    final isDark = AppColors.isDark(context);
 
     return AppScaffold(
       title: 'Security',
@@ -27,93 +32,37 @@ class SecurityPage extends ConsumerWidget {
         error: (error, stackTrace) =>
             const Center(child: Text('Unable to load security settings.')),
         data: (lock) {
+          final isSecured = lock.isLockEnabled && lock.hasPin;
           final statusLabel = lock.isLockEnabled
               ? 'Protected by app lock'
               : 'App lock is currently disabled';
           final subtitle = lock.isLockEnabled
-              ? 'Review biometrics, auto-lock timing, and PIN posture.'
-              : 'Enable lock protection to reduce exposure when the app is reopened.';
+              ? 'Biometrics, auto-lock timing, and PIN posture are active.'
+              : 'Enable lock protection to secure wallet data when leaving the app.';
 
           return ListView(
             padding: EdgeInsets.fromLTRB(
               context.pageHorizontalPadding,
-              AppSpacing.md,
+              RootSpacing.md,
               context.pageHorizontalPadding,
               context.contentBottomSpacing,
             ),
             children: [
-              GlassSurface(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                tint: AppColors.glassSurfaceStrongOf(
-                  context,
-                ).withValues(alpha: AppColors.isDark(context) ? 0.62 : 0.95),
-                highlightOpacity: 0.05,
-                padding: EdgeInsets.all(
-                  context.isCompactWidth ? AppSpacing.md : AppSpacing.lg,
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: -34,
-                      right: -20,
-                      child: _SecurityOrb(
-                        size: 140,
-                        color:
-                            (lock.isLockEnabled
-                                    ? AppColors.primary
-                                    : AppColors.warning)
-                                .withValues(alpha: 0.18),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: -40,
-                      left: -34,
-                      child: _SecurityOrb(
-                        size: 110,
-                        color: AppColors.accent.withValues(alpha: 0.12),
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          statusLabel,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          subtitle,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        Wrap(
-                          spacing: AppSpacing.sm,
-                          runSpacing: AppSpacing.sm,
-                          children: [
-                            _SecurityBadge(
-                              icon: Icons.pin_outlined,
-                              label: lock.hasPin ? 'PIN set' : 'PIN not set',
-                            ),
-                            _SecurityBadge(
-                              icon: Icons.fingerprint_rounded,
-                              label: lock.isBiometricsEnabled
-                                  ? 'Biometrics on'
-                                  : 'Biometrics off',
-                            ),
-                            _SecurityBadge(
-                              icon: Icons.timer_outlined,
-                              label: lock.autoLockOption.label,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              // 1. Dynamic Security Posture Shield Hero Card
+              _SecurityPostureHeroCard(
+                isSecured: isSecured,
+                isLocked: lock.isLocked,
+                isInCooldown: lock.isInCooldown,
+                statusLabel: statusLabel,
+                subtitle: subtitle,
+                hasPin: lock.hasPin,
+                isBiometricsEnabled: lock.isBiometricsEnabled,
+                autoLockLabel: lock.autoLockOption.label,
+                hasDecoyPin: decoyPinAsync.valueOrNull ?? false,
               ),
+
               if (lock.message != null) ...[
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: RootSpacing.md),
                 InfoBanner(
                   type: lock.isInCooldown
                       ? InfoBannerType.warning
@@ -124,170 +73,315 @@ class SecurityPage extends ConsumerWidget {
                       : Icons.info_outline_rounded,
                 ),
               ],
-              const SizedBox(height: AppSpacing.md),
-              _SecurityPanel(
-                title: 'Access controls',
-                subtitle:
-                    'Configure how the wallet is protected when reopened.',
-                child: Column(
-                  children: [
-                    _SecurityToggleTile(
-                      icon: Icons.lock_outline_rounded,
-                      title: 'Enable app lock',
-                      subtitle: 'Require unlock on app open or resume.',
-                      value: lock.isLockEnabled,
-                      onChanged: (enabled) async {
-                        if (enabled && !lock.hasPin) {
-                          final pin = await _promptPinSetup(context);
-                          if (pin == null) {
-                            return;
-                          }
-                          await controller.setPin(pin);
-                        }
 
-                        final ok = await controller.setLockEnabled(enabled);
-                        if (!ok && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Set a 6-digit PIN before enabling app lock.',
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    _SecurityToggleTile(
-                      icon: Icons.fingerprint_rounded,
-                      title: 'Enable biometrics',
-                      subtitle: lock.isBiometricAvailable
-                          ? 'Use Face ID or Touch ID before PIN.'
-                          : 'Biometric authentication is not available on this device.',
-                      value: lock.isBiometricsEnabled,
-                      enabled: lock.isLockEnabled && lock.isBiometricAvailable,
-                      onChanged: lock.isLockEnabled && lock.isBiometricAvailable
-                          ? (value) => controller.setBiometricsEnabled(value)
-                          : (_) {},
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Auto-lock timing',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(
-                      'Choose when the wallet should lock again after leaving the app.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    DropdownButtonFormField<AutoLockOption>(
-                      decoration: const InputDecoration(
-                        labelText: 'Auto-lock timing',
-                      ),
-                      initialValue: lock.autoLockOption,
-                      onChanged: lock.isLockEnabled
-                          ? (value) {
-                              if (value == null) {
-                                return;
-                              }
-                              controller.setAutoLockOption(value);
-                            }
-                          : null,
-                      items: [
-                        for (final option in AutoLockOption.values)
-                          DropdownMenuItem<AutoLockOption>(
-                            value: option,
-                            child: Text(option.label),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
+              const SizedBox(height: RootSpacing.lg),
+
+              // 2. Access Controls Section
+              _SecuritySectionHeader(
+                title: 'Access controls',
+                subtitle: 'Configure authentication required to reopen the wallet.',
               ),
-              const SizedBox(height: AppSpacing.md),
-              _SecurityPanel(
-                title: 'PIN management',
-                subtitle: 'Update the credential used for manual unlock.',
-                child: Column(
-                  children: [
-                    _SecurityActionTile(
-                      icon: Icons.password_rounded,
-                      title: lock.hasPin ? 'Change PIN' : 'Set PIN',
-                      subtitle: 'PIN length: 6 digits',
-                      onTap: () async {
+              const SizedBox(height: RootSpacing.xs),
+              _SecuritySectionContainer(
+                children: [
+                  _SecurityToggleTile(
+                    icon: CupertinoIcons.lock_shield_fill,
+                    title: 'Enable app lock',
+                    subtitle: 'Require biometric or PIN authentication on resume.',
+                    value: lock.isLockEnabled,
+                    onChanged: (enabled) async {
+                      HapticFeedback.selectionClick();
+                      if (enabled && !lock.hasPin) {
                         final pin = await _promptPinSetup(context);
                         if (pin == null) {
                           return;
                         }
                         await controller.setPin(pin);
-                        if (!context.mounted) {
-                          return;
-                        }
+                      }
+
+                      final ok = await controller.setLockEnabled(enabled);
+                      if (!ok && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('PIN updated.')),
+                          const SnackBar(
+                            content: Text(
+                              'Set a 6-digit PIN before enabling app lock.',
+                            ),
+                          ),
                         );
-                      },
-                    ),
-                    if (lock.hasPin) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      decoyPinAsync.when(
-                        data: (hasDecoy) => _SecurityActionTile(
-                          icon: Icons.lock_person_rounded,
-                          title: hasDecoy
-                              ? 'Change Duress PIN'
-                              : 'Set Duress PIN',
-                          subtitle: 'Enter this PIN to unlock a decoy wallet.',
-                          onTap: () async {
-                            final pin = await _promptPinSetup(context);
-                            if (pin == null) {
-                              return;
-                            }
-                            final lockService = ref.read(lockServiceProvider);
-                            final isSame = await lockService.verifyPin(pin);
-                            if (isSame) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Duress PIN cannot be the same as the main PIN.',
-                                    ),
-                                  ),
-                                );
-                              }
-                              return;
-                            }
-                            await ref
-                                .read(decoyPinProvider.notifier)
-                                .setDecoyPin(pin);
-                            if (!context.mounted) {
-                              return;
-                            }
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  hasDecoy
-                                      ? 'Duress PIN updated.'
-                                      : 'Duress PIN set.',
+                      }
+                    },
+                  ),
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: isDark
+                        ? RootBrandColors.borderPine
+                        : const Color(0xFFD7E3DC),
+                  ),
+                  _SecurityToggleTile(
+                    icon: Icons.fingerprint_rounded,
+                    title: 'Enable biometrics',
+                    subtitle: lock.isBiometricAvailable
+                        ? 'Unlock instantly with Face ID or Touch ID before PIN.'
+                        : 'Biometric authentication is not supported or enrolled.',
+                    value: lock.isBiometricsEnabled,
+                    enabled: lock.isLockEnabled && lock.isBiometricAvailable,
+                    onChanged: lock.isLockEnabled && lock.isBiometricAvailable
+                        ? (value) {
+                            HapticFeedback.selectionClick();
+                            controller.setBiometricsEnabled(value);
+                          }
+                        : (_) {},
+                  ),
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: isDark
+                        ? RootBrandColors.borderPine
+                        : const Color(0xFFD7E3DC),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(RootSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? RootBrandColors.slatePine
+                                    : const Color(0xFFE8EFEA),
+                                borderRadius: BorderRadius.circular(
+                                  RootRadius.md,
+                                ),
+                                border: Border.all(
+                                  color: isDark
+                                      ? RootBrandColors.borderPine
+                                      : const Color(0xFFD7E3DC),
+                                  width: 1.0,
                                 ),
                               ),
-                            );
-                          },
+                              child: Icon(
+                                Icons.timer_outlined,
+                                size: 18,
+                                color: isDark
+                                    ? RootBrandColors.warmIvory
+                                    : RootBrandColors.charcoalPine,
+                              ),
+                            ),
+                            const SizedBox(width: RootSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Auto-lock timing',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? RootBrandColors.warmIvory
+                                          : RootBrandColors.charcoalPine,
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Lock when leaving the app after a chosen inactivity period.',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? RootBrandColors.mutedSage
+                                          : const Color(0xFF5E6F68),
+                                      fontSize: 12.0,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, __) => const SizedBox.shrink(),
+                        const SizedBox(height: RootSpacing.md),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? RootBrandColors.slatePine
+                                : const Color(0xFFF6F8F7),
+                            borderRadius: BorderRadius.circular(RootRadius.md),
+                            border: Border.all(
+                              color: isDark
+                                  ? RootBrandColors.borderPine
+                                  : const Color(0xFFD7E3DC),
+                              width: 1.0,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButtonFormField<AutoLockOption>(
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              dropdownColor: isDark
+                                  ? RootBrandColors.nightPine
+                                  : RootBrandColors.pureWhite,
+                              initialValue: lock.autoLockOption,
+                              icon: Icon(
+                                Icons.arrow_drop_down_rounded,
+                                color: isDark
+                                    ? RootBrandColors.warmIvory
+                                    : RootBrandColors.charcoalPine,
+                              ),
+                              style: TextStyle(
+                                color: isDark
+                                    ? RootBrandColors.warmIvory
+                                    : RootBrandColors.charcoalPine,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              onChanged: lock.isLockEnabled
+                                  ? (value) {
+                                      if (value == null) return;
+                                      HapticFeedback.selectionClick();
+                                      controller.setAutoLockOption(value);
+                                    }
+                                  : null,
+                              items: [
+                                for (final option in AutoLockOption.values)
+                                  DropdownMenuItem<AutoLockOption>(
+                                    value: option,
+                                    child: Text(option.label),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: RootSpacing.lg),
+
+              // 3. PIN Management Section
+              _SecuritySectionHeader(
+                title: 'PIN management',
+                subtitle: 'Manage the primary unlock credential and duress security.',
+              ),
+              const SizedBox(height: RootSpacing.xs),
+              _SecuritySectionContainer(
+                children: [
+                  _SecurityActionTile(
+                    icon: Icons.password_rounded,
+                    title: lock.hasPin ? 'Change PIN' : 'Set PIN',
+                    subtitle: '6-digit high-entropy master access PIN',
+                    badgeText: lock.hasPin ? 'Configured' : 'Missing',
+                    badgeColor: lock.hasPin
+                        ? RootBrandColors.pineGreen
+                        : RootBrandColors.amberAccent,
+                    onTap: () async {
+                      final pin = await _promptPinSetup(context);
+                      if (pin == null) return;
+                      await controller.setPin(pin);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('PIN updated.')),
+                      );
+                    },
+                  ),
+                  if (lock.hasPin) ...[
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: isDark
+                          ? RootBrandColors.borderPine
+                          : const Color(0xFFD7E3DC),
+                    ),
+                    decoyPinAsync.when(
+                      data: (hasDecoy) => _SecurityActionTile(
+                        icon: Icons.shield_outlined,
+                        title: hasDecoy
+                            ? 'Change Duress PIN'
+                            : 'Set Duress PIN',
+                        subtitle:
+                            'Under duress, enter this PIN to unlock a secondary decoy wallet.',
+                        badgeText: hasDecoy ? 'Active' : 'Optional',
+                        badgeColor: hasDecoy
+                            ? RootBrandColors.pineGreen
+                            : RootBrandColors.mutedSage,
+                        onTap: () async {
+                          final pin = await _promptPinSetup(context);
+                          if (pin == null) return;
+                          final lockService = ref.read(lockServiceProvider);
+                          final isSame = await lockService.verifyPin(pin);
+                          if (isSame) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Duress PIN cannot be the same as the main PIN.',
+                                  ),
+                                ),
+                              );
+                            }
+                            return;
+                          }
+                          await ref
+                              .read(decoyPinProvider.notifier)
+                              .setDecoyPin(pin);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                hasDecoy
+                                    ? 'Duress PIN updated.'
+                                    : 'Duress PIN set.',
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      if (decoyPinAsync.valueOrNull == true) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        Align(
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    ),
+                    if (decoyPinAsync.valueOrNull == true) ...[
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: isDark
+                            ? RootBrandColors.borderPine
+                            : const Color(0xFFD7E3DC),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: RootSpacing.md,
+                          vertical: RootSpacing.sm,
+                        ),
+                        child: Align(
                           alignment: Alignment.centerLeft,
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
+                          child: MagneticPressable(
+                            onTap: () async {
                               final confirmed = await showDialog<bool>(
                                 context: context,
                                 builder: (dialogContext) => AlertDialog(
+                                  backgroundColor: isDark
+                                      ? RootBrandColors.nightPine
+                                      : RootBrandColors.pureWhite,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      RootRadius.lg,
+                                    ),
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? RootBrandColors.borderPine
+                                          : const Color(0xFFD7E3DC),
+                                      width: 1.0,
+                                    ),
+                                  ),
                                   title: const Text('Clear Duress PIN?'),
                                   content: const Text(
                                     'This will disable the decoy wallet lock screen bypass.',
@@ -301,7 +395,7 @@ class SecurityPage extends ConsumerWidget {
                                     ),
                                     FilledButton(
                                       style: FilledButton.styleFrom(
-                                        backgroundColor: AppColors.danger,
+                                        backgroundColor: RootBrandColors.error,
                                       ),
                                       onPressed: () =>
                                           Navigator.of(dialogContext).pop(true),
@@ -316,34 +410,111 @@ class SecurityPage extends ConsumerWidget {
                               await ref
                                   .read(decoyPinProvider.notifier)
                                   .clearDecoyPin();
-                              if (!context.mounted) {
-                                return;
-                              }
+                              if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Duress PIN cleared.'),
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.no_accounts_rounded),
-                            label: const Text('Clear Duress PIN'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: RootBrandColors.error.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(
+                                  RootRadius.md,
+                                ),
+                                border: Border.all(
+                                  color: RootBrandColors.error.withValues(alpha: 0.4),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(
+                                    Icons.no_accounts_rounded,
+                                    size: 16,
+                                    color: RootBrandColors.error,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Clear Duress PIN',
+                                    style: TextStyle(
+                                      color: RootBrandColors.error,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ],
-                    if (lock.isLockEnabled) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: OutlinedButton.icon(
-                          onPressed: controller.lockNow,
-                          icon: const Icon(Icons.lock_clock_outlined),
-                          label: const Text('Lock now'),
                         ),
                       ),
                     ],
                   ],
-                ),
+                  if (lock.isLockEnabled) ...[
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: isDark
+                          ? RootBrandColors.borderPine
+                          : const Color(0xFFD7E3DC),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(RootSpacing.md),
+                      child: MagneticPressable(
+                        onTap: () {
+                          HapticFeedback.heavyImpact();
+                          controller.lockNow();
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? RootBrandColors.slatePine
+                                : const Color(0xFFE8EFEA),
+                            borderRadius: BorderRadius.circular(RootRadius.md),
+                            border: Border.all(
+                              color: isDark
+                                  ? RootBrandColors.borderPine
+                                  : const Color(0xFFD7E3DC),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.lock_clock_outlined,
+                                size: 18,
+                                color: isDark
+                                    ? RootBrandColors.warmIvory
+                                    : RootBrandColors.charcoalPine,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Lock now',
+                                style: TextStyle(
+                                  color: isDark
+                                      ? RootBrandColors.warmIvory
+                                      : RootBrandColors.charcoalPine,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           );
@@ -354,17 +525,11 @@ class SecurityPage extends ConsumerWidget {
 
   Future<String?> _promptPinSetup(BuildContext context) async {
     final first = await _promptPin(context, title: 'Set 6-digit PIN');
-    if (first == null) {
-      return null;
-    }
-    if (!context.mounted) {
-      return null;
-    }
+    if (first == null) return null;
+    if (!context.mounted) return null;
 
     final second = await _promptPin(context, title: 'Confirm PIN');
-    if (second == null) {
-      return null;
-    }
+    if (second == null) return null;
 
     if (first != second) {
       if (context.mounted) {
@@ -391,92 +556,274 @@ class SecurityPage extends ConsumerWidget {
   }
 }
 
-class _SecurityPanel extends StatelessWidget {
-  const _SecurityPanel({
-    required this.title,
+// ---------------------------------------------------------------------------
+// Redesigned Solid Posture Hero Card
+// ---------------------------------------------------------------------------
+
+class _SecurityPostureHeroCard extends StatelessWidget {
+  const _SecurityPostureHeroCard({
+    required this.isSecured,
+    required this.isLocked,
+    required this.isInCooldown,
+    required this.statusLabel,
     required this.subtitle,
-    required this.child,
+    required this.hasPin,
+    required this.isBiometricsEnabled,
+    required this.autoLockLabel,
+    required this.hasDecoyPin,
   });
 
-  final String title;
+  final bool isSecured;
+  final bool isLocked;
+  final bool isInCooldown;
+  final String statusLabel;
   final String subtitle;
-  final Widget child;
+  final bool hasPin;
+  final bool isBiometricsEnabled;
+  final String autoLockLabel;
+  final bool hasDecoyPin;
 
   @override
   Widget build(BuildContext context) {
-    return GlassSurface(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      tint: AppColors.glassSurfaceOf(
-        context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.95),
-      highlightOpacity: 0.05,
-      padding: const EdgeInsets.all(AppSpacing.md),
+    final isDark = AppColors.isDark(context);
+    final statusColor = isInCooldown
+        ? RootBrandColors.error
+        : isSecured
+            ? RootBrandColors.pineGreen
+            : RootBrandColors.amberAccent;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? RootBrandColors.nightPine : RootBrandColors.pureWhite,
+        borderRadius: BorderRadius.circular(RootRadius.lg),
+        border: Border.all(
+          color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+          width: 1.0,
+        ),
+      ),
+      padding: EdgeInsets.all(
+        context.isCompactWidth ? RootSpacing.md : RootSpacing.lg,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(RootRadius.md),
+                  border: Border.all(
+                    color: statusColor.withValues(alpha: 0.36),
+                    width: 1.0,
+                  ),
+                ),
+                child: Icon(
+                  isInCooldown
+                      ? Icons.warning_amber_rounded
+                      : isSecured
+                          ? CupertinoIcons.checkmark_shield_fill
+                          : CupertinoIcons.shield_slash_fill,
+                  size: 22,
+                  color: statusColor,
+                ),
+              ),
+              const SizedBox(width: RootSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      statusLabel,
+                      style: TextStyle(
+                        color: isDark
+                            ? RootBrandColors.warmIvory
+                            : RootBrandColors.charcoalPine,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: isDark
+                            ? RootBrandColors.mutedSage
+                            : const Color(0xFF5E6F68),
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: AppSpacing.md),
-          child,
+          const SizedBox(height: RootSpacing.md),
+          Wrap(
+            spacing: RootSpacing.xs,
+            runSpacing: RootSpacing.xs,
+            children: [
+              _SecurityPill(
+                icon: Icons.pin_outlined,
+                label: hasPin ? 'PIN set' : 'PIN not set',
+                tone: hasPin
+                    ? RootBrandColors.pineGreen
+                    : RootBrandColors.amberAccent,
+              ),
+              _SecurityPill(
+                icon: Icons.fingerprint_rounded,
+                label: isBiometricsEnabled ? 'Biometrics on' : 'Biometrics off',
+                tone: isBiometricsEnabled
+                    ? RootBrandColors.pineGreen
+                    : RootBrandColors.mutedSage,
+              ),
+              _SecurityPill(
+                icon: Icons.timer_outlined,
+                label: autoLockLabel,
+                tone: RootBrandColors.pineGreen,
+              ),
+              if (hasDecoyPin)
+                _SecurityPill(
+                  icon: Icons.shield_outlined,
+                  label: 'Duress mode ready',
+                  tone: RootBrandColors.pineGreen,
+                ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _SecurityBadge extends StatelessWidget {
-  const _SecurityBadge({required this.icon, required this.label});
+class _SecurityPill extends StatelessWidget {
+  const _SecurityPill({
+    required this.icon,
+    required this.label,
+    required this.tone,
+  });
 
   final IconData icon;
   final String label;
+  final Color tone;
 
   @override
   Widget build(BuildContext context) {
-    final maxWidth = context.isVeryCompactWidth
-        ? 184.0
-        : context.isCompactWidth
-        ? 224.0
-        : 260.0;
+    final isDark = AppColors.isDark(context);
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth),
-      child: GlassSurface(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        tint: AppColors.glassSurfaceOf(
-          context,
-        ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.88),
-        borderColor: AppColors.glassBorderOf(context).withValues(alpha: 0.72),
-        shadowColor: Colors.transparent,
-        highlightOpacity: 0.03,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark ? RootBrandColors.slatePine : const Color(0xFFF0F4F2),
+        borderRadius: BorderRadius.circular(RootRadius.pill),
+        border: Border.all(
+          color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+          width: 1.0,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: AppColors.primaryOf(context)),
-            const SizedBox(width: AppSpacing.xs),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textPrimaryOf(context),
-                  fontWeight: FontWeight.w600,
-                  fontSize: context.isVeryCompactWidth ? 11.5 : null,
-                ),
-              ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: tone,
+              shape: BoxShape.circle,
             ),
-          ],
+          ),
+          const SizedBox(width: 6),
+          Icon(
+            icon,
+            size: 13,
+            color: isDark ? RootBrandColors.warmIvory : RootBrandColors.charcoalPine,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: isDark
+                  ? RootBrandColors.warmIvory
+                  : RootBrandColors.charcoalPine,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Section Containers and Layout Components
+// ---------------------------------------------------------------------------
+
+class _SecuritySectionHeader extends StatelessWidget {
+  const _SecuritySectionHeader({
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: isDark ? RootBrandColors.warmIvory : RootBrandColors.charcoalPine,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+          ),
         ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: TextStyle(
+            color: isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68),
+            fontSize: 12.5,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SecuritySectionContainer extends StatelessWidget {
+  const _SecuritySectionContainer({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: isDark ? RootBrandColors.nightPine : RootBrandColors.pureWhite,
+        borderRadius: BorderRadius.circular(RootRadius.lg),
+        border: Border.all(
+          color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+          width: 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
       ),
     );
   }
@@ -501,45 +848,71 @@ class _SecurityToggleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Opacity(
-      opacity: enabled ? 1 : 0.56,
-      child: GlassSurface(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        tint: AppColors.glassSurfaceOf(
-          context,
-        ).withValues(alpha: AppColors.isDark(context) ? 0.48 : 0.92),
-        highlightOpacity: 0.04,
-        padding: const EdgeInsets.all(AppSpacing.md),
+      opacity: enabled ? 1.0 : 0.45,
+      child: Padding(
+        padding: const EdgeInsets.all(RootSpacing.md),
         child: Row(
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                color: isDark
+                    ? RootBrandColors.slatePine
+                    : const Color(0xFFE8EFEA),
+                borderRadius: BorderRadius.circular(RootRadius.md),
+                border: Border.all(
+                  color: isDark
+                      ? RootBrandColors.borderPine
+                      : const Color(0xFFD7E3DC),
+                  width: 1.0,
+                ),
               ),
-              child: Icon(icon, color: AppColors.primary),
+              child: Icon(
+                icon,
+                size: 19,
+                color: isDark
+                    ? RootBrandColors.warmIvory
+                    : RootBrandColors.charcoalPine,
+              ),
             ),
-            const SizedBox(width: AppSpacing.md),
+            const SizedBox(width: RootSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    style: TextStyle(
+                      color: isDark
+                          ? RootBrandColors.warmIvory
+                          : RootBrandColors.charcoalPine,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.xxs),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: isDark
+                          ? RootBrandColors.mutedSage
+                          : const Color(0xFF5E6F68),
+                      fontSize: 12.0,
+                      height: 1.3,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
+            const SizedBox(width: RootSpacing.sm),
             Switch.adaptive(
               value: value,
+              activeTrackColor: RootBrandColors.pineGreen,
+              activeThumbColor: RootBrandColors.pureWhite,
               onChanged: enabled ? onChanged : null,
             ),
           ],
@@ -555,82 +928,123 @@ class _SecurityActionTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.badgeText,
+    this.badgeColor,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final String? badgeText;
+  final Color? badgeColor;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        onTap: onTap,
-        child: GlassSurface(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          tint: AppColors.glassSurfaceOf(
-            context,
-          ).withValues(alpha: AppColors.isDark(context) ? 0.48 : 0.92),
-          highlightOpacity: 0.04,
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+    final isDark = AppColors.isDark(context);
+
+    return MagneticPressable(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(RootSpacing.md),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? RootBrandColors.slatePine
+                    : const Color(0xFFE8EFEA),
+                borderRadius: BorderRadius.circular(RootRadius.md),
+                border: Border.all(
+                  color: isDark
+                      ? RootBrandColors.borderPine
+                      : const Color(0xFFD7E3DC),
+                  width: 1.0,
                 ),
-                child: Icon(icon, color: AppColors.primary),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
+              child: Icon(
+                icon,
+                size: 19,
+                color: isDark
+                    ? RootBrandColors.warmIvory
+                    : RootBrandColors.charcoalPine,
+              ),
+            ),
+            const SizedBox(width: RootSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: isDark
+                                ? RootBrandColors.warmIvory
+                                : RootBrandColors.charcoalPine,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
+                      if (badgeText != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: (badgeColor ?? RootBrandColors.pineGreen)
+                                .withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(
+                              RootRadius.pill,
+                            ),
+                            border: Border.all(
+                              color: (badgeColor ?? RootBrandColors.pineGreen)
+                                  .withValues(alpha: 0.35),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Text(
+                            badgeText!,
+                            style: TextStyle(
+                              color: badgeColor ?? RootBrandColors.pineGreen,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: isDark
+                          ? RootBrandColors.mutedSage
+                          : const Color(0xFF5E6F68),
+                      fontSize: 12.0,
+                      height: 1.3,
                     ),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.sm),
-              const Icon(Icons.chevron_right_rounded),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SecurityOrb extends StatelessWidget {
-  const _SecurityOrb({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+            ),
+            const SizedBox(width: RootSpacing.sm),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: isDark
+                  ? RootBrandColors.mutedSage
+                  : const Color(0xFF5E6F68),
+            ),
+          ],
         ),
       ),
     );

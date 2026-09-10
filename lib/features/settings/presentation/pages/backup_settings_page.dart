@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/app/theme/colors.dart';
-import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
-import 'package:root_wallet/core/widgets/glass_surface.dart';
+import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/features/settings/presentation/providers/backup_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
@@ -25,25 +27,33 @@ class BackupSettingsPage extends ConsumerWidget {
   }
 
   Future<void> _exportToClipboard(BuildContext context, WidgetRef ref) async {
+    HapticFeedback.lightImpact();
     final base64 = await ref
         .read(backupControllerProvider.notifier)
         .exportToBase64();
     if (base64 != null) {
       await Clipboard.setData(ClipboardData(text: base64));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Encrypted backup copied to clipboard.'),
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(backupControllerProvider);
-    final textSecondary = AppColors.textSecondaryOf(context);
+    final isDark = AppColors.isDark(context);
 
     ref.listen(backupControllerProvider, (prev, next) {
       if (next.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.errorMessage!),
-            backgroundColor: AppColors.danger,
+            backgroundColor: RootBrandColors.error,
           ),
         );
         ref.read(backupControllerProvider.notifier).clearMessages();
@@ -51,7 +61,7 @@ class BackupSettingsPage extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.successMessage!),
-            backgroundColor: AppColors.success,
+            backgroundColor: RootBrandColors.pineGreen,
           ),
         );
         ref.read(backupControllerProvider.notifier).clearMessages();
@@ -67,37 +77,45 @@ class BackupSettingsPage extends ConsumerWidget {
       body: ListView(
         padding: EdgeInsets.fromLTRB(
           context.pageHorizontalPadding,
-          AppSpacing.md,
+          RootSpacing.md,
           context.pageHorizontalPadding,
           context.contentBottomSpacing,
         ),
         children: [
+          // Header titles
           Text(
             'Keep your labels & notes safe',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: textSecondary,
+            style: TextStyle(
+              color: isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.2,
             ),
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: 4),
           Text(
             'Encrypted Metadata Backup',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            style: TextStyle(
+              color: isDark ? RootBrandColors.warmIvory : RootBrandColors.charcoalPine,
               fontWeight: FontWeight.w800,
-              letterSpacing: -0.9,
-              height: 1.05,
-              fontSize: context.isCompactWidth ? 26 : 30,
+              letterSpacing: -0.8,
+              height: 1.1,
+              fontSize: context.isCompactWidth ? 24 : 28,
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: RootSpacing.lg),
 
-          GlassSurface(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            tint: AppColors.glassSurfaceStrongOf(
-              context,
-            ).withValues(alpha: AppColors.isDark(context) ? 0.62 : 0.95),
-            highlightOpacity: 0.05,
-            padding: const EdgeInsets.all(AppSpacing.md),
+          // 1. OS Auto Cloud Sync Card
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? RootBrandColors.nightPine : RootBrandColors.pureWhite,
+              borderRadius: BorderRadius.circular(RootRadius.lg),
+              border: Border.all(
+                color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+                width: 1.0,
+              ),
+            ),
+            padding: const EdgeInsets.all(RootSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -107,67 +125,137 @@ class BackupSettingsPage extends ConsumerWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        color: RootBrandColors.pineGreen.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(RootRadius.md),
+                        border: Border.all(
+                          color: RootBrandColors.pineGreen.withValues(alpha: 0.35),
+                          width: 1.0,
+                        ),
                       ),
                       child: const Icon(
                         Icons.cloud_queue_rounded,
-                        color: AppColors.primary,
+                        color: RootBrandColors.pineGreen,
+                        size: 22,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.md),
+                    const SizedBox(width: RootSpacing.md),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'OS Auto Cloud Sync',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: isDark
+                                  ? RootBrandColors.warmIvory
+                                  : RootBrandColors.charcoalPine,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             lastBackupText,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style: TextStyle(
+                              color: isDark
+                                  ? RootBrandColors.mutedSage
+                                  : const Color(0xFF5E6F68),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: RootSpacing.md),
                 Text(
                   'Your backup is fully encrypted on-device using a 256-bit AES key derived from your recovery mnemonic. The backup file resides in the app sandbox, enabling automatic, secure operating system sync to your iCloud or Android Cloud Backup.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: textSecondary,
+                  style: TextStyle(
+                    color: isDark
+                        ? RootBrandColors.mutedSage
+                        : const Color(0xFF5E6F68),
+                    fontSize: 13,
                     height: 1.45,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: RootSpacing.lg),
                 if (state.isProcessing)
-                  const Center(child: CircularProgressIndicator())
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(12.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
                 else
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => ref
-                              .read(backupControllerProvider.notifier)
-                              .restoreFromFile(),
-                          child: const Text('Restore file'),
+                        child: MagneticPressable(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            ref
+                                .read(backupControllerProvider.notifier)
+                                .restoreFromFile();
+                          },
+                          child: Container(
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? RootBrandColors.slatePine
+                                  : const Color(0xFFE8EFEA),
+                              borderRadius: BorderRadius.circular(RootRadius.md),
+                              border: Border.all(
+                                color: isDark
+                                    ? RootBrandColors.borderPine
+                                    : const Color(0xFFD7E3DC),
+                                width: 1.0,
+                              ),
+                            ),
+                            child: Text(
+                              'Restore file',
+                              style: TextStyle(
+                                color: isDark
+                                    ? RootBrandColors.warmIvory
+                                    : RootBrandColors.charcoalPine,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.sm),
+                      const SizedBox(width: RootSpacing.sm),
                       Expanded(
-                        child: FilledButton(
-                          onPressed: () => ref
-                              .read(backupControllerProvider.notifier)
-                              .backupToFile(),
-                          child: const Text('Back up file'),
+                        child: MagneticPressable(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            ref
+                                .read(backupControllerProvider.notifier)
+                                .backupToFile();
+                          },
+                          child: Container(
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: RootBrandColors.pineGreen,
+                              borderRadius: BorderRadius.circular(RootRadius.md),
+                              border: Border.all(
+                                color: RootBrandColors.pineGreen,
+                                width: 1.0,
+                              ),
+                            ),
+                            child: const Text(
+                              'Back up file',
+                              style: TextStyle(
+                                color: RootBrandColors.pureWhite,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -175,49 +263,128 @@ class BackupSettingsPage extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: RootSpacing.lg),
 
-          GlassSurface(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            tint: AppColors.glassSurfaceOf(
-              context,
-            ).withValues(alpha: AppColors.isDark(context) ? 0.58 : 0.95),
-            highlightOpacity: 0.05,
-            padding: const EdgeInsets.all(AppSpacing.md),
+          // 2. Manual Export & Import Card
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? RootBrandColors.nightPine : RootBrandColors.pureWhite,
+              borderRadius: BorderRadius.circular(RootRadius.lg),
+              border: Border.all(
+                color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+                width: 1.0,
+              ),
+            ),
+            padding: const EdgeInsets.all(RootSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Manual Export & Import',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: TextStyle(
+                    color: isDark
+                        ? RootBrandColors.warmIvory
+                        : RootBrandColors.charcoalPine,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: 4),
                 Text(
                   'Need to move your labels manually? Copy the encrypted Base64 payload to paste it in another installation of Root Wallet.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: textSecondary,
+                  style: TextStyle(
+                    color: isDark
+                        ? RootBrandColors.mutedSage
+                        : const Color(0xFF5E6F68),
+                    fontSize: 13,
                     height: 1.45,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: RootSpacing.lg),
                 if (!state.isProcessing)
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _showImportDialog(context, ref),
-                          icon: const Icon(Icons.paste_rounded, size: 16),
-                          label: const Text('Paste & Import'),
+                        child: MagneticPressable(
+                          onTap: () => _showImportDialog(context, ref),
+                          child: Container(
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? RootBrandColors.slatePine
+                                  : const Color(0xFFE8EFEA),
+                              borderRadius:
+                                  BorderRadius.circular(RootRadius.md),
+                              border: Border.all(
+                                color: isDark
+                                    ? RootBrandColors.borderPine
+                                    : const Color(0xFFD7E3DC),
+                                width: 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.paste_rounded,
+                                  size: 16,
+                                  color: isDark
+                                      ? RootBrandColors.warmIvory
+                                      : RootBrandColors.charcoalPine,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Paste & Import',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? RootBrandColors.warmIvory
+                                        : RootBrandColors.charcoalPine,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.sm),
+                      const SizedBox(width: RootSpacing.sm),
                       Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () => _exportToClipboard(context, ref),
-                          icon: const Icon(Icons.copy_rounded, size: 16),
-                          label: const Text('Copy & Export'),
+                        child: MagneticPressable(
+                          onTap: () => _exportToClipboard(context, ref),
+                          child: Container(
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: RootBrandColors.pineGreen,
+                              borderRadius:
+                                  BorderRadius.circular(RootRadius.md),
+                              border: Border.all(
+                                color: RootBrandColors.pineGreen,
+                                width: 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(
+                                  Icons.copy_rounded,
+                                  size: 16,
+                                  color: RootBrandColors.pureWhite,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Copy & Export',
+                                  style: TextStyle(
+                                    color: RootBrandColors.pureWhite,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -255,27 +422,71 @@ class _ImportBackupDialogState extends State<_ImportBackupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return AlertDialog(
-      title: const Text('Import Encrypted Backup'),
+      backgroundColor: isDark ? RootBrandColors.nightPine : RootBrandColors.pureWhite,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(RootRadius.lg),
+        side: BorderSide(
+          color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+          width: 1.0,
+        ),
+      ),
+      title: Text(
+        'Import Encrypted Backup',
+        style: TextStyle(
+          color: isDark ? RootBrandColors.warmIvory : RootBrandColors.charcoalPine,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Paste your encrypted Base64 backup text below. Importing will overwrite your current address labels and transaction notes.',
-            style: TextStyle(fontSize: 13, height: 1.4),
+            style: TextStyle(
+              color: isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68),
+              fontSize: 13,
+              height: 1.4,
+            ),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: RootSpacing.md),
           TextField(
             controller: _controller,
             maxLines: 4,
             autofocus: true,
-            style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+            style: TextStyle(
+              color: isDark ? RootBrandColors.warmIvory : RootBrandColors.charcoalPine,
+              fontSize: 12,
+              fontFamily: 'monospace',
+            ),
             decoration: InputDecoration(
-              border: const OutlineInputBorder(),
+              filled: true,
+              fillColor: isDark ? RootBrandColors.slatePine : const Color(0xFFF6F8F7),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(RootRadius.md),
+                borderSide: BorderSide(
+                  color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(RootRadius.md),
+                borderSide: BorderSide(
+                  color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(RootRadius.md),
+                borderSide: const BorderSide(
+                  color: RootBrandColors.pineGreen,
+                  width: 1.5,
+                ),
+              ),
               hintText: 'Paste backup payload here...',
               hintStyle: TextStyle(
-                color: AppColors.textSecondaryOf(context),
+                color: isDark ? RootBrandColors.mutedSage : const Color(0xFF8B9E95),
                 fontSize: 12,
               ),
             ),
@@ -285,9 +496,18 @@ class _ImportBackupDialogState extends State<_ImportBackupDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(
+            'Cancel',
+            style: TextStyle(
+              color: isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: RootBrandColors.pineGreen,
+          ),
           onPressed: () => Navigator.pop(context, _controller.text),
           child: const Text('Import'),
         ),
@@ -295,4 +515,3 @@ class _ImportBackupDialogState extends State<_ImportBackupDialog> {
     );
   }
 }
-
