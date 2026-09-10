@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bdk_dart/bdk_dart.dart' as bdk;
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/app/theme/colors.dart';
-import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
-import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
+import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
@@ -19,13 +21,17 @@ class CoinControlPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final utxosAsync = ref.watch(walletUtxosProvider);
     final lockedUtxosAsync = ref.watch(lockedUtxosProvider);
+    final isDark = AppColors.isDark(context);
 
     return AppScaffold(
       title: 'Coin Control',
       actions: [
         IconButton(
           tooltip: 'Refresh coins',
-          onPressed: () => ref.invalidate(walletUtxosProvider),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            ref.invalidate(walletUtxosProvider);
+          },
           icon: const Icon(Icons.refresh_rounded),
         ),
       ],
@@ -50,7 +56,6 @@ class CoinControlPage extends ConsumerWidget {
 
           final lockedUtxos = lockedUtxosAsync.valueOrNull ?? {};
 
-          // Calculate total confirmed vs total locked
           var totalSats = 0;
           var lockedSats = 0;
           for (final utxo in utxos) {
@@ -68,66 +73,104 @@ class CoinControlPage extends ConsumerWidget {
           return ListView(
             padding: EdgeInsets.fromLTRB(
               context.pageHorizontalPadding,
-              AppSpacing.md,
+              RootSpacing.md,
               context.pageHorizontalPadding,
               context.contentBottomSpacing,
             ),
             children: [
-              // Summary card
-              GlassSurface(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                tint: AppColors.glassSurfaceStrongOf(
-                  context,
-                ).withValues(alpha: AppColors.isDark(context) ? 0.62 : 0.96),
-                highlightOpacity: 0.05,
-                padding: const EdgeInsets.all(AppSpacing.lg),
+              // 1. Solid Summary & Spend Control Hero Card
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? RootBrandColors.nightPine
+                      : RootBrandColors.pureWhite,
+                  borderRadius: BorderRadius.circular(RootRadius.lg),
+                  border: Border.all(
+                    color: isDark
+                        ? RootBrandColors.borderPine
+                        : const Color(0xFFD7E3DC),
+                    width: 1.0,
+                  ),
+                ),
+                padding: const EdgeInsets.all(RootSpacing.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'UTXO spend control',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        color: isDark
+                            ? RootBrandColors.warmIvory
+                            : RootBrandColors.charcoalPine,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.4,
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
+                    const SizedBox(height: 6),
                     Text(
                       'Lock UTXOs to prevent them from being spent in automatic coin selection. Locked UTXOs are excluded from your spendable balance.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondaryOf(context),
+                      style: TextStyle(
+                        color: isDark
+                            ? RootBrandColors.mutedSage
+                            : const Color(0xFF5E6F68),
+                        fontSize: 13,
                         height: 1.45,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _StatItem(
-                          label: 'Total balance',
-                          value: AppFormatters.sats(totalSats),
+                    const SizedBox(height: RootSpacing.lg),
+                    Container(
+                      padding: const EdgeInsets.all(RootSpacing.md),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? RootBrandColors.slatePine
+                            : const Color(0xFFF4F7F5),
+                        borderRadius: BorderRadius.circular(RootRadius.md),
+                        border: Border.all(
+                          color: isDark
+                              ? RootBrandColors.borderPine
+                              : const Color(0xFFD7E3DC),
+                          width: 1.0,
                         ),
-                        _StatItem(
-                          label: 'Locked',
-                          value: AppFormatters.sats(lockedSats),
-                          color: AppColors.danger,
-                        ),
-                        _StatItem(
-                          label: 'Spendable',
-                          value: AppFormatters.sats(spendableSats),
-                          color: AppColors.success,
-                        ),
-                      ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _StatItem(
+                            label: 'Total balance',
+                            value: AppFormatters.sats(totalSats),
+                          ),
+                          _StatItem(
+                            label: 'Locked',
+                            value: AppFormatters.sats(lockedSats),
+                            color: RootBrandColors.error,
+                          ),
+                          _StatItem(
+                            label: 'Spendable',
+                            value: AppFormatters.sats(spendableSats),
+                            color: RootBrandColors.pineGreen,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
+
+              const SizedBox(height: RootSpacing.lg),
+
               Text(
                 'Available outputs (${utxos.length})',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: isDark
+                      ? RootBrandColors.warmIvory
+                      : RootBrandColors.charcoalPine,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: RootSpacing.sm),
+
               ...utxos.map((utxo) {
                 final outpointStr =
                     '${utxo.outpoint.txid.toString()}:${utxo.outpoint.vout}';
@@ -148,115 +191,195 @@ class CoinControlPage extends ConsumerWidget {
                 }
 
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                  child: GlassSurface(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    tint: isLocked
-                        ? Colors.red.withValues(
-                            alpha: AppColors.isDark(context) ? 0.05 : 0.02,
-                          )
-                        : AppColors.glassSurfaceOf(context).withValues(
-                            alpha: AppColors.isDark(context) ? 0.58 : 0.95,
-                          ),
-                    borderColor: isLocked
-                        ? AppColors.danger.withValues(alpha: 0.3)
-                        : AppColors.glassBorderOf(context),
-                    padding: const EdgeInsets.all(AppSpacing.md),
+                  padding: const EdgeInsets.only(bottom: RootSpacing.md),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? RootBrandColors.nightPine
+                          : RootBrandColors.pureWhite,
+                      borderRadius: BorderRadius.circular(RootRadius.lg),
+                      border: Border.all(
+                        color: isLocked
+                            ? RootBrandColors.amberAccent.withValues(alpha: 0.6)
+                            : isDark
+                                ? RootBrandColors.borderPine
+                                : const Color(0xFFD7E3DC),
+                        width: 1.0,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(RootSpacing.md),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              AppFormatters.sats(sats),
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  AppFormatters.sats(sats),
+                                  style: TextStyle(
+                                    color: isLocked
+                                        ? RootBrandColors.amberAccent
+                                        : isDark
+                                            ? RootBrandColors.warmIvory
+                                            : RootBrandColors.charcoalPine,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.w800,
-                                    color: isLocked ? AppColors.danger : null,
                                   ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  AppFormatters.btcFromSats(sats),
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? RootBrandColors.mutedSage
+                                        : const Color(0xFF5E6F68),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              tooltip: isLocked ? 'Unlock UTXO' : 'Lock UTXO',
-                              onPressed: () async {
+                            MagneticPressable(
+                              onTap: () async {
                                 HapticFeedback.lightImpact();
                                 await ref
                                     .read(lockedUtxosProvider.notifier)
                                     .toggleUtxo(outpointStr);
                               },
-                              icon: Icon(
-                                isLocked
-                                    ? Icons.lock_rounded
-                                    : Icons.lock_open_rounded,
-                                color: isLocked
-                                    ? AppColors.danger
-                                    : AppColors.textSecondaryOf(context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isLocked
+                                      ? RootBrandColors.amberAccent
+                                          .withValues(alpha: 0.14)
+                                      : isDark
+                                          ? RootBrandColors.slatePine
+                                          : const Color(0xFFE8EFEA),
+                                  borderRadius:
+                                      BorderRadius.circular(RootRadius.sm),
+                                  border: Border.all(
+                                    color: isLocked
+                                        ? RootBrandColors.amberAccent
+                                            .withValues(alpha: 0.4)
+                                        : isDark
+                                            ? RootBrandColors.borderPine
+                                            : const Color(0xFFD7E3DC),
+                                    width: 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isLocked
+                                          ? Icons.lock_rounded
+                                          : Icons.lock_open_rounded,
+                                      size: 15,
+                                      color: isLocked
+                                          ? RootBrandColors.amberAccent
+                                          : isDark
+                                              ? RootBrandColors.warmIvory
+                                              : RootBrandColors.charcoalPine,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      isLocked ? 'Locked' : 'Unlocked',
+                                      style: TextStyle(
+                                        color: isLocked
+                                            ? RootBrandColors.amberAccent
+                                            : isDark
+                                                ? RootBrandColors.warmIvory
+                                                : RootBrandColors.charcoalPine,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          AppFormatters.btcFromSats(sats),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: AppColors.textSecondaryOf(context),
-                              ),
+                        Divider(
+                          height: 20,
+                          thickness: 1,
+                          color: isDark
+                              ? RootBrandColors.borderPine
+                              : const Color(0xFFD7E3DC),
                         ),
-                        const Divider(height: AppSpacing.md),
                         _InfoRow(
                           label: 'Address',
                           value: AppFormatters.maskAddress(addressStr),
                           onCopy: () {
+                            HapticFeedback.lightImpact();
                             Clipboard.setData(ClipboardData(text: addressStr));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Address copied.')),
                             );
                           },
                         ),
-                        const SizedBox(height: AppSpacing.xs),
+                        const SizedBox(height: 6),
                         _InfoRow(
                           label: 'Outpoint',
                           value: AppFormatters.maskAddress(outpointStr),
                           onCopy: () {
+                            HapticFeedback.lightImpact();
                             Clipboard.setData(ClipboardData(text: outpointStr));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Outpoint copied.')),
                             );
                           },
                         ),
-                        const SizedBox(height: AppSpacing.xs),
+                        const SizedBox(height: 6),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               'Status',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: AppColors.textSecondaryOf(context),
-                                  ),
+                              style: TextStyle(
+                                color: isDark
+                                    ? RootBrandColors.mutedSage
+                                    : const Color(0xFF5E6F68),
+                                fontSize: 12,
+                              ),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.xs,
-                                vertical: 2,
+                                horizontal: 8,
+                                vertical: 3,
                               ),
                               decoration: BoxDecoration(
                                 color: isConfirmed
-                                    ? AppColors.success.withValues(alpha: 0.15)
-                                    : AppColors.warning.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4),
+                                    ? RootBrandColors.pineGreen
+                                        .withValues(alpha: 0.14)
+                                    : RootBrandColors.amberAccent
+                                        .withValues(alpha: 0.14),
+                                borderRadius:
+                                    BorderRadius.circular(RootRadius.xs),
+                                border: Border.all(
+                                  color: isConfirmed
+                                      ? RootBrandColors.pineGreen
+                                          .withValues(alpha: 0.35)
+                                      : RootBrandColors.amberAccent
+                                          .withValues(alpha: 0.35),
+                                  width: 1.0,
+                                ),
                               ),
                               child: Text(
                                 isConfirmed ? 'Confirmed' : 'Pending',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: isConfirmed
-                                          ? AppColors.success
-                                          : AppColors.warning,
-                                      fontSize: 10,
-                                    ),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isConfirmed
+                                      ? RootBrandColors.pineGreen
+                                      : RootBrandColors.amberAccent,
+                                  fontSize: 10,
+                                ),
                               ),
                             ),
                           ],
@@ -283,21 +406,29 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondaryOf(context),
+          style: TextStyle(
+            color: isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68),
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
         Text(
           value,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: color,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            color: color ??
+                (isDark
+                    ? RootBrandColors.warmIvory
+                    : RootBrandColors.charcoalPine),
           ),
         ),
       ],
@@ -318,32 +449,41 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondaryOf(context),
+          style: TextStyle(
+            color: isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68),
+            fontSize: 12,
           ),
         ),
-        GestureDetector(
+        MagneticPressable(
           onTap: onCopy,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 value,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimaryOf(context),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  color: isDark
+                      ? RootBrandColors.warmIvory
+                      : RootBrandColors.charcoalPine,
                 ),
               ),
               const SizedBox(width: 4),
               Icon(
                 Icons.copy_rounded,
                 size: 12,
-                color: AppColors.textSecondaryOf(context),
+                color: isDark
+                    ? RootBrandColors.mutedSage
+                    : const Color(0xFF5E6F68),
               ),
             ],
           ),

@@ -4,14 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/app/theme/colors.dart';
-import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
-import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
+import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
@@ -23,13 +25,19 @@ class WalletDiagnosticsPage extends ConsumerWidget {
     final diagnostics = ref.watch(walletDiagnosticsControllerProvider);
     final controller = ref.read(walletDiagnosticsControllerProvider.notifier);
     final env = ref.watch(appEnvProvider);
+    final isDark = AppColors.isDark(context);
 
     return AppScaffold(
       title: 'Diagnostics',
       actions: [
         IconButton(
           tooltip: 'Refresh diagnostics',
-          onPressed: diagnostics.isLoading ? null : controller.refresh,
+          onPressed: diagnostics.isLoading
+              ? null
+              : () {
+                  HapticFeedback.selectionClick();
+                  controller.refresh();
+                },
           icon: const Icon(Icons.refresh_rounded),
         ),
       ],
@@ -50,38 +58,88 @@ class WalletDiagnosticsPage extends ConsumerWidget {
           return ListView(
             padding: EdgeInsets.fromLTRB(
               context.pageHorizontalPadding,
-              AppSpacing.md,
+              RootSpacing.md,
               context.pageHorizontalPadding,
               context.contentBottomSpacing,
             ),
             children: [
-              GlassSurface(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                tint: AppColors.glassSurfaceStrongOf(
-                  context,
-                ).withValues(alpha: AppColors.isDark(context) ? 0.62 : 0.96),
-                highlightOpacity: 0.05,
-                padding: const EdgeInsets.all(AppSpacing.lg),
+              // 1. Solid Diagnostics Health Header Card
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? RootBrandColors.nightPine
+                      : RootBrandColors.pureWhite,
+                  borderRadius: BorderRadius.circular(RootRadius.lg),
+                  border: Border.all(
+                    color: isDark
+                        ? RootBrandColors.borderPine
+                        : const Color(0xFFD7E3DC),
+                    width: 1.0,
+                  ),
+                ),
+                padding: const EdgeInsets.all(RootSpacing.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Wallet health diagnostics',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color:
+                                RootBrandColors.pineGreen.withValues(alpha: 0.14),
+                            borderRadius:
+                                BorderRadius.circular(RootRadius.md),
+                            border: Border.all(
+                              color: RootBrandColors.pineGreen
+                                  .withValues(alpha: 0.35),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.health_and_safety_outlined,
+                            size: 22,
+                            color: RootBrandColors.pineGreen,
+                          ),
+                        ),
+                        const SizedBox(width: RootSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Wallet health diagnostics',
+                                style: TextStyle(
+                                  color: isDark
+                                      ? RootBrandColors.warmIvory
+                                      : RootBrandColors.charcoalPine,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Technical context for debugging sync, cache, and backend behavior without exposing secrets.',
+                                style: TextStyle(
+                                  color: isDark
+                                      ? RootBrandColors.mutedSage
+                                      : const Color(0xFF5E6F68),
+                                  fontSize: 13,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Technical context for debugging sync, cache, and backend behavior without exposing secrets.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondaryOf(context),
-                        height: 1.45,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: RootSpacing.md),
                     Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
+                      spacing: RootSpacing.xs,
+                      runSpacing: RootSpacing.xs,
                       children: [
                         _DiagnosticsChip(
                           icon: Icons.language_rounded,
@@ -104,7 +162,10 @@ class WalletDiagnosticsPage extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
+
+              const SizedBox(height: RootSpacing.md),
+
+              // 2. Network and Backend Panel
               _DiagnosticsPanel(
                 title: 'Network and backend',
                 subtitle:
@@ -144,8 +205,7 @@ class WalletDiagnosticsPage extends ConsumerWidget {
                   ),
                   _DiagnosticsRow(
                     label: 'Custom dev endpoint',
-                    value:
-                        data.diagnostics.customEsploraEndpoint ??
+                    value: data.diagnostics.customEsploraEndpoint ??
                         (env.isProduction
                             ? 'Disabled in production'
                             : 'Not set'),
@@ -156,7 +216,10 @@ class WalletDiagnosticsPage extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
+
+              const SizedBox(height: RootSpacing.md),
+
+              // 3. Wallet Storage and Cache Panel
               _DiagnosticsPanel(
                 title: 'Wallet storage and cache',
                 subtitle:
@@ -190,22 +253,62 @@ class WalletDiagnosticsPage extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
+
+              const SizedBox(height: RootSpacing.md),
+
+              // 4. Action Buttons (Copy & Rotate)
               LayoutBuilder(
                 builder: (context, constraints) {
                   final stacked = constraints.maxWidth < 520;
-                  final copyButton = OutlinedButton.icon(
-                    onPressed: () => _copyDiagnostics(context, data),
-                    icon: const Icon(Icons.copy_rounded),
-                    label: const Text('Copy diagnostics'),
+                  final copyButton = MagneticPressable(
+                    onTap: () => _copyDiagnostics(context, data),
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? RootBrandColors.slatePine
+                            : const Color(0xFFE8EFEA),
+                        borderRadius: BorderRadius.circular(RootRadius.md),
+                        border: Border.all(
+                          color: isDark
+                              ? RootBrandColors.borderPine
+                              : const Color(0xFFD7E3DC),
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.copy_rounded,
+                            size: 16,
+                            color: isDark
+                                ? RootBrandColors.warmIvory
+                                : RootBrandColors.charcoalPine,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Copy diagnostics',
+                            style: TextStyle(
+                              color: isDark
+                                  ? RootBrandColors.warmIvory
+                                  : RootBrandColors.charcoalPine,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   );
-                  final backendButton = FilledButton.tonalIcon(
-                    onPressed: canRotateBackend
+
+                  final backendButton = MagneticPressable(
+                    onTap: canRotateBackend
                         ? () async {
+                            HapticFeedback.lightImpact();
                             await controller.tryNextBackend();
-                            if (!context.mounted) {
-                              return;
-                            }
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Backend rotation requested.'),
@@ -213,20 +316,63 @@ class WalletDiagnosticsPage extends ConsumerWidget {
                             );
                           }
                         : null,
-                    icon: const Icon(Icons.route_rounded),
-                    label: Text(
-                      canRotateBackend
-                          ? 'Try next backend'
-                          : 'One backend configured',
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: canRotateBackend
+                            ? RootBrandColors.pineGreen
+                            : (isDark
+                                ? const Color(0xFF192522)
+                                : const Color(0xFFE2E8E4)),
+                        borderRadius: BorderRadius.circular(RootRadius.md),
+                        border: Border.all(
+                          color: canRotateBackend
+                              ? RootBrandColors.pineGreen
+                              : (isDark
+                                  ? RootBrandColors.borderPine
+                                  : const Color(0xFFD7E3DC)),
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.route_rounded,
+                            size: 16,
+                            color: canRotateBackend
+                                ? RootBrandColors.pureWhite
+                                : (isDark
+                                    ? RootBrandColors.mutedSage
+                                    : const Color(0xFF8B9E95)),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            canRotateBackend
+                                ? 'Try next backend'
+                                : 'One backend configured',
+                            style: TextStyle(
+                              color: canRotateBackend
+                                  ? RootBrandColors.pureWhite
+                                  : (isDark
+                                      ? RootBrandColors.mutedSage
+                                      : const Color(0xFF8B9E95)),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
 
                   if (stacked) {
                     return Column(
                       children: [
-                        SizedBox(width: double.infinity, child: copyButton),
-                        const SizedBox(height: AppSpacing.sm),
-                        SizedBox(width: double.infinity, child: backendButton),
+                        copyButton,
+                        const SizedBox(height: RootSpacing.sm),
+                        backendButton,
                       ],
                     );
                   }
@@ -234,14 +380,15 @@ class WalletDiagnosticsPage extends ConsumerWidget {
                   return Row(
                     children: [
                       Expanded(child: copyButton),
-                      const SizedBox(width: AppSpacing.sm),
+                      const SizedBox(width: RootSpacing.sm),
                       Expanded(child: backendButton),
                     ],
                   );
                 },
               ),
+
               if (!env.isProduction) ...[
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: RootSpacing.md),
                 _DiagnosticsPanel(
                   title: 'Development backend override',
                   subtitle:
@@ -249,20 +396,56 @@ class WalletDiagnosticsPage extends ConsumerWidget {
                   children: [
                     _DiagnosticsRow(
                       label: 'Stored override',
-                      value:
-                          data.diagnostics.customEsploraEndpoint ?? 'Not set',
+                      value: data.diagnostics.customEsploraEndpoint ??
+                          'Not set',
                     ),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _editCustomEndpoint(
-                          context,
-                          controller,
-                          currentEndpoint:
-                              data.diagnostics.customEsploraEndpoint ?? '',
+                    const SizedBox(height: RootSpacing.xs),
+                    MagneticPressable(
+                      onTap: () => _editCustomEndpoint(
+                        context,
+                        controller,
+                        currentEndpoint:
+                            data.diagnostics.customEsploraEndpoint ?? '',
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? RootBrandColors.slatePine
+                              : const Color(0xFFE8EFEA),
+                          borderRadius: BorderRadius.circular(RootRadius.md),
+                          border: Border.all(
+                            color: isDark
+                                ? RootBrandColors.borderPine
+                                : const Color(0xFFD7E3DC),
+                            width: 1.0,
+                          ),
                         ),
-                        icon: const Icon(Icons.tune_rounded),
-                        label: const Text('Set custom endpoint'),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.tune_rounded,
+                              size: 16,
+                              color: isDark
+                                  ? RootBrandColors.warmIvory
+                                  : RootBrandColors.charcoalPine,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Set custom endpoint',
+                              style: TextStyle(
+                                color: isDark
+                                    ? RootBrandColors.warmIvory
+                                    : RootBrandColors.charcoalPine,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -279,16 +462,15 @@ class WalletDiagnosticsPage extends ConsumerWidget {
     BuildContext context,
     WalletDiagnosticsState data,
   ) async {
+    HapticFeedback.lightImpact();
     const encoder = JsonEncoder.withIndent('  ');
     await Clipboard.setData(
       ClipboardData(text: encoder.convert(data.toJson())),
     );
-    if (!context.mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Diagnostics copied.')));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Diagnostics copied.')),
+    );
   }
 
   Future<void> _editCustomEndpoint(
@@ -303,24 +485,18 @@ class WalletDiagnosticsPage extends ConsumerWidget {
       ),
     );
 
-    if (endpoint == null || !context.mounted) {
-      return;
-    }
+    if (endpoint == null || !context.mounted) return;
 
     try {
       await controller.setCustomBackend(
         endpoint.trim().isEmpty ? null : endpoint.trim(),
       );
-      if (!context.mounted) {
-        return;
-      }
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Backend endpoint updated.')),
       );
     } catch (_) {
-      if (!context.mounted) {
-        return;
-      }
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Endpoint not saved. Check the URL and try again.'),
@@ -343,33 +519,43 @@ class _DiagnosticsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassSurface(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      tint: AppColors.glassSurfaceOf(
-        context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.68 : 0.97),
-      highlightOpacity: 0.05,
-      padding: const EdgeInsets.all(AppSpacing.md),
+    final isDark = AppColors.isDark(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? RootBrandColors.nightPine : RootBrandColors.pureWhite,
+        borderRadius: BorderRadius.circular(RootRadius.lg),
+        border: Border.all(
+          color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+          width: 1.0,
+        ),
+      ),
+      padding: const EdgeInsets.all(RootSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            subtitle,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondaryOf(context),
-              height: 1.4,
+            style: TextStyle(
+              color: isDark
+                  ? RootBrandColors.warmIvory
+                  : RootBrandColors.charcoalPine,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68),
+              fontSize: 12.5,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: RootSpacing.md),
           ...children.expand(
-            (child) => <Widget>[child, const SizedBox(height: AppSpacing.sm)],
+            (child) => <Widget>[child, const SizedBox(height: RootSpacing.sm)],
           ),
         ]..removeLast(),
       ),
@@ -385,7 +571,7 @@ class _DiagnosticsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textSecondary = AppColors.textSecondaryOf(context);
+    final isDark = AppColors.isDark(context);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,20 +579,28 @@ class _DiagnosticsRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: textSecondary),
+            style: TextStyle(
+              color: isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68),
+              fontSize: 13,
+            ),
           ),
         ),
-        const SizedBox(width: AppSpacing.sm),
+        const SizedBox(width: RootSpacing.sm),
         Expanded(
           flex: 2,
           child: SelectableText(
             value,
             textAlign: TextAlign.right,
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: isDark
+                  ? RootBrandColors.warmIvory
+                  : RootBrandColors.charcoalPine,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontFamily: value.contains('/') || value.contains(':')
+                  ? 'monospace'
+                  : null,
+            ),
           ),
         ),
       ],
@@ -422,27 +616,31 @@ class _DiagnosticsChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassSurface(
-      borderRadius: BorderRadius.circular(AppRadius.pill),
-      tint: AppColors.glassSurfaceOf(
-        context,
-      ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.88),
-      shadowColor: Colors.transparent,
-      highlightOpacity: 0.03,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+    final isDark = AppColors.isDark(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark ? RootBrandColors.slatePine : const Color(0xFFF0F4F2),
+        borderRadius: BorderRadius.circular(RootRadius.pill),
+        border: Border.all(
+          color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+          width: 1.0,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.primaryOf(context)),
-          const SizedBox(width: AppSpacing.xs),
+          Icon(icon, size: 13, color: RootBrandColors.pineGreen),
+          const SizedBox(width: 5),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.textPrimaryOf(context),
-              fontWeight: FontWeight.w700,
+            style: TextStyle(
+              color: isDark
+                  ? RootBrandColors.warmIvory
+                  : RootBrandColors.charcoalPine,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -477,23 +675,71 @@ class _CustomEndpointDialogState extends State<_CustomEndpointDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return AlertDialog(
-      title: const Text('Custom Esplora endpoint'),
+      backgroundColor:
+          isDark ? RootBrandColors.nightPine : RootBrandColors.pureWhite,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(RootRadius.lg),
+        side: BorderSide(
+          color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+          width: 1.0,
+        ),
+      ),
+      title: Text(
+        'Custom Esplora endpoint',
+        style: TextStyle(
+          color: isDark ? RootBrandColors.warmIvory : RootBrandColors.charcoalPine,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
       content: TextField(
         controller: _textController,
         autofocus: true,
         keyboardType: TextInputType.url,
         textInputAction: TextInputAction.done,
-        decoration: const InputDecoration(
+        style: TextStyle(
+          color: isDark ? RootBrandColors.warmIvory : RootBrandColors.charcoalPine,
+          fontFamily: 'monospace',
+          fontSize: 13,
+        ),
+        decoration: InputDecoration(
           labelText: 'Endpoint URL',
           hintText: 'https://mempool.space/testnet/api',
+          filled: true,
+          fillColor: isDark ? RootBrandColors.slatePine : const Color(0xFFF6F8F7),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(RootRadius.md),
+            borderSide: BorderSide(
+              color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(RootRadius.md),
+            borderSide: BorderSide(
+              color: isDark ? RootBrandColors.borderPine : const Color(0xFFD7E3DC),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(RootRadius.md),
+            borderSide: const BorderSide(
+              color: RootBrandColors.pineGreen,
+              width: 1.5,
+            ),
+          ),
         ),
         onSubmitted: (_) => Navigator.of(context).pop(_textController.text),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('Cancel'),
+          child: Text(
+            'Cancel',
+            style: TextStyle(
+              color: isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68),
+            ),
+          ),
         ),
         if (widget.currentEndpoint.trim().isNotEmpty)
           TextButton(
@@ -501,6 +747,9 @@ class _CustomEndpointDialogState extends State<_CustomEndpointDialog> {
             child: const Text('Clear'),
           ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: RootBrandColors.pineGreen,
+          ),
           onPressed: () => Navigator.of(context).pop(_textController.text),
           child: const Text('Save'),
         ),
@@ -508,4 +757,3 @@ class _CustomEndpointDialogState extends State<_CustomEndpointDialog> {
     );
   }
 }
-
