@@ -4,6 +4,7 @@ import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
@@ -197,7 +198,7 @@ class _StaticWalletRepository implements WalletRepository {
   final WalletOverview overview;
 
   @override
-  Future<WalletIdentity> createWallet({
+  Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
   }) {
     throw UnimplementedError();
