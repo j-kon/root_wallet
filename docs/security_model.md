@@ -1,31 +1,31 @@
 # Root Wallet Security Model & Threat Architecture
 
 Root Wallet is built on the principle: **"Own Bitcoin from the root."**
-This document outlines our security architecture, cryptographic safeguards, custody boundaries, and threat mitigation strategies in plain, accessible language for users, developers, and auditors.
+This document outlines our security architecture, cryptographic safeguards, custody boundaries, and threat mitigation strategies in plain, accessible language for users, developers, and reviewers.
 
 ---
 
 ## 1. Core Principles
 
-- **100% Self-Custodial:** Root Wallet never holds user funds, private keys, or seed phrases on remote servers. Keys are generated on-device and stay on-device.
+- **Self-Custodial:** Root Wallet does not hold user funds, private keys, or recovery phrases on remote servers. Recovery phrases and private keys are generated on-device and designed to remain on-device.
 - **Zero Telemetry / Zero Tracking:** No analytics packages, tracking SDKs, device fingerprinting, or user accounts.
 - **Bitcoin-Only Focus:** Minimizes attack surface by eliminating altcoin dependencies, smart contract vulnerabilities, swap counterparty risks, and cross-chain bridge exploits.
-- **Testnet-First Hardening:** Mainnet execution is strictly locked behind deliberate compile-time safety guards until all security audits and automated test coverage thresholds are met.
+- **Testnet-First Hardening:** Mainnet execution is disabled by a compile-time constant and rejected by runtime network checks until security reviews and independent audits are complete.
 
 ---
 
 ## 2. Key Management & Local Storage Architecture
 
-### Hardware-Backed Secure Storage
-All sensitive secrets (BIP-39 mnemonic phrase, decoy wallet mnemonic, PIN verifiers, and script type configuration) are stored using platform-native hardware security modules:
-- **iOS:** Apple Keychain (`kSecAccessControl` with hardware encryption).
-- **Android:** Android KeyStore (AES-GCM encrypted SharedPreferences with hardware-backed master key).
+### Platform Secure Storage
+All sensitive secrets (BIP-39 mnemonic phrase, decoy wallet mnemonic, PIN verifiers, and script type configuration) are stored using platform-native secure storage:
+- **iOS:** Apple Keychain with secure access attributes.
+- **Android:** Android KeyStore (encrypted SharedPreferences with master key).
 
 Secrets are never written to unencrypted SQLite tables, disk caches, or log files.
 
 ### Mnemonic Lifecycle & Memory Protection
-- **Ephemeral Exposure:** When creating a wallet, the 12-word mnemonic phrase is held in memory only until the user completes the backup verification challenge.
-- **Immediate State Purge:** Once verified, the recovery phrase is strictly cleared (`null`) from Riverpod state (`OnboardingState.recoveryPhrase = null`).
+- **Minimized State Lifetime:** When creating a wallet, the 12-word mnemonic phrase is held in application state only until the user completes the backup verification challenge.
+- **State Reference Removal:** Once verified, the recovery phrase is removed from Riverpod state (`OnboardingState.recoveryPhrase = null`). Note that while application references are cleared, deterministic memory zeroization is not guaranteed by the Dart runtime garbage collector.
 - **On-Demand Loading:** For transaction signing, BDK loads the mnemonic directly from secure storage in an isolated asynchronous scope, signs the PSBT in Rust memory, and clears the reference.
 - **Diagnostics & Snapshot Isolation:** Wallet snapshots and JSON diagnostics exports strictly filter out all secret material.
 
@@ -49,7 +49,7 @@ Secrets are never written to unencrypted SQLite tables, disk caches, or log file
 | Threat | Attack Description | Root Wallet Mitigation |
 |---|---|---|
 | **Coercion / Physical Search** | An attacker physically forces the user to unlock the device and open Root Wallet. | **Duress Decoy Wallet:** A secondary PIN unlocks a decoy wallet with zero knowledge of or linkage to the primary wallet. Primary data remains completely hidden. |
-| **Residual Data on Reset** | An attacker inspects flash storage after a wallet reset to recover old databases. | **Thorough Wipe:** Resetting or restoring a wallet deletes both primary and decoy mnemonic keys and completely purges all primary, decoy, WAL, and SHM SQLite files across the entire storage directory. |
+| **Residual Data on Reset** | An attacker inspects storage after a wallet reset to recover old databases. | **Storage Erasure:** Resetting or restoring a wallet deletes primary and decoy keys from secure storage and purges primary, decoy, WAL, and SHM SQLite files from application storage. |
 | **Multitasking Card Switcher** | The OS takes a background screenshot thumbnail when the user switches apps. | **App Privacy Overlay:** On iOS, `AppDelegate` overlays a solid dark privacy view upon `applicationWillResignActive`. On Android, `FLAG_SECURE` prevents OS screen capture. |
 | **Clipboard Snooping** | Malicious third-party apps or keyboards read copied seed words. | **Auto-Clearing Clipboard:** Copying recovery phrases requires explicit confirmation through a caution modal and triggers automatic clipboard erasure after 60 seconds. |
 | **Wrong Network Transmission** | Sending mainnet funds to a testnet address or vice versa. | **Strict Address & Network Guards:** BDK's address parser strictly validates Bech32/Bech32m checksums and enforces network boundaries. `AppConstants.isMainnetAllowed` blocks mainnet execution during testnet testing. |

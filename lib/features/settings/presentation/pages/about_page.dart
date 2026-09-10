@@ -189,7 +189,7 @@ class AboutPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Open support in the browser or copy the URL for later.',
+                  'Open GitHub support or copy the link for later.',
                   style: TextStyle(
                     color: isDark
                         ? RootBrandColors.mutedSage
@@ -228,14 +228,17 @@ class AboutPage extends ConsumerWidget {
                                 : RootBrandColors.charcoalPine,
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            'Copy support URL',
-                            style: TextStyle(
-                              color: isDark
-                                  ? RootBrandColors.warmIvory
-                                  : RootBrandColors.charcoalPine,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
+                          Flexible(
+                            child: Text(
+                              'Copy support link',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isDark
+                                    ? RootBrandColors.warmIvory
+                                    : RootBrandColors.charcoalPine,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -266,12 +269,15 @@ class AboutPage extends ConsumerWidget {
                             color: RootBrandColors.pureWhite,
                           ),
                           SizedBox(width: 6),
-                          Text(
-                            'Open support',
-                            style: TextStyle(
-                              color: RootBrandColors.pureWhite,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
+                          Flexible(
+                            child: Text(
+                              'Open support',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: RootBrandColors.pureWhite,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -311,14 +317,17 @@ class AboutPage extends ConsumerWidget {
                                       : RootBrandColors.charcoalPine,
                                 ),
                                 const SizedBox(width: 6),
-                                Text(
-                                  'Copy support URL',
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? RootBrandColors.warmIvory
-                                        : RootBrandColors.charcoalPine,
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w700,
+                                Flexible(
+                                  child: Text(
+                                    'Copy support link',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? RootBrandColors.warmIvory
+                                          : RootBrandColors.charcoalPine,
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -351,12 +360,15 @@ class AboutPage extends ConsumerWidget {
                                   color: RootBrandColors.pureWhite,
                                 ),
                                 SizedBox(width: 6),
-                                Text(
-                                  'Open support',
-                                  style: TextStyle(
-                                    color: RootBrandColors.pureWhite,
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w700,
+                                Flexible(
+                                  child: Text(
+                                    'Open support',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: RootBrandColors.pureWhite,
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -380,7 +392,7 @@ class AboutPage extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Support URL copied.')));
+    ).showSnackBar(const SnackBar(content: Text('Support link copied.')));
   }
 
   Future<void> _openSupport(BuildContext context, WidgetRef ref) async {

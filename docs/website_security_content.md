@@ -50,7 +50,7 @@ Exported wallet backups are protected with pure-Dart **AES-256-GCM** using keys 
 
 ### Ephemeral Recovery Phrase Lifecycle
 - **Zero Retention in Identity Models:** Recovery phrases are not stored in general memory models or persistent application state.
-- **Immediate In-Memory Erasure:** Seed phrases are exposed to memory only during the user-initiated backup flow and are overwritten as soon as the challenge is completed.
+- **State Lifetime Reduction:** Recovery phrases are exposed to application state only during user-initiated backup or reveal flows and references are removed as soon as the flow completes. Note that deterministic memory zeroization is not guaranteed by the Dart runtime.
 
 ### Device Privacy & Screen Shielding
 - **Multitasking Shielding:** When transitioning to the app switcher on iOS and Android, an opaque branded privacy shield immediately hides sensitive balances and addresses.
@@ -69,11 +69,11 @@ We believe in complete transparency about what happens over the network:
 
 ---
 
-## 5. Security Status & Independent Auditing
+## 5. Security Status & Planned Independent Audits
 
-- **Internal Hardening Complete:** All 14 vulnerability findings from our initial architectural assessment have been systematically remediated (see our public [Security Audit Log](../SECURITY_AUDIT.md)).
+- **Internal Hardening Complete:** All 14 vulnerability findings from our initial architectural assessment have been systematically remediated (see our internal [Security Audit Report](../SECURITY_AUDIT.md)).
 - **Upcoming Milestone:** Prior to mainnet release, Root Wallet will engage an independent third-party cybersecurity firm to conduct a comprehensive cryptographic and code security audit.
-- **Public Codebase:** Root Wallet is open-source. Pull requests undergo automated static analysis, security tests, and regression suites.
+- **Public Codebase:** Root Wallet source code is publicly available for review. Pull requests undergo automated static analysis, security tests, and regression suites.
 
 ---
 

@@ -2,7 +2,7 @@
 
 Welcome, and thank you for your interest in contributing to Root Wallet!
 
-Root Wallet is an open-source, self-custodial, Bitcoin-only mobile wallet built with Flutter and powered by the Bitcoin Dev Kit (BDK). We hold our codebase to the highest standards of cryptographic correctness, clean architecture, privacy preservation, and intentional design.
+Root Wallet is a publicly developed, self-custodial, Bitcoin-only mobile wallet whose source code is available for review, built with Flutter and powered by the Bitcoin Dev Kit (BDK). We hold our codebase to the highest standards of cryptographic correctness, clean architecture, privacy preservation, and intentional design.
 
 Before submitting code, please review these guidelines.
 
@@ -89,7 +89,7 @@ Root Wallet follows a feature-first clean architecture:
 **Key Coding Rules:**
 1. **Never Call BDK or Network APIs Directly in Widgets:** All business logic, BDK interactions, and network calls must be mediated through Riverpod providers (`ref.read(...)` or `ref.watch(...)`).
 2. **Never Log Sensitive Material:** Never use raw `print()` statements. Use `AppLogger` where appropriate, and never log mnemonics, private keys, descriptors with secrets, or PINs.
-3. **Wipe Secret State Promptly:** Seed phrases must only live in memory for the duration of the user view or confirmation action, and must be set to `null` immediately after.
+3. **Minimize Secret State Lifetime:** Recovery phrases must only be retained in state for the duration of the user view or confirmation action, and references must be removed (`null`) immediately after. Note that deterministic zeroization is not guaranteed by the Dart garbage collector.
 
 ---
 

@@ -11,7 +11,7 @@
 
 ## 1. Overview
 
-Root Wallet is an open-source, self-custodial Bitcoin wallet application written in Flutter/Dart and powered by the Rust-based Bitcoin Dev Kit (`bdk_dart` / BDK). As Root Wallet prepares for public repository visibility, contributor onboarding, and community engagement, selecting an open-source license is a fundamental governance decision.
+Root Wallet is a publicly developed, self-custodial Bitcoin wallet application written in Flutter/Dart and powered by the Rust-based Bitcoin Dev Kit (`bdk_dart` / BDK). As Root Wallet prepares for public repository visibility, contributor onboarding, and community engagement, selecting an open-source license is a fundamental governance decision.
 
 This document evaluates three prominent licensing structures:
 1. **MIT License**

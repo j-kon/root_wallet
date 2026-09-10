@@ -28,6 +28,10 @@ void main() {
     );
     expect(AppConstants.esploraRequestConcurrency, lessThanOrEqualTo(2));
     expect(AppConstants.esploraRequestTimeoutSeconds, greaterThanOrEqualTo(60));
+    expect(
+      AppConstants.supportUrl,
+      'https://github.com/j-kon/root_wallet/issues',
+    );
   });
 
   test('verifies bdk.OutPoint and bdk.TxBuilder methods compile', () {

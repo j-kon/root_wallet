@@ -59,7 +59,7 @@ For PRs submitted to Root Wallet, we recommend a 3-tier review process:
 |---|---|---|
 | **Tier 1: Non-Sensitive** | Documentation, README, code comments, copy tweaks | 1 standard code review + passing CI |
 | **Tier 2: UI & Architecture** | Widget refactoring, theme changes, routing | 1 standard review + UI screenshots on light/dark mode + passing CI |
-| **Tier 3: Security-Sensitive** | BDK version bumps, Argon2id parameters, AES-GCM backups, secure storage, network assertions | 2 maintainer reviews + explicit threat model review + passing CI security suite |
+| **Tier 3: Security-Sensitive** | BDK version bumps, Argon2id parameters, AES-GCM backups, secure storage, network guards | 2 maintainer reviews + explicit threat model review + passing CI security suite |
 
 ---
 

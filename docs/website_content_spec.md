@@ -55,7 +55,7 @@ All layout backgrounds, containers, text, and interactive elements must utilize 
 - **Navigation Links:**
   - Product (`#product`)
   - Security (`/security` or `#security`)
-  - Open Source (`#open-source`)
+  - Public Code (`#code`)
   - Roadmap (`#roadmap`)
   - GitHub (External link with star counter)
 - **Primary CTA:** `Join Testnet` (Links to instructions / testing track).
@@ -67,7 +67,7 @@ All layout backgrounds, containers, text, and interactive elements must utilize 
 - **Headline:**  
   `Own Bitcoin from the root.`
 - **Supporting Subheading:**  
-  `An open-source, self-custody Bitcoin wallet built with the Bitcoin Dev Kit. Sovereign, noise-free, and engineered for privacy from the first block.`
+  `A publicly developed, self-custody Bitcoin wallet built with the Bitcoin Dev Kit. Sovereign, noise-free, and engineered for privacy from the first block.`
 - **Call-to-Action Group:**
   - Primary Button: `Join Testnet` (Solid Pine Green button with white text)
   - Secondary Button: `View Source` (Subtle 1px Border Pine outline with Warm Ivory text and GitHub icon)
@@ -81,7 +81,7 @@ All layout backgrounds, containers, text, and interactive elements must utilize 
 
 ### Section 3: Trust Strip
 A restrained 4-column horizontal banner with minimal icons and high-contrast labels:
-1. **Open Source:** Public code. Verify every commit.
+1. **Public Code:** Verified source. Review every commit.
 2. **Self Custody:** Your keys, your rules. Zero custodial intermediaries.
 3. **Bitcoin Only:** Focused entirely on sound money. No altcoin distractions.
 4. **Built with BDK:** Powered by the industry-standard Rust Bitcoin Dev Kit.
@@ -108,7 +108,7 @@ High-resolution UI feature showcases displaying actual application screenshots:
 1. **Wallet Overview:** Instant balance tracking in SATS or BTC, cached offline state, and transparent sync status.
 2. **Send with Precision:** Real-time fee estimation, camera QR code scanning, and explicit transaction review.
 3. **Receive Securely:** Dynamic address generation, BIP-21 URI formatting, and native sharing.
-4. **Transparent History:** Detailed transaction inspector with direct links to open-source block explorers.
+4. **Transparent History:** Detailed transaction inspector with direct links to public block explorers.
 5. **Recovery Phrase Shield:** Guided 12-word BIP-39 mnemonic verification with physical storage acknowledgement.
 6. **Hardware Lock:** Argon2id memory-hard PIN gate with biometric Face ID / Touch ID convenience.
 
@@ -136,14 +136,14 @@ Highlighting power tools designed for experienced users:
 
 ---
 
-### Section 8: Open Source Transparency
+### Section 8: Public Source Code & Transparency
 - **Headline:** `Don't trust us. Verify.`
 - **Copy:**  
-  `Every feature, cryptographic implementation, and commit in Root Wallet is open for public review, audit, and verification.`
+  `Every feature, cryptographic implementation, and commit in Root Wallet is open for public review and verification.`
 - **Direct Links:**
   - [Source Code Repository](https://github.com/j-kon/root_wallet)
   - [Security Threat Model](https://github.com/j-kon/root_wallet/blob/main/docs/security_model.md)
-  - [Security Audit Log](https://github.com/j-kon/root_wallet/blob/main/SECURITY_AUDIT.md)
+  - [Internal Security Audit Report](https://github.com/j-kon/root_wallet/blob/main/SECURITY_AUDIT.md)
   - [Contributor Guidelines](https://github.com/j-kon/root_wallet/blob/main/CONTRIBUTING.md)
   - [Development Roadmap](https://github.com/j-kon/root_wallet/blob/main/ROADMAP.md)
 
@@ -152,7 +152,7 @@ Highlighting power tools designed for experienced users:
 ### Section 9: Bitcoin Dev Kit Foundation
 - **Headline:** `Built on Bitcoin Dev Kit.`
 - **Copy:**  
-  `Root Wallet is proud to build on the foundational work of the Bitcoin Dev Kit community. By utilizing bdk_dart and core BDK Rust libraries, we inherit years of battle-tested, peer-reviewed Bitcoin engineering.`
+  `Root Wallet is proud to build on the foundational work of the Bitcoin Dev Kit community. By utilizing bdk_dart and core BDK Rust libraries, we inherit years of peer-reviewed Bitcoin engineering.`
 - **Architecture Diagram:**
   ```
   Root Wallet (Flutter / Dart)
@@ -163,7 +163,7 @@ Highlighting power tools designed for experienced users:
                ↓
         Bitcoin Network
   ```
-- *Disclaimer: Root Wallet is an independent open-source project built with BDK and is not officially endorsed by the BDK project maintainers.*
+- *Disclaimer: Root Wallet is an independent software project built with BDK and is not officially endorsed by the BDK project maintainers.*
 
 ---
 
@@ -171,7 +171,7 @@ Highlighting power tools designed for experienced users:
 A prominent callout card styled with a crisp 1px Border Pine outline and Charcoal Pine fill:
 - **Title:** `Current Status: Bitcoin Testnet`
 - **Notice:**  
-  `Root Wallet is currently in active development on the Bitcoin Testnet. Mainnet functionality is intentionally locked while cryptographic audits and security hardening are completed. Please do not attempt to store real funds.`
+  `Root Wallet is currently in active development on the Bitcoin Testnet. Mainnet is disabled by a compile-time constant and enforced by runtime network guards while security hardening and independent audits proceed. Please do not attempt to store real funds.`
 
 ---
 

@@ -21,11 +21,10 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
 
 - [x] **KDF Hardening:** Upgraded PIN verification from single-iteration SHA-256 to memory-hard **Argon2id** (`m=16MB, t=3, p=1`).
 - [x] **Persistent Lockout:** Escalating delay ladder (2s → 5s → 15s → 60s → 300s) persisted in platform secure storage.
-- [x] **Authenticated Backup V2:** Upgraded metadata backup encryption to **AES-256-GCM** with HKDF-SHA256, eliminating padding oracle risks.
-- [x] **Mnemonic Lifecycle:** Ephemeral seed generation with prompt memory nullification after onboarding confirmation.
+- [x] **Mnemonic Lifecycle:** Ephemeral seed generation with prompt state reference removal after onboarding confirmation.
 - [x] **Privacy Shields:** App-switcher snapshot shielding on iOS and Android screenshot blocking during phrase review.
 - [x] **Auto-Clearing Clipboard:** Sanitizes sensitive seed words from clipboard after 60 seconds.
-- [x] **Compile-Time Safety Lock:** Explicit network assertion locking mainnet (`AppConstants.isMainnetAllowed = false`).
+- [x] **Network Safety Guard:** Mainnet disabled by a compile-time constant (`AppConstants.isMainnetAllowed = false`) and enforced by runtime network checks.
 - [x] **Sanitized Logging:** Stripped all debug prints across codebase.
 - [x] Dedicated automated CI security test suite (`test/security/`).
 
@@ -64,7 +63,7 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
 - [ ] **Secure Release Signing:** Provision offline hardware security keys for Google Play and Apple Developer distribution.
 - [ ] **Public Beta Testing:** Launch coordinated TestFlight (iOS) and Google Play Internal Testing tracks.
 - [ ] **Reproducible Build Pipeline:** Publish deterministic build instructions so researchers can independently verify binary checksums against source code.
-- [ ] **Formal Mainnet Activation:** Remove compile-time testnet assertions after security sign-off.
+- [ ] **Formal Mainnet Activation:** Enable mainnet configuration after independent security sign-off.
 
 ---
 

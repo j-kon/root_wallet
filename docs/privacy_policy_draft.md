@@ -83,12 +83,12 @@ Root Wallet does not knowingly collect or solicit information from anyone under 
 
 ## 7. Changes to This Policy
 
-Any future revisions to this policy will be committed transparently to the public Root Wallet open-source repository.
+Any future revisions to this policy will be committed transparently to the public Root Wallet repository.
 
 ---
 
 ## 8. Contact & Verification
 
-If you have questions regarding this privacy policy or wish to inspect the implementation of our data handling in the open-source codebase:
+If you have questions regarding this privacy policy or wish to inspect the implementation of our data handling in the public codebase:
 - **Repository:** https://github.com/j-kon/root_wallet
 - **Contact:** Contact the project maintainer privately using a verified contact method listed on the repository or open a public issue for general policy questions.

@@ -24,7 +24,7 @@ Findings are categorized into four standardized tiers:
 | Component | Current State | Readiness Category | Notes & Action Required |
 |---|---|---|---|
 | **Security Disclosure Policy** (`SECURITY.md`) | Present, comprehensive | `READY` | Defines private reporting channels via GitHub Private Vulnerability Reporting, scope boundaries, and responsible disclosure coordination. |
-| **Security Audit Documentation** (`SECURITY_AUDIT.md`) | Present, 14 findings remediated | `READY` | Details resolution of AES-GCM migration, Argon2id KDF, mnemonic wiping, database erasure, and CI test phase. |
+| **Internal Security Assessment** (`SECURITY_AUDIT.md`) | Present, 14 findings remediated | `READY` | Details resolution of AES-GCM migration, Argon2id KDF, mnemonic lifecycle hardening, database erasure, and CI test phase. |
 | **Threat Model & Security Model** (`docs/security_model.md`) | Present, comprehensive | `READY` | Clarifies hardware boundary, local encryption, PIN lockout ladder, and memory exposure reduction. |
 | **BDK Lineage Documentation** (`docs/bdk_dependency_chain.md`) | Present, comprehensive | `READY` | Documents upstream BDK lineage, `bdk_dart` FFI layer, and Rust toolchain requirements. |
 | **CI Static Analysis & Automated Testing** (`.github/workflows/flutter.yml`) | Present, passing on `main` | `READY` | Enforces `flutter analyze`, `test/security/` test suite, and general unit tests with locked cargo dependencies. |

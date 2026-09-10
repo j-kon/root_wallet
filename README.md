@@ -2,11 +2,11 @@
 
 **Own Bitcoin from the root.**
 
-Root Wallet is an open-source, self-custody Bitcoin wallet built with Flutter and the [Bitcoin Dev Kit (BDK)](https://bitcoindevkit.org/).
+Root Wallet is a publicly developed, self-custody Bitcoin wallet whose source code is available for review, built with Flutter and the [Bitcoin Dev Kit (BDK)](https://bitcoindevkit.org/).
 
 > [!WARNING]
 > **ROOT WALLET IS CURRENTLY TESTNET SOFTWARE.**  
-> It is not currently recommended for storing real Bitcoin. Mainnet remains disabled behind compile-time and runtime safety guards. Root Wallet is under active development and security review on the Bitcoin Testnet.
+> It is not currently recommended for storing real Bitcoin. Mainnet is disabled by a compile-time constant and enforced by runtime network guards. Root Wallet is under active development and security review on the Bitcoin Testnet.
 
 ---
 
@@ -15,9 +15,9 @@ Root Wallet is an open-source, self-custody Bitcoin wallet built with Flutter an
 Root Wallet is built from first principles for sovereign Bitcoiners who value self-custody, cryptographic transparency, and noise-free software.
 
 - **Bitcoin-Only:** Exclusively focused on Bitcoin. No altcoins, no tokens, no cross-chain bridges, and no speculative noise.
-- **Self-Custodial:** Your keys, your Bitcoin. Private keys and recovery phrases are generated locally and designed to remain on your device. Network communication is strictly limited to blockchain synchronization and transaction broadcasting.
-- **Powered by BDK:** Built on the battle-tested Rust [Bitcoin Dev Kit](https://github.com/bitcoindevkit/bdk) via [`bdk_dart`](https://github.com/bitcoindevkit/bdk-dart).
-- **Privacy-Conscious:** Zero third-party telemetry, zero trackers, zero account registration, and zero cloud lock-in.
+- **Self-Custodial:** Your keys, your Bitcoin. Private keys and recovery phrases are generated locally and designed to remain on your device. Network communication is focused on blockchain synchronization and transaction broadcasting.
+- **Powered by BDK:** Built on the Rust [Bitcoin Dev Kit](https://github.com/bitcoindevkit/bdk) via [`bdk_dart`](https://github.com/bitcoindevkit/bdk-dart).
+- **Privacy-Conscious:** Zero third-party telemetry, zero trackers, zero account registration, and local-only storage without cloud dependencies.
 - **Beginner-Friendly on the Surface, Advanced Underneath:** Streamlined for everyday payments while exposing power tools (Taproot, coin control, RBF, custom backends) when you need them.
 - **Intentional Design:** Strictly uses flat, solid brand colors. Zero distracting gradients, glowing borders, or glassmorphism.
 
@@ -44,7 +44,7 @@ Most consumer wallets today have become financial supermarkets—cluttered with 
 Root Wallet returns to the original promise of Bitcoin:
 - **Zero Accounts:** No email, phone number, or identity verification required.
 - **Noise-Free Interface:** Designed like an editorial instrument rather than a casino game.
-- **Cryptographic Independence:** Verifiable open-source software that anyone can audit, compile, and run independently.
+- **Cryptographic Independence:** Verifiable public source code that anyone can review, compile, and run independently.
 
 ---
 
@@ -54,13 +54,13 @@ Root Wallet returns to the original promise of Bitcoin:
 - **Instant Wallet Creation & Restore:** Generate 12-word BIP-39 recovery phrases or restore existing wallets.
 - **Receive:** Clean QR codes, BIP-21 URI formatting, and native sharing.
 - **Send:** Scan camera QR codes or paste addresses, customize network fees, and review transaction details prior to broadcast.
-- **Transaction History:** Real-time confirmation tracking, transaction detail inspector, and block explorer shortcuts.
+- **Transaction History:** Confirmation tracking during wallet synchronization, transaction detail inspector, and block explorer shortcuts.
 
 ### Advanced Bitcoin Capabilities
 - **Script Type Flexibility:** Native SegWit (P2WPKH, `tb1q...`) and Taproot (P2TR, `tb1p...`) support.
 - **Granular Coin Control:** Inspect individual UTXOs, freeze/lock specific coins, and break address reuse.
 - **Replace-By-Fee (RBF):** Signal RBF on outgoing transactions to bump transaction priority.
-- **Custom Node Overrides:** Point sync and broadcasting flows to custom Esplora or Electrum endpoints.
+- **Custom Node Overrides:** Support for configuring custom backend endpoints.
 
 ---
 
@@ -69,12 +69,12 @@ Root Wallet returns to the original promise of Bitcoin:
 Root Wallet's defense-in-depth architecture applies multiple layers of protection against common physical and digital attack vectors:
 
 - **Argon2id Memory-Hard PIN KDF:** Application unlock PINs are verified using Argon2id (`m=16MB, t=3, p=1`) with persistent brute-force lockout ladders.
-- **Authenticated Backup V2 (AES-256-GCM):** Encrypted metadata backups use pure-Dart AES-256-GCM with HKDF-SHA256 key derivation, preventing padding oracle attacks.
-- **Ephemeral Mnemonic Lifecycle:** Seed words live in memory only during user inspection and are aggressively wiped upon challenge completion.
-- **Multitasking Screen Protection:** iOS app-switcher and Android screen-capture protections prevent shoulder surfing and OS thumbnail leaks.
+- **Authenticated Backup V2 (AES-256-GCM):** Encrypted metadata backups use pure-Dart AES-256-GCM with HKDF-SHA256 key derivation to provide integrity verification and mitigate padding oracle attacks.
+- **Ephemeral Mnemonic Lifecycle:** Root Wallet minimizes the amount of time recovery phrases are retained in application state and removes references after sensitive flows complete.
+- **Multitasking Screen Protection:** iOS app-switcher and Android screen-capture protections reduce exposure in screenshots and app-switcher previews.
 - **Auto-Clearing Clipboard:** Sensitive clipboard copies (such as seed phrases) are automatically sanitized after 60 seconds.
 
-For complete technical specifications, see [`docs/security_model.md`](docs/security_model.md) and [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md).
+For complete technical specifications, see [`docs/security_model.md`](docs/security_model.md) and our internal [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md).
 
 ---
 
@@ -115,9 +115,9 @@ Read the complete dependency analysis: [`docs/bdk_dependency_chain.md`](docs/bdk
 
 ## 8. Testnet Status & Safety Locks
 
-To protect users while security audits proceed:
+To protect users while security reviews and hardening proceed:
 - `AppConstants.isMainnetAllowed = false` is compiled into the app.
-- Attempting to initialize mainnet descriptors triggers compile-time and runtime assertions.
+- Mainnet selection is disabled in the current build configuration and rejected by runtime network checks.
 - Default backends point to public Bitcoin Testnet infrastructure:
   - Esplora: `https://blockstream.info/testnet/api`
   - Electrum: `ssl://electrum.blockstream.info:60002`
