@@ -28,6 +28,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Lock bdk-dart dependencies
+        run: |
+          for dir in ~/.pub-cache/git/bdk-dart-*/native; do
+            if [ -d "$dir" ]; then
+              echo "Restoring verified Cargo.lock into $dir"
+              cp tool/ci/bdk_dart_Cargo.lock "$dir/Cargo.lock"
+            fi
+          done
+
       - name: Analyze
         run: flutter analyze --no-pub
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 
@@ -29,19 +30,31 @@ class AppScaffold extends StatelessWidget {
         ? RootBrandColors.charcoalPine
         : RootBrandColors.warmIvory;
 
-    return Scaffold(
-      backgroundColor: background,
-      extendBody: true,
-      appBar: (title == null && titleWidget == null)
-          ? null
-          : AppBar(
-              title: titleWidget ?? (title != null ? Text(title!) : null),
-              actions: actions,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-            ),
-      body: SafeArea(top: true, bottom: false, child: body),
-      floatingActionButton: floatingActionButton,
+    final overlayStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      systemNavigationBarColor: background,
+      systemNavigationBarIconBrightness:
+          isDark ? Brightness.light : Brightness.dark,
+    );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle,
+      child: Scaffold(
+        backgroundColor: background,
+        extendBody: true,
+        appBar: (title == null && titleWidget == null)
+            ? null
+            : AppBar(
+                title: titleWidget ?? (title != null ? Text(title!) : null),
+                actions: actions,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+              ),
+        body: SafeArea(top: true, bottom: false, child: body),
+        floatingActionButton: floatingActionButton,
+      ),
     );
   }
 }

@@ -13,10 +13,15 @@ import UIKit
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  override func applicationWillResignActive(_ application: UIApplication) {
-    super.applicationWillResignActive(application)
+  override func applicationDidEnterBackground(_ application: UIApplication) {
+    super.applicationDidEnterBackground(application)
     guard isScreenProtectionEnabled else { return }
     showPrivacyOverlay()
+  }
+
+  override func applicationWillEnterForeground(_ application: UIApplication) {
+    super.applicationWillEnterForeground(application)
+    removePrivacyOverlay()
   }
 
   override func applicationDidBecomeActive(_ application: UIApplication) {

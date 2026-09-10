@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/app/theme/typography.dart';
@@ -47,6 +48,11 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       backgroundColor: Colors.transparent,
       foregroundColor: textPrimary,
       scrolledUnderElevation: 0,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
       titleTextStyle: TextStyle(
         fontSize: 22,
         fontWeight: FontWeight.w700,

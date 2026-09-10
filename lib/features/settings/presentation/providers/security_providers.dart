@@ -229,6 +229,7 @@ class LockController extends AsyncNotifier<AppLockState> {
     }
 
     if (ok) {
+      _backgroundedAt = null;
       state = AsyncData(
         next.copyWith(
           isBusy: false,
@@ -256,19 +257,27 @@ class LockController extends AsyncNotifier<AppLockState> {
   }
 
   void onAppBackgrounded() {
+    // Avoid recording background time during active biometric prompts
+    final current = state.valueOrNull;
+    if (current?.isBusy ?? false) {
+      return;
+    }
     _backgroundedAt = DateTime.now();
   }
 
   void onAppResumed() {
     final current = state.valueOrNull;
-    if (current == null || !current.isLockEnabled || !current.hasPin) {
+    if (current == null ||
+        !current.isLockEnabled ||
+        !current.hasPin ||
+        current.isBusy) {
       return;
     }
 
     final shouldLock = switch (current.autoLockOption) {
       AutoLockOption.immediate => true,
       AutoLockOption.after30Seconds =>
-        _backgroundedAt == null ||
+        _backgroundedAt != null &&
             DateTime.now().difference(_backgroundedAt!) >=
                 const Duration(seconds: 30),
     };
@@ -396,6 +405,7 @@ class LockController extends AsyncNotifier<AppLockState> {
         await lockService.resetLockout();
         ref.read(bdkWalletServiceProvider).setDecoyActive(true);
         _cooldownTicker?.cancel();
+        _backgroundedAt = null;
         state = AsyncData(
           current.copyWith(
             isBusy: false,
@@ -425,6 +435,7 @@ class LockController extends AsyncNotifier<AppLockState> {
       await lockService.resetLockout();
       ref.read(bdkWalletServiceProvider).setDecoyActive(false);
       _cooldownTicker?.cancel();
+      _backgroundedAt = null;
       state = AsyncData(
         next.copyWith(
           isBusy: false,

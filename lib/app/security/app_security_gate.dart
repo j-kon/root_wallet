@@ -32,9 +32,11 @@ class _AppSecurityGateState extends ConsumerState<AppSecurityGate>
     final controller = ref.read(lockControllerProvider.notifier);
     switch (state) {
       case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
         controller.onAppBackgrounded();
+        break;
+      case AppLifecycleState.inactive:
+        // Transient state (e.g. system Face ID prompt or control center); do not treat as app backgrounding
         break;
       case AppLifecycleState.resumed:
         controller.onAppResumed();
