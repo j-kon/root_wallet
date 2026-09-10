@@ -24,8 +24,8 @@ Root Wallet is built from the ground up as a decentralized, self-custodial softw
 
 All sensitive financial and cryptographic material is generated, processed, and stored locally within your device's isolated application sandbox:
 
-1. **Recovery Phrases & Private Keys:** Your 12-word BIP-39 mnemonic phrase and derived private keys are stored in your device’s hardware-backed secure storage (iOS Keychain and Android KeyStore). They are never transmitted off your device.
-2. **PIN & Biometric State:** Your access PIN is never stored in plaintext. It is verified using an Argon2id memory-hard hash stored in secure storage. Biometric authentication (Face ID, Touch ID, Fingerprint) is handled entirely by the local operating system's LocalAuthentication API; biometric templates never leave your device hardware.
+1. **Recovery Phrases & Private Keys:** Recovery phrases and private keys are designed to remain on the device under user control, stored using platform secure storage (Apple Keychain on iOS and Android KeyStore on Android). Root Wallet communicates with Bitcoin network infrastructure solely for blockchain synchronization and transaction broadcasting.
+2. **PIN & Biometric State:** Access PINs are not stored in plaintext. They are verified using an Argon2id memory-hard hash stored in platform secure storage. Biometric authentication (Face ID, Touch ID, Fingerprint) is handled entirely by the local operating system's LocalAuthentication API; biometric templates remain on your device.
 3. **Wallet Databases & Transaction History:** Local SQLite databases caching UTXOs, transaction history, addresses, and local contact labels are stored locally in the application's sandboxed document directory.
 4. **Encrypted Backups:** If you choose to export an encrypted backup, the file is encrypted locally using AES-256-GCM prior to being saved or shared by your operating system's standard share sheet.
 
@@ -91,4 +91,4 @@ Any future revisions to this policy will be committed transparently to the publi
 
 If you have questions regarding this privacy policy or wish to inspect the implementation of our data handling in the open-source codebase:
 - **Repository:** https://github.com/j-kon/root_wallet
-- **Contact:** privacy@rootwallet.app
+- **Contact:** Contact the project maintainer privately using a verified contact method listed on the repository or open a public issue for general policy questions.

@@ -13,9 +13,9 @@ Before submitting code, please review these guidelines.
 Every contribution must honor Root Wallet's foundational principles:
 
 - **Bitcoin-Only:** We focus exclusively on the Bitcoin network. We do not support, endorse, or integrate altcoins, tokens, smart-contract platforms, or Web3 multi-chain abstractions.
-- **Self-Custody From the Root:** The user must hold absolute control over their private keys. Seed phrases and descriptors must never touch third-party servers.
+- **Self-Custody From the Root:** The user must hold absolute control over their private keys. Seed phrases and private keys are designed to remain on the device under user control and must not touch third-party servers.
 - **Privacy by Design:** Zero analytics, zero third-party telemetry, zero user tracking. Network operations must be transparent, with minimal digital footprint.
-- **Testnet-First:** While under active security hardening and community audit, Root Wallet remains strictly locked to Bitcoin Testnet and Signet. Mainnet enablement is intentionally blocked until all security prerequisites are verified.
+- **Testnet-First:** While under active security hardening and community testing, Root Wallet remains strictly locked to Bitcoin Testnet. Mainnet enablement is intentionally blocked until all security prerequisites are verified.
 - **No Unnecessary Complexity:** No speculative financial tools, yield programs, custodial swaps, or promotional banners. We build durable software for owning Bitcoin.
 
 ---
@@ -157,4 +157,4 @@ If your PR intentionally modifies UI layout or typography:
 > [!CAUTION]
 > **DO NOT report security vulnerabilities or cryptographic concerns through public GitHub issues.**
 
-For responsible security disclosures, refer to our [Security Policy](SECURITY.md) and contact the core security team privately at `security@rootwallet.app`. We acknowledge vulnerability reports within 24 hours.
+For responsible security disclosures, please follow our [Security Policy](SECURITY.md) to report vulnerabilities privately via GitHub Private Vulnerability Reporting or through a verified maintainer contact method.

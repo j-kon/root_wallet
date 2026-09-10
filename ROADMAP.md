@@ -20,7 +20,7 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
 **Status: COMPLETED / ONGOING REVIEW 🛡️**
 
 - [x] **KDF Hardening:** Upgraded PIN verification from single-iteration SHA-256 to memory-hard **Argon2id** (`m=16MB, t=3, p=1`).
-- [x] **Persistent Lockout:** Escalating delay ladder (2s → 5s → 15s → 60s → 300s) persisted in hardware-backed secure storage.
+- [x] **Persistent Lockout:** Escalating delay ladder (2s → 5s → 15s → 60s → 300s) persisted in platform secure storage.
 - [x] **Authenticated Backup V2:** Upgraded metadata backup encryption to **AES-256-GCM** with HKDF-SHA256, eliminating padding oracle risks.
 - [x] **Mnemonic Lifecycle:** Ephemeral seed generation with prompt memory nullification after onboarding confirmation.
 - [x] **Privacy Shields:** App-switcher snapshot shielding on iOS and Android screenshot blocking during phrase review.

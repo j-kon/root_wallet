@@ -22,7 +22,7 @@ Status Indicators:
 | Requirement | Current Status | Category | Details & Actions Needed |
 |---|---|---|---|
 | **Privacy Policy Web URL** | Draft written (`docs/privacy_policy_draft.md`) | `BLOCKED` | Must be published as a live public web URL (e.g. `https://rootwallet.app/privacy`) for both App Store Connect and Google Play Console. |
-| **Support Contact URL / Email** | Defined as `support@rootwallet.app` | `NEEDS OWNER DECISION` | Domain mail forwarding or public support desk must be configured to receive user emails. |
+| **Support Contact URL / Email** | Pending owner configuration | `NEEDS OWNER DECISION` | Official support email or public support desk URL required for store listings. |
 | **Marketing Website URL** | Spec complete (`docs/website_content_spec.md`) | `TODO` | Official landing page (`https://rootwallet.app`) must be deployed before public release. |
 | **Production App Icons** | Branded assets generated | `READY` | Native splash and icons configured via `flutter_native_splash` with Root Wallet brand mark. |
 | **Store Marketing Descriptions** | Product positioning defined | `TODO` | Draft 4000-character long description, 80-character short description, and feature bullet points. |
@@ -68,5 +68,5 @@ The following 4 items represent hard blockers that must be resolved in dedicated
 
 1. **Owner Selection of Production Identifiers:** Formal selection of `com.rootwallet.app` (or chosen alternative) across iOS and Android configurations.
 2. **Developer Program Accounts & Signing Credentials:** Enrollment in Apple Developer and Google Play Console, with secure CI secret provisioning.
-3. **Public Deployment of Legal URLs:** Hosting `https://rootwallet.app/privacy` and `https://rootwallet.app/support`.
+3. **Public Deployment of Legal URLs:** Hosting `https://rootwallet.app/privacy` and official support channel.
 4. **Third-Party Security Audit Sign-off:** Independent cryptographic review prior to removing the testnet safety lock.

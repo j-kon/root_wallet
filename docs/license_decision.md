@@ -4,6 +4,9 @@
 **Target Milestone:** Open Source + Public Launch Foundation  
 **Recommendation:** Dual Licensing (MIT OR Apache-2.0)  
 
+> [!NOTE]
+> This document is a technical project licensing comparison and is not legal advice.
+
 ---
 
 ## 1. Overview
@@ -27,8 +30,10 @@ Root Wallet sits at the intersection of the Flutter application framework, the R
 | **Bitcoin Dev Kit (`bdk` core)** | MIT OR Apache-2.0 | Compatible | Compatible | **Native 1:1 Alignment** |
 | **`bdk_dart` FFI bindings** | MIT OR Apache-2.0 | Compatible | Compatible | **Native 1:1 Alignment** |
 | **Bitcoin Core** | MIT | Compatible | Compatible | Fully Compatible |
-| **Rust Standard Library & Cargo Crates** | MIT OR Apache-2.0 | Compatible | Compatible | **Native 1:1 Alignment** |
+| **Rust Ecosystem / Toolchain** | Common MIT OR Apache-2.0 | Compatible | Compatible | Strong Convention |
 | **Mobile App Stores (Apple App Store / Google Play)** | N/A (Distribution Terms) | No copyleft friction | Explicit patent grant | Maximum legal flexibility |
+
+*Note: Upstream licensing for BDK and `bdk_dart` should be verified directly against their official repository license files. Many Rust ecosystem projects, including major components of the Rust toolchain, commonly use MIT OR Apache-2.0, but individual dependency licenses must be reviewed separately.*
 
 ---
 
@@ -68,7 +73,7 @@ Under dual licensing, Root Wallet code is distributed under the user's choice of
 
 - **Advantages:**
   - **Rust and BDK Native Convention:** Both Rust itself and BDK (`bitcoindevkit/bdk`, `bitcoindevkit/bdk-dart`) use the standard `MIT OR Apache-2.0` dual license. Adopting this structure provides absolute parity with our core underlying engine.
-  - **Maximum Flexibility for Downstream Users:** Downstream developers can choose the MIT terms if they require maximum simplicity and GPLv2 compatibility, or choose the Apache-2.0 terms if their legal department requires express patent grants and patent indemnification.
+  - **Maximum Flexibility for Downstream Users:** Downstream developers can choose the MIT terms if they require maximum simplicity and GPLv2 compatibility, or choose the Apache-2.0 terms if their legal department requires express patent grants and patent retaliation provisions.
   - **Explicit Brand Protection via Supplementary Trademark Notice:** The repository can easily pair the dual license with a clear `TRADEMARK.md` policy stating that the "Root Wallet" name, brand marks, and logo remain protected.
 - **Disadvantages:**
   - Requires maintaining both license headers or mentioning both options in documentation (e.g. `SPDX-License-Identifier: MIT OR Apache-2.0`).

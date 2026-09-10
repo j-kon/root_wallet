@@ -81,7 +81,7 @@ All layout backgrounds, containers, text, and interactive elements must utilize 
 
 ### Section 3: Trust Strip
 A restrained 4-column horizontal banner with minimal icons and high-contrast labels:
-1. **Open Source:** 100% public code. Verify every commit.
+1. **Open Source:** Public code. Verify every commit.
 2. **Self Custody:** Your keys, your rules. Zero custodial intermediaries.
 3. **Bitcoin Only:** Focused entirely on sound money. No altcoin distractions.
 4. **Built with BDK:** Powered by the industry-standard Rust Bitcoin Dev Kit.
@@ -92,7 +92,7 @@ A restrained 4-column horizontal banner with minimal icons and high-contrast lab
 A 3-column architectural breakdown explaining our core philosophy:
 
 #### Card 1: Your Keys
-`Generated on your device. Stored in hardware secure enclaves. Never shared, synced, or backed up to remote clouds without explicit authenticated encryption.`
+`Generated on your device. Stored in platform secure storage. Never shared, synced, or backed up to remote clouds without explicit authenticated encryption.`
 
 #### Card 2: Your Bitcoin
 `Direct interaction with the Bitcoin network. Generate native SegWit or Taproot addresses, inspect your UTXOs, and control network transaction fees.`

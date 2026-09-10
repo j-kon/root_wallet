@@ -12,7 +12,7 @@ Root Wallet is a modern, self-custodial, open-source Bitcoin wallet built for so
 
 ### Core Pillars
 1. **Bitcoin-Only:** We exclusively focus on the Bitcoin monetary network. We do not participate in altcoin speculation, DeFi tokens, or cross-chain ecosystems.
-2. **True Self-Custody:** Private keys are generated locally on-device and never leave the hardware sandbox. Users hold full sovereign ownership of their money.
+2. **True Self-Custody:** Private keys and recovery phrases are generated locally on-device and designed to remain on the device under the user's control. Users hold full sovereign ownership of their money.
 3. **Radical Privacy:** Zero telemetry, zero third-party analytics trackers, zero KYC identity gates, and zero mandatory account creation.
 4. **Noise-Free Design:** Built like an intentional editorial tool. We use solid, calm brand colors (`#101917`, `#2AAE7F`, `#F4F5F1`) and completely reject flashing graphics, speculative tickers, and gamified casino features.
 
@@ -20,12 +20,12 @@ Root Wallet is a modern, self-custodial, open-source Bitcoin wallet built for so
 
 ## 2. What Root Wallet Is NOT (Explicit Non-Goals)
 
-To preserve focus and maintain an impenetrable security boundary, Root Wallet will **never** become:
+To preserve focus and maintain a focused and verifiable security boundary, Root Wallet will not become:
 
 - ❌ **A Crypto Exchange or Brokerage:** We do not broker trades, maintain fiat-onramps, or execute custodial swaps.
 - ❌ **A Trading App:** We do not provide speculative price charting, leveraged trading, or portfolio volatility graphs.
 - ❌ **A Web3 / Multi-Chain Wallet:** We do not support EVM chains, Solana, ERC-20 tokens, NFT marketplaces, or browser dApp injection.
-- ❌ **A Custodial Service:** We never hold funds, manage custodial accounts, or store user seed phrases on remote cloud servers.
+- ❌ **A Custodial Service:** We do not hold funds, manage custodial accounts, or store user seed phrases on remote cloud servers.
 
 ---
 

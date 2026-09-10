@@ -59,8 +59,8 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at:
-**community@rootwallet.app**
+reported privately to the project maintainer using a verified contact method
+listed on the Root Wallet repository.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

@@ -23,7 +23,7 @@ Findings are categorized into four standardized tiers:
 
 | Component | Current State | Readiness Category | Notes & Action Required |
 |---|---|---|---|
-| **Security Disclosure Policy** (`SECURITY.md`) | Present, comprehensive | `READY` | Defines disclosure contacts, encrypted communications, vulnerability response SLAs, and scope boundaries. |
+| **Security Disclosure Policy** (`SECURITY.md`) | Present, comprehensive | `READY` | Defines private reporting channels via GitHub Private Vulnerability Reporting, scope boundaries, and responsible disclosure coordination. |
 | **Security Audit Documentation** (`SECURITY_AUDIT.md`) | Present, 14 findings remediated | `READY` | Details resolution of AES-GCM migration, Argon2id KDF, mnemonic wiping, database erasure, and CI test phase. |
 | **Threat Model & Security Model** (`docs/security_model.md`) | Present, comprehensive | `READY` | Clarifies hardware boundary, local encryption, PIN lockout ladder, and memory exposure reduction. |
 | **BDK Lineage Documentation** (`docs/bdk_dependency_chain.md`) | Present, comprehensive | `READY` | Documents upstream BDK lineage, `bdk_dart` FFI layer, and Rust toolchain requirements. |
@@ -52,20 +52,20 @@ Findings are categorized into four standardized tiers:
 ## Action Plan for Current Milestone
 
 1. **Resolve `MISSING` Community & Contributor Files:**
-   - Create [`CONTRIBUTING.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/CONTRIBUTING.md).
-   - Create [`CODE_OF_CONDUCT.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/CODE_OF_CONDUCT.md).
-   - Create [`.github/ISSUE_TEMPLATE/`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/.github/ISSUE_TEMPLATE/) with issue forms and config.
-   - Create [`.github/pull_request_template.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/.github/pull_request_template.md).
-   - Create [`ROADMAP.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/ROADMAP.md).
+   - Create [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+   - Create [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md).
+   - Create [`.github/ISSUE_TEMPLATE/`](../.github/ISSUE_TEMPLATE/) with issue forms and config.
+   - Create [`.github/pull_request_template.md`](../.github/pull_request_template.md).
+   - Create [`ROADMAP.md`](../ROADMAP.md).
 
 2. **Prepare Legal & Product Documentation:**
-   - Produce [`docs/license_decision.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/docs/license_decision.md) analyzing MIT, Apache-2.0, and dual licensing.
-   - Produce [`docs/product_positioning.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/docs/product_positioning.md).
-   - Produce [`docs/website_security_content.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/docs/website_security_content.md).
-   - Produce [`docs/privacy_policy_draft.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/docs/privacy_policy_draft.md).
-   - Produce [`docs/website_content_spec.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/docs/website_content_spec.md).
-   - Produce [`docs/store_readiness.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/docs/store_readiness.md).
-   - Produce [`docs/repository_governance.md`](file:///Users/jaykon/Developer/open-source/root-wallet/root_wallet/docs/repository_governance.md).
+   - Produce [`docs/license_decision.md`](license_decision.md) analyzing MIT, Apache-2.0, and dual licensing.
+   - Produce [`docs/product_positioning.md`](product_positioning.md).
+   - Produce [`docs/website_security_content.md`](website_security_content.md).
+   - Produce [`docs/privacy_policy_draft.md`](privacy_policy_draft.md).
+   - Produce [`docs/website_content_spec.md`](website_content_spec.md).
+   - Produce [`docs/store_readiness.md`](store_readiness.md).
+   - Produce [`docs/repository_governance.md`](repository_governance.md).
 
 3. **Modernize `README.md`:**
    - Align terminology with solid brand identity.

@@ -5,8 +5,8 @@
 Root Wallet is an open-source, self-custody Bitcoin wallet built with Flutter and the [Bitcoin Dev Kit (BDK)](https://bitcoindevkit.org/).
 
 > [!WARNING]
-> **CURRENT STATUS: BITCOIN TESTNET ONLY**  
-> Root Wallet is under active security hardening and community testing. Mainnet operation is deliberately locked behind compile-time safety guards. **Root Wallet is NOT yet recommended or supported for storing real mainnet funds.**
+> **ROOT WALLET IS CURRENTLY TESTNET SOFTWARE.**  
+> It is not currently recommended for storing real Bitcoin. Mainnet remains disabled behind compile-time and runtime safety guards. Root Wallet is under active development and security review on the Bitcoin Testnet.
 
 ---
 
@@ -14,8 +14,8 @@ Root Wallet is an open-source, self-custody Bitcoin wallet built with Flutter an
 
 Root Wallet is built from first principles for sovereign Bitcoiners who value self-custody, cryptographic transparency, and noise-free software.
 
-- **Bitcoin-Only:** 100% focused on Bitcoin. No altcoins, no tokens, no cross-chain bridges, and no speculative noise.
-- **Self-Custodial:** Your keys, your Bitcoin. Private keys and recovery phrases are generated on your device and never transmitted over the internet.
+- **Bitcoin-Only:** Exclusively focused on Bitcoin. No altcoins, no tokens, no cross-chain bridges, and no speculative noise.
+- **Self-Custodial:** Your keys, your Bitcoin. Private keys and recovery phrases are generated locally and designed to remain on your device. Network communication is strictly limited to blockchain synchronization and transaction broadcasting.
 - **Powered by BDK:** Built on the battle-tested Rust [Bitcoin Dev Kit](https://github.com/bitcoindevkit/bdk) via [`bdk_dart`](https://github.com/bitcoindevkit/bdk-dart).
 - **Privacy-Conscious:** Zero third-party telemetry, zero trackers, zero account registration, and zero cloud lock-in.
 - **Beginner-Friendly on the Surface, Advanced Underneath:** Streamlined for everyday payments while exposing power tools (Taproot, coin control, RBF, custom backends) when you need them.
@@ -66,7 +66,7 @@ Root Wallet returns to the original promise of Bitcoin:
 
 ## 5. Security Architecture
 
-Root Wallet's defense-in-depth model protects funds against device theft, memory extraction, and forensic attacks:
+Root Wallet's defense-in-depth architecture applies multiple layers of protection against common physical and digital attack vectors:
 
 - **Argon2id Memory-Hard PIN KDF:** Application unlock PINs are verified using Argon2id (`m=16MB, t=3, p=1`) with persistent brute-force lockout ladders.
 - **Authenticated Backup V2 (AES-256-GCM):** Encrypted metadata backups use pure-Dart AES-256-GCM with HKDF-SHA256 key derivation, preventing padding oracle attacks.
@@ -165,8 +165,7 @@ Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) for our contribution workflow, 
 
 If you discover a security vulnerability or cryptographic flaw in Root Wallet, **DO NOT file a public issue**.
 
-Please report vulnerabilities confidentially in accordance with our [Security Policy](SECURITY.md) to:
-📧 **security@rootwallet.app**
+Please report vulnerabilities confidentially in accordance with our [Security Policy](SECURITY.md) using GitHub Private Vulnerability Reporting or via verified maintainer contacts.
 
 ---
 

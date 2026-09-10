@@ -7,12 +7,23 @@ body:
     attributes:
       value: |
         ### 🚨 IS THIS A SECURITY VULNERABILITY?
-        **STOP! Do NOT submit reports of security vulnerabilities, exploits, or key extraction bugs here.**
+        **STOP! Do NOT submit reports of exploitable vulnerabilities or key extraction bugs here.**
 
-        Public issues are visible to everyone immediately. If you have discovered or suspect a vulnerability in Root Wallet:
-        👉 **Please review our [Security Policy](https://github.com/j-kon/root_wallet/blob/main/SECURITY.md) and report confidentially to `security@rootwallet.app`.**
+        Public issues are visible to everyone immediately. Please observe this boundary:
 
-        Use this template *only* for public architectural discussions, threat model questions, or documentation clarifications.
+        **APPROPRIATE FOR THIS PUBLIC FORM:**
+        - Questions about our threat model or defense-in-depth architecture
+        - Questions about cryptographic algorithms (e.g. Argon2id parameters, AES-256-GCM envelope)
+        - Documentation clarifications in `docs/security_model.md` or `SECURITY_AUDIT.md`
+
+        **DO NOT POST HERE (REPORT PRIVATELY):**
+        - Exploitable security vulnerabilities or flaw demonstrations
+        - Private key, mnemonic, or seed extraction issues
+        - Transaction tampering or fee manipulation bypasses
+        - Lockout, PIN, or biometric gate bypasses
+        - Secret leakage across application boundaries
+
+        👉 **To report vulnerabilities privately, please review our [Security Policy](https://github.com/j-kon/root_wallet/blob/main/SECURITY.md) and use GitHub Private Vulnerability Reporting (or contact the maintainer through a verified contact method listed on the repository).**
 
   - type: textarea
     id: topic

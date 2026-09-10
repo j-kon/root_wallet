@@ -54,8 +54,7 @@ body:
       description: Which Bitcoin network environment was active?
       options:
         - Bitcoin Testnet (default)
-        - Signet
-        - Regtest (local)
+        - Development / custom configuration
     validations:
       required: true
 
