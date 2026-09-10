@@ -11,7 +11,8 @@ void main() {
       await service.setPin('123456');
 
       expect(await storage.read(key: 'security.pin_hash'), isNot('123456'));
-      expect(await storage.read(key: 'security.pin_salt'), isNotEmpty);
+      final verifier = await storage.read(key: 'security.pin_hash');
+      expect(verifier!.startsWith(r'$argon2id$v=1$'), isTrue);
       expect(await service.verifyPin('123456'), isTrue);
       expect(await service.verifyPin('654321'), isFalse);
     });

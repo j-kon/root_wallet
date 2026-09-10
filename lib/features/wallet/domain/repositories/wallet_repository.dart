@@ -1,5 +1,6 @@
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
@@ -7,7 +8,7 @@ import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.d
 
 abstract class WalletRepository {
   Future<bool> hasWallet();
-  Future<WalletIdentity> createWallet({
+  Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
   });
   Future<WalletIdentity> restoreWallet({

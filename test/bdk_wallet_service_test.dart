@@ -20,10 +20,11 @@ void main() {
         allowCustomEsploraEndpoint: false,
       );
 
-      final identity = await service.createWallet();
+      final result = await service.createWallet();
       final mnemonic = await service.getMnemonic();
 
-      expect(identity.network, 'testnet');
+      expect(result.walletIdentity.network, 'testnet');
+      expect(result.recoveryPhrase.split(' '), hasLength(12));
       expect(mnemonic, isNotNull);
       expect(
         () => bdk.Mnemonic.fromString(mnemonic: mnemonic!),
@@ -46,7 +47,7 @@ void main() {
         allowCustomEsploraEndpoint: false,
       );
 
-      final identity = await service.createWallet(
+      final result = await service.createWallet(
         scriptType: WalletScriptType.taproot,
       );
       final mnemonic = await service.getMnemonic();
@@ -55,7 +56,8 @@ void main() {
       );
       final diagnostics = await service.diagnostics();
 
-      expect(identity.network, 'testnet');
+      expect(result.walletIdentity.network, 'testnet');
+      expect(result.recoveryPhrase.split(' '), hasLength(12));
       expect(mnemonic, isNotNull);
       expect(savedScriptType, 'taproot');
       expect(diagnostics.scriptType, 'Taproot');

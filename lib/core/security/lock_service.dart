@@ -50,4 +50,25 @@ class LockService {
   Future<bool> verifyDecoyPin(String pin) {
     return _pinLockService.verifyDecoyPin(pin);
   }
+
+  Future<int> getFailedAttempts() {
+    return _pinLockService.getFailedAttempts();
+  }
+
+  Future<int> getRemainingCooldownSeconds() {
+    return _pinLockService.getRemainingCooldownSeconds();
+  }
+
+  Future<int> recordFailedAttempt() {
+    return _pinLockService.recordFailedAttempt();
+  }
+
+  Future<void> resetLockout() {
+    return _pinLockService.resetLockout();
+  }
+
+  int delayForAttempts(int attempts) {
+    return _pinLockService.delayForAttempts(attempts);
+  }
 }
+

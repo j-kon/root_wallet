@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 
@@ -21,7 +22,7 @@ class WalletSeedService {
   final SecureStorage _secureStorage;
   final Future<String> Function() _walletStoragePathLoader;
 
-  Future<WalletIdentity> createWallet({
+  Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
   }) async {
     final mnemonic = bdk.Mnemonic(wordCount: bdk.WordCount.words12);
@@ -29,7 +30,11 @@ class WalletSeedService {
     mnemonic.dispose();
     await _writeWalletSeed(phrase, scriptType);
     await _deleteWalletDatabase();
-    return _identityFromMnemonic(phrase, scriptType);
+    final identity = _identityFromMnemonic(phrase, scriptType);
+    return WalletCreationResult(
+      walletIdentity: identity,
+      recoveryPhrase: phrase,
+    );
   }
 
   Future<WalletIdentity> restoreWallet({
@@ -62,26 +67,56 @@ class WalletSeedService {
 
   Future<void> _deleteWalletDatabase() async {
     final walletDirectory = await _walletStoragePathLoader();
-    final databasePaths = <String>[
-      '$walletDirectory/root_wallet_$_networkName.sqlite',
-      '$walletDirectory/root_wallet_$_networkName'
-          '_v${AppConstants.walletDatabaseSchemaVersion}.sqlite',
-      for (final scriptType in WalletScriptType.values)
-        '$walletDirectory/root_wallet_${_networkName}_${scriptType.storageValue}'
-            '_v${AppConstants.walletDatabaseSchemaVersion}.sqlite',
-    ];
+    final prefixes = <String>['', 'decoy_'];
+    final networkNames = <String>[_networkName, 'testnet', 'signet', 'mainnet'];
 
-    for (final databasePath in databasePaths) {
+    final targetPaths = <String>{};
+    for (final prefix in prefixes) {
+      for (final net in networkNames) {
+        targetPaths.add('$walletDirectory/${prefix}root_wallet_$net.sqlite');
+        targetPaths.add(
+          '$walletDirectory/${prefix}root_wallet_${net}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite',
+        );
+        for (final scriptType in WalletScriptType.values) {
+          targetPaths.add(
+            '$walletDirectory/${prefix}root_wallet_${net}_${scriptType.storageValue}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite',
+          );
+        }
+      }
+    }
+
+    for (final dbPath in targetPaths) {
       for (final path in <String>[
-        databasePath,
-        '$databasePath-wal',
-        '$databasePath-shm',
+        dbPath,
+        '$dbPath-wal',
+        '$dbPath-shm',
       ]) {
         final file = File(path);
         if (await file.exists()) {
-          await file.delete();
+          try {
+            await file.delete();
+          } catch (_) {}
         }
       }
+    }
+
+    final dir = Directory(walletDirectory);
+    if (await dir.exists()) {
+      try {
+        await for (final entity in dir.list(followLinks: false)) {
+          if (entity is File) {
+            final filename = entity.uri.pathSegments.last;
+            if (filename.contains('root_wallet') &&
+                (filename.endsWith('.sqlite') ||
+                    filename.endsWith('.sqlite-wal') ||
+                    filename.endsWith('.sqlite-shm'))) {
+              try {
+                await entity.delete();
+              } catch (_) {}
+            }
+          }
+        }
+      } catch (_) {}
     }
   }
 
@@ -99,7 +134,6 @@ class WalletSeedService {
       id: 'wallet_${_networkName}_${scriptType.storageValue}',
       fingerprint: fingerprint,
       network: _networkName,
-      recoveryPhrase: mnemonic,
     );
   }
 

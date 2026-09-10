@@ -8,6 +8,7 @@ import 'package:root_wallet/features/onboarding/presentation/providers/onboardin
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/data/services/wallet_seed_service.dart';
@@ -25,10 +26,12 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final cacheCompleter = Completer<WalletSnapshotCache>();
       final seedService = _FakeWalletSeedService(
-        createdIdentity: const WalletIdentity(
-          id: 'created',
-          fingerprint: 'ABC12345',
-          network: 'testnet',
+        createdResult: const WalletCreationResult(
+          walletIdentity: WalletIdentity(
+            id: 'created',
+            fingerprint: 'ABC12345',
+            network: 'testnet',
+          ),
           recoveryPhrase: 'abandon abandon abandon abandon abandon abandon',
         ),
       );
@@ -135,20 +138,20 @@ Future<void> _waitForCleanup(
 }
 
 class _FakeWalletSeedService implements WalletSeedService {
-  _FakeWalletSeedService({this.createdIdentity, this.restoredIdentity});
+  _FakeWalletSeedService({this.createdResult, this.restoredIdentity});
 
-  final WalletIdentity? createdIdentity;
+  final WalletCreationResult? createdResult;
   final WalletIdentity? restoredIdentity;
   WalletScriptType? lastScriptType;
   int createCalls = 0;
 
   @override
-  Future<WalletIdentity> createWallet({
+  Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
   }) async {
     createCalls++;
     lastScriptType = scriptType;
-    return createdIdentity!;
+    return createdResult!;
   }
 
   @override

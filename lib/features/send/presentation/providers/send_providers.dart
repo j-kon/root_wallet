@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/errors/error_mapper.dart';
 import 'package:root_wallet/features/send/data/datasources/broadcast_datasource.dart';
@@ -262,8 +263,7 @@ class SendController extends StateNotifier<SendState> {
       state = state.copyWith(isSending: false, lastTxId: txId);
       return txId;
     } catch (error, stackTrace) {
-      print('DEBUG BROADCAST ERROR: $error');
-      print('DEBUG BROADCAST STACK: $stackTrace');
+      _ref.read(loggerProvider).error('Transaction broadcast failed', error: error, stackTrace: stackTrace);
       state = state.copyWith(
         isSending: false,
         errorMessage: mapErrorToMessage(error, context: ErrorContext.broadcast),

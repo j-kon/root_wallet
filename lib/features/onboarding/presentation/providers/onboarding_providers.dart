@@ -66,14 +66,14 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   }) async {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
-      final identity = await _ref
+      final result = await _ref
           .read(onboardingWalletSeedServiceProvider)
           .createWallet(scriptType: scriptType);
       _resetLocalWalletSessionState();
       state = state.copyWith(
         isBusy: false,
         challengeIndices: const [],
-        recoveryPhrase: identity.recoveryPhrase,
+        recoveryPhrase: result.recoveryPhrase,
         clearError: true,
       );
       return true;
@@ -96,14 +96,14 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   }) async {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
-      final identity = await _ref
+      await _ref
           .read(onboardingWalletSeedServiceProvider)
           .restoreWallet(mnemonic: mnemonic, scriptType: scriptType);
       _resetLocalWalletSessionState();
       state = state.copyWith(
         isBusy: false,
         challengeIndices: const [],
-        recoveryPhrase: identity.recoveryPhrase,
+        recoveryPhrase: mnemonic.trim(),
         clearError: true,
       );
       return true;
@@ -118,6 +118,10 @@ class OnboardingController extends StateNotifier<OnboardingState> {
       );
       return false;
     }
+  }
+
+  void clearRecoveryPhrase() {
+    state = state.copyWith(clearRecoveryPhrase: true);
   }
 
   Future<void> prepareSeedChallenge() async {

@@ -1,6 +1,7 @@
 import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_overview.dart';
@@ -19,7 +20,7 @@ class WalletRepositoryImpl implements WalletRepository {
   }
 
   @override
-  Future<WalletIdentity> createWallet({
+  Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
   }) {
     return _walletService.createWallet(scriptType: scriptType);
@@ -79,8 +80,8 @@ class WalletRepositoryImpl implements WalletRepository {
       if (address.isEmpty) {
         try {
           address = await _walletService.getAddress();
-        } catch (e) {
-          print('DEBUG: getAddress fallback failed: $e');
+        } catch (_) {
+          // Fallback failed; receiveAddress remains empty string
         }
       }
 
@@ -94,14 +95,11 @@ class WalletRepositoryImpl implements WalletRepository {
         syncSucceeded: data.syncSucceeded,
         syncError: data.syncError != null ? Exception(data.syncError) : null,
       );
-    } catch (error, stackTrace) {
-      print('DEBUG: getOverview failed: $error');
-      print(stackTrace);
+    } catch (error) {
       String fallbackAddress = '';
       try {
         fallbackAddress = await _walletService.getAddress();
-      } catch (e) {
-        print('DEBUG: getAddress fallback failed: $e');
+      } catch (_) {
       }
       return WalletOverview(
         balance: const Balance(confirmedSats: 0, pendingSats: 0),

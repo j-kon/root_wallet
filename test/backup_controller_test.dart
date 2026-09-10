@@ -157,7 +157,7 @@ void main() {
       final controller = container.read(backupControllerProvider.notifier);
 
       // Write mock backup file
-      final encrypted = BackupEncryptionService.encrypt(
+      final encrypted = await BackupEncryptionService.encrypt(
         plainText:
             '{"addresses": {"tb1qaddress": "Restored Label"}, "transactions": {}}',
         mnemonic: normalMnemonic,
@@ -214,7 +214,7 @@ void main() {
       expect(decoyExport, isNotNull);
 
       // Try decrypting with decoy mnemonic -> should succeed
-      final decoyDecrypted = BackupEncryptionService.decrypt(
+      final decoyDecrypted = await BackupEncryptionService.decrypt(
         encryptedCombinedBase64: decoyExport!,
         mnemonic: decoyMnemonic,
       );
@@ -226,7 +226,7 @@ void main() {
           encryptedCombinedBase64: decoyExport,
           mnemonic: normalMnemonic,
         ),
-        throwsArgumentError,
+        throwsFormatException,
       );
     });
   });
