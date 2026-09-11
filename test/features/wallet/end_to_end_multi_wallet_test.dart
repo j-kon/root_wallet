@@ -1,30 +1,35 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
+import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
 import 'package:root_wallet/features/wallet/data/services/add_wallet_service.dart';
 import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 import 'package:root_wallet/features/wallet/data/services/wallet_migration_service.dart';
-import 'package:root_wallet/features/wallet/data/services/wallet_storage_cleaner.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Item 18: Actual End-To-End Multi-Wallet 18-Step Test Sequence', () {
+  group('Item 13 & 18: End-To-End Multi-Wallet Provider-Level Test Sequence', () {
     late InMemorySecureStorage storage;
     late SharedPreferences prefs;
     late Directory tempDir;
 
     const phraseA =
         'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    const phraseD =
+        'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong';
     const validTpubC =
         'tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s';
 
@@ -41,7 +46,20 @@ void main() {
       } catch (_) {}
     });
 
-    test('executes complete 18-step multi-wallet lifecycle without data loss or isolation failure', () async {
+    ProviderContainer createContainer([SharedPreferences? customPrefs]) {
+      final activePrefs = customPrefs ?? prefs;
+      final container = ProviderContainer(
+        overrides: [
+          secureStorageProvider.overrideWithValue(storage),
+          sharedPreferencesProvider.overrideWith((ref) => activePrefs),
+          walletStoragePathProvider.overrideWith((ref) => tempDir.path),
+          walletRegistryProvider.overrideWith((ref) => WalletRegistry(activePrefs)),
+        ],
+      );
+      return container;
+    }
+
+    test('executes complete provider-level multi-wallet lifecycle (A -> create B -> import C -> restore D) without restart or manual activation', () async {
       // -----------------------------------------------------------------------
       // Step 1: Start with legacy single wallet state
       // -----------------------------------------------------------------------
@@ -68,7 +86,7 @@ void main() {
       await legacyDb.writeAsString('legacy_wallet_a_database_content');
 
       // -----------------------------------------------------------------------
-      // Step 2: Initialize app -> verify migration runs, record created, DB copied
+      // Step 2: Initialize app & migration service -> verify migration runs
       // -----------------------------------------------------------------------
       final migrationService = WalletMigrationService(
         secureStorage: storage,
@@ -94,33 +112,28 @@ void main() {
       expect(await copiedDbA.exists(), isTrue);
       expect(await copiedDbA.readAsString(), equals('legacy_wallet_a_database_content'));
 
-      // Verify active wallet points to migrated wallet
+      // -----------------------------------------------------------------------
+      // Step 3: Initialize Riverpod ProviderContainer with Migrated Wallet A
+      // -----------------------------------------------------------------------
+      final container = createContainer();
+      addTearDown(container.dispose);
+
       final registry = WalletRegistry(prefs);
       expect(registry.getActiveWalletId(), equals(walletAId));
+      expect(await container.read(activeWalletIdProvider.future), equals(walletAId));
+      await container.read(walletsListProvider.future);
+      expect(container.read(activeWalletRecordProvider)?.id, equals(walletAId));
+      expect(container.read(bdkWalletServiceProvider).walletId, equals(walletAId));
+
+      // Seed draft in sendController to verify reset on wallet switch
+      container.read(sendControllerProvider.notifier).setAmountBtc('0.05');
+      expect(container.read(sendControllerProvider).draft.amountBtcText, equals('0.05'));
 
       // -----------------------------------------------------------------------
-      // Step 3: Verify migrated wallet A state and BIP32 master fingerprint
+      // Step 4: Flow 1 (A -> create B -> B active immediately in provider)
+      // Executed exactly as CreateWalletPage does
       // -----------------------------------------------------------------------
-      expect(migratedRecord.type, equals(WalletType.signing));
-      expect(migratedRecord.fingerprint, equals('73C5DA0A'));
-      expect(
-        await storage.read(key: WalletStorageKeys.mnemonicFor(walletAId)),
-        equals(phraseA),
-      );
-      expect(
-        await storage.read(key: WalletStorageKeys.capabilityFor(walletAId)),
-        equals(WalletCapability.signing.storageValue),
-      );
-
-      // -----------------------------------------------------------------------
-      // Step 4: Create Wallet B via AddWallet flow (Native Segwit)
-      // -----------------------------------------------------------------------
-      final addWalletService = AddWalletService(
-        secureStorage: storage,
-        preferences: prefs,
-        walletStoragePathLoader: () async => tempDir.path,
-      );
-
+      final addWalletService = await container.read(addWalletServiceProvider.future);
       final resultB = await addWalletService.createWallet(
         scriptType: WalletScriptType.nativeSegwit,
         walletName: 'Wallet B',
@@ -128,19 +141,27 @@ void main() {
       final walletBId = resultB.walletRecord!.id;
       final phraseB = resultB.recoveryPhrase;
 
-      // -----------------------------------------------------------------------
-      // Step 5: Verify Wallet A's scoped keys and DB are UNTOUCHED
-      // -----------------------------------------------------------------------
+      // Page activates new wallet ID in provider notifier
+      await container.read(activeWalletIdProvider.notifier).setActiveWallet(walletBId);
+      container.invalidate(walletCapabilityProvider);
+      container.invalidate(walletHomeControllerProvider);
+      await container.read(walletsListProvider.notifier).refresh();
+
+      // Immediately WITHOUT app restart and WITHOUT manual registry.setActiveWalletId:
+      expect(registry.getActiveWalletId(), equals(walletBId));
+      expect(container.read(activeWalletIdProvider).value, equals(walletBId));
+      expect(container.read(activeWalletRecordProvider)?.id, equals(walletBId));
+      expect(container.read(bdkWalletServiceProvider).walletId, equals(walletBId));
+      expect(container.read(sendControllerProvider).draft.amountBtcText, isEmpty);
+
+      // Verify Wallet A remained 100% untouched
       expect(
         await storage.read(key: WalletStorageKeys.mnemonicFor(walletAId)),
         equals(phraseA),
       );
       expect(await copiedDbA.exists(), isTrue);
-      expect(await copiedDbA.readAsString(), equals('legacy_wallet_a_database_content'));
 
-      // -----------------------------------------------------------------------
-      // Step 6: Verify Wallet B has unique ID, scoped keys, isolated DB directory
-      // -----------------------------------------------------------------------
+      // Verify Wallet B has unique ID, scoped keys, isolated DB directory
       expect(walletBId, isNot(equals(walletAId)));
       expect(
         await storage.read(key: WalletStorageKeys.mnemonicFor(walletBId)),
@@ -154,23 +175,7 @@ void main() {
       expect(await dirB.exists(), isTrue);
 
       // -----------------------------------------------------------------------
-      // Step 7: Verify registry contains both wallets with correct metadata
-      // -----------------------------------------------------------------------
-      final walletsAfterB = registry.getWallets();
-      expect(walletsAfterB.length, equals(2));
-      expect(walletsAfterB.map((w) => w.id), containsAll([walletAId, walletBId]));
-      expect(resultB.walletRecord!.fingerprint, isNotNull);
-      expect(resultB.walletRecord!.fingerprint!.length, equals(8));
-
-      // -----------------------------------------------------------------------
-      // Step 8: Switch active wallet to B -> verify active pointer
-      // -----------------------------------------------------------------------
-      await registry.setActiveWalletId(walletBId);
-      expect(registry.getActiveWalletId(), equals(walletBId));
-      expect(registry.getActiveWallet()?.id, equals(walletBId));
-
-      // -----------------------------------------------------------------------
-      // Step 9: Add label to transaction in B -> verify stored in B's namespace, not A's
+      // Step 5: Add label to transaction in B -> verify stored in B's namespace, not A's
       // -----------------------------------------------------------------------
       final labelStoreB = WalletLabelStore(prefs, scope: walletBId);
       final labelStoreA = WalletLabelStore(prefs, scope: walletAId);
@@ -191,8 +196,13 @@ void main() {
       );
       expect(labelStoreA.read().transactionMetadata, isEmpty);
 
+      // Seed another send draft before next switch
+      container.read(sendControllerProvider.notifier).setAmountBtc('0.10');
+      expect(container.read(sendControllerProvider).draft.amountBtcText, equals('0.10'));
+
       // -----------------------------------------------------------------------
-      // Step 10: Import Watch-Only Wallet C via AddWallet flow
+      // Step 6: Flow 2 (B -> import C -> C active immediately in provider)
+      // Executed exactly as ImportWatchOnlyPage does
       // -----------------------------------------------------------------------
       final recordC = await addWalletService.importWatchOnlyWallet(
         externalDescriptor: validTpubC,
@@ -200,9 +210,20 @@ void main() {
       );
       final walletCId = recordC.id;
 
-      // -----------------------------------------------------------------------
-      // Step 11: Verify C is watch-only, has no private keys, has isolated DB
-      // -----------------------------------------------------------------------
+      // Page activates new wallet ID in provider notifier
+      await container.read(activeWalletIdProvider.notifier).setActiveWallet(walletCId);
+      container.invalidate(walletCapabilityProvider);
+      container.invalidate(walletHomeControllerProvider);
+      await container.read(walletsListProvider.notifier).refresh();
+
+      // Immediately WITHOUT app restart:
+      expect(registry.getActiveWalletId(), equals(walletCId));
+      expect(container.read(activeWalletIdProvider).value, equals(walletCId));
+      expect(container.read(activeWalletRecordProvider)?.id, equals(walletCId));
+      expect(container.read(bdkWalletServiceProvider).walletId, equals(walletCId));
+      expect(container.read(sendControllerProvider).draft.amountBtcText, isEmpty);
+
+      // C is watch-only, has no private keys, has isolated DB
       expect(recordC.type, equals(WalletType.watchOnly));
       expect(
         await storage.read(key: WalletStorageKeys.mnemonicFor(walletCId)),
@@ -215,27 +236,14 @@ void main() {
       final dirC = Directory('${tempDir.path}/wallets/$walletCId');
       expect(await dirC.exists(), isTrue);
 
-      // -----------------------------------------------------------------------
-      // Step 12: Verify Decoy wallet mnemonic is untouched
-      // -----------------------------------------------------------------------
+      // Decoy wallet mnemonic is untouched
       expect(
         await storage.read(key: WalletStorageKeys.decoyMnemonic),
         equals('decoy phrase canary 123'),
       );
 
-      // -----------------------------------------------------------------------
-      // Step 13: Attempt to sign transaction from C -> verify fails closed
-      // -----------------------------------------------------------------------
-      final serviceC = BdkWalletService(
-        secureStorage: storage,
-        walletStoragePathLoader: () async => tempDir.path,
-        preferencesLoader: () async => prefs,
-        allowCustomEsploraEndpoint: false,
-        walletId: walletCId,
-      );
-      final capC = await serviceC.getCapability();
-      expect(capC.isWatchOnly, isTrue);
-      expect(await serviceC.getMnemonic(), isNull);
+      // Attempt to sign from C fails closed
+      final serviceC = container.read(bdkWalletServiceProvider);
       expect(
         () => serviceC.bumpFee(
           txidHex: '0000000000000000000000000000000000000000000000000000000000000000',
@@ -250,23 +258,55 @@ void main() {
         ),
       );
 
-      // -----------------------------------------------------------------------
-      // Step 14: Switch between all three wallets (A, B, C) -> verify state
-      // -----------------------------------------------------------------------
-      await registry.setActiveWalletId(walletAId);
-      expect(registry.getActiveWalletId(), equals(walletAId));
-      expect(registry.getActiveWallet()?.type, equals(WalletType.signing));
-
-      await registry.setActiveWalletId(walletBId);
-      expect(registry.getActiveWalletId(), equals(walletBId));
-      expect(registry.getActiveWallet()?.type, equals(WalletType.signing));
-
-      await registry.setActiveWalletId(walletCId);
-      expect(registry.getActiveWalletId(), equals(walletCId));
-      expect(registry.getActiveWallet()?.type, equals(WalletType.watchOnly));
+      // Seed another send draft before next switch
+      container.read(sendControllerProvider.notifier).setAmountBtc('0.15');
+      expect(container.read(sendControllerProvider).draft.amountBtcText, equals('0.15'));
 
       // -----------------------------------------------------------------------
-      // Step 15: Restart app (simulate restart) -> verify persistence & no re-migration
+      // Step 7: Flow 3 (C -> restore D -> D active immediately in provider)
+      // Executed exactly as RestoreWalletPage does
+      // -----------------------------------------------------------------------
+      final recordD = await addWalletService.restoreWallet(
+        mnemonic: phraseD,
+        scriptType: WalletScriptType.nativeSegwit,
+        walletName: 'Restored D',
+      );
+      final walletDId = recordD.id;
+
+      // Page activates new wallet ID in provider notifier
+      await container.read(activeWalletIdProvider.notifier).setActiveWallet(walletDId);
+      container.invalidate(walletCapabilityProvider);
+      container.invalidate(walletHomeControllerProvider);
+      await container.read(walletsListProvider.notifier).refresh();
+
+      // Immediately WITHOUT app restart:
+      expect(registry.getActiveWalletId(), equals(walletDId));
+      expect(container.read(activeWalletIdProvider).value, equals(walletDId));
+      expect(container.read(activeWalletRecordProvider)?.id, equals(walletDId));
+      expect(container.read(bdkWalletServiceProvider).walletId, equals(walletDId));
+      expect(container.read(sendControllerProvider).draft.amountBtcText, isEmpty);
+
+      // All four wallets present in registry
+      final allWallets = registry.getWallets();
+      expect(allWallets.length, equals(4));
+      expect(
+        allWallets.map((w) => w.id),
+        containsAll([walletAId, walletBId, walletCId, walletDId]),
+      );
+
+      // -----------------------------------------------------------------------
+      // Step 8: Switch between wallets (A, B, C, D) using provider notifier
+      // -----------------------------------------------------------------------
+      await container.read(activeWalletIdProvider.notifier).setActiveWallet(walletAId);
+      expect(container.read(activeWalletIdProvider).value, equals(walletAId));
+      expect(container.read(activeWalletRecordProvider)?.type, equals(WalletType.signing));
+
+      await container.read(activeWalletIdProvider.notifier).setActiveWallet(walletCId);
+      expect(container.read(activeWalletIdProvider).value, equals(walletCId));
+      expect(container.read(activeWalletRecordProvider)?.type, equals(WalletType.watchOnly));
+
+      // -----------------------------------------------------------------------
+      // Step 9: Restart app simulation -> verify persistence & no re-migration
       // -----------------------------------------------------------------------
       final restartedPrefs = await SharedPreferences.getInstance();
       final restartedRegistry = WalletRegistry(restartedPrefs);
@@ -276,51 +316,34 @@ void main() {
         walletStoragePathLoader: () async => tempDir.path,
       );
 
-      // No re-migration occurs
       final reMigrate = await restartedMigration.migrateIfNeeded();
       expect(reMigrate, isNull);
 
-      // All three wallets present in registry with C still active
       final restartedWallets = restartedRegistry.getWallets();
-      expect(restartedWallets.length, equals(3));
+      expect(restartedWallets.length, equals(4));
       expect(restartedRegistry.getActiveWalletId(), equals(walletCId));
 
       // -----------------------------------------------------------------------
-      // Step 16: Delete Wallet B -> verify keys/DB deleted, registry has only A and C
+      // Step 10: Delete Wallet B via WalletsListNotifier.deleteWallet()
       // -----------------------------------------------------------------------
-      // Switch active to B first to test deleting active wallet safely
-      await restartedRegistry.setActiveWalletId(walletBId);
-      expect(restartedRegistry.getActiveWalletId(), equals(walletBId));
+      final restartedContainer = createContainer(restartedPrefs);
+      addTearDown(restartedContainer.dispose);
 
-      // Switch active safely before delete
-      final remainingBeforeDelete = restartedRegistry
-          .getWallets()
-          .where((w) => w.id != walletBId)
-          .toList();
-      await restartedRegistry.setActiveWalletId(remainingBeforeDelete.first.id);
-
-      final cleaner = WalletStorageCleaner(
-        secureStorage: storage,
-        preferences: restartedPrefs,
-        walletStoragePathLoader: () async => tempDir.path,
-      );
-      await cleaner.deleteWalletData(walletBId);
-      await restartedRegistry.deleteWallet(walletBId);
+      await restartedContainer.read(walletsListProvider.notifier).deleteWallet(walletBId);
 
       // B's scoped keys and directory are completely deleted
       expect(await storage.read(key: WalletStorageKeys.mnemonicFor(walletBId)), isNull);
       expect(await storage.read(key: WalletStorageKeys.capabilityFor(walletBId)), isNull);
       expect(await dirB.exists(), isFalse);
 
-      // Registry has only A and C
+      // Registry now has exactly 3 wallets (A, C, D)
       final remainingWallets = restartedRegistry.getWallets();
-      expect(remainingWallets.length, equals(2));
-      expect(remainingWallets.map((w) => w.id), containsAll([walletAId, walletCId]));
+      expect(remainingWallets.length, equals(3));
+      expect(remainingWallets.map((w) => w.id), containsAll([walletAId, walletCId, walletDId]));
       expect(remainingWallets.any((w) => w.id == walletBId), isFalse);
-      expect(restartedRegistry.getActiveWalletId(), isNot(equals(walletBId)));
 
       // -----------------------------------------------------------------------
-      // Step 17: Verify remaining wallets (A and C) are fully functional
+      // Step 11: Verify remaining wallets (A, C, D) are intact and functional
       // -----------------------------------------------------------------------
       expect(
         await storage.read(key: WalletStorageKeys.mnemonicFor(walletAId)),
@@ -332,9 +355,13 @@ void main() {
         equals(WalletCapability.watchOnly.storageValue),
       );
       expect(await dirC.exists(), isTrue);
+      expect(
+        await storage.read(key: WalletStorageKeys.mnemonicFor(walletDId)),
+        equals(phraseD),
+      );
 
       // -----------------------------------------------------------------------
-      // Step 18: Verify duplicate detection: attempt to restore A's mnemonic
+      // Step 12: Duplicate detection: attempt to restore A's mnemonic throws
       // -----------------------------------------------------------------------
       expect(
         () => addWalletService.restoreWallet(

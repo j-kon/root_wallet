@@ -114,6 +114,112 @@ class WalletRecord {
     };
   }
 
+  static final RegExp _fingerprintRegex = RegExp(r'^[0-9A-Fa-f]{8}$');
+
+  /// Strict factory for parsing persistent [WalletRegistry] entries.
+  ///
+  /// Fails closed (throws [FormatException]) on missing/unknown fields,
+  /// disallowed types/networks, malformed timestamps, or invalid fingerprints.
+  factory WalletRecord.fromRegistryJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    if (id is! String || id.trim().isEmpty) {
+      throw const FormatException('Missing or empty wallet "id".');
+    }
+
+    final name = json['name'];
+    if (name is! String || name.trim().isEmpty) {
+      throw const FormatException('Missing or empty wallet "name".');
+    }
+
+    final rawType = json['type'];
+    if (rawType is! String || rawType.trim().isEmpty) {
+      throw const FormatException('Missing or empty wallet "type".');
+    }
+    final WalletType type;
+    switch (rawType.trim()) {
+      case 'signing':
+        type = WalletType.signing;
+        break;
+      case 'watchOnly':
+      case 'watch_only':
+        type = WalletType.watchOnly;
+        break;
+      default:
+        throw FormatException('Unknown or invalid wallet type "$rawType".');
+    }
+
+    final rawScript = json['scriptType'];
+    if (rawScript is! String || rawScript.trim().isEmpty) {
+      throw const FormatException('Missing or empty wallet "scriptType".');
+    }
+    final WalletScriptType scriptType;
+    switch (rawScript.trim()) {
+      case 'native_segwit':
+      case 'nativeSegwit':
+        scriptType = WalletScriptType.nativeSegwit;
+        break;
+      case 'taproot':
+        scriptType = WalletScriptType.taproot;
+        break;
+      case 'nested_segwit':
+      case 'nestedSegwit':
+        scriptType = WalletScriptType.nestedSegwit;
+        break;
+      case 'legacy':
+        scriptType = WalletScriptType.legacy;
+        break;
+      default:
+        throw FormatException('Unknown or invalid script type "$rawScript".');
+    }
+
+    final network = json['network'];
+    if (network is! String || network.trim().isEmpty) {
+      throw const FormatException('Missing or empty wallet "network".');
+    }
+    if (network.trim().toLowerCase() != 'testnet') {
+      throw FormatException(
+        'Unsupported network "$network" in registry. Only "testnet" is permitted.',
+      );
+    }
+
+    final rawCreatedAt = json['createdAt'];
+    if (rawCreatedAt is! String || rawCreatedAt.trim().isEmpty) {
+      throw const FormatException('Missing or empty wallet "createdAt".');
+    }
+    final createdAt = DateTime.tryParse(rawCreatedAt);
+    if (createdAt == null) {
+      throw FormatException('Malformed createdAt timestamp "$rawCreatedAt".');
+    }
+
+    final rawFingerprint = json['fingerprint'];
+    String? fingerprint;
+    if (rawFingerprint != null) {
+      if (rawFingerprint is! String || rawFingerprint.trim().isEmpty) {
+        throw const FormatException('Invalid fingerprint: expected non-empty string.');
+      }
+      final trimmedFp = rawFingerprint.trim();
+      if (!_fingerprintRegex.hasMatch(trimmedFp)) {
+        throw FormatException(
+          'Invalid fingerprint "$trimmedFp". Expected 8-character hex string.',
+        );
+      }
+      fingerprint = trimmedFp.toUpperCase();
+    }
+
+    final isActive = json['isActive'] as bool? ?? false;
+
+    return WalletRecord(
+      id: id.trim(),
+      name: name.trim(),
+      type: type,
+      scriptType: scriptType,
+      network: network.trim(),
+      createdAt: createdAt,
+      fingerprint: fingerprint,
+      isActive: isActive,
+    );
+  }
+
   factory WalletRecord.fromJson(Map<String, dynamic> json) {
     return WalletRecord(
       id: json['id'] as String,

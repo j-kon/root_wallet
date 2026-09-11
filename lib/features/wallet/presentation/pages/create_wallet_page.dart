@@ -45,6 +45,9 @@ class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
       try {
         final addWalletService = await ref.read(addWalletServiceProvider.future);
         final result = await addWalletService.createWallet(scriptType: _scriptType);
+        await ref
+            .read(activeWalletIdProvider.notifier)
+            .setActiveWallet(result.walletRecord!.id);
         ref.invalidate(walletCapabilityProvider);
         ref.invalidate(walletHomeControllerProvider);
         await ref.read(walletsListProvider.notifier).refresh();

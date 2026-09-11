@@ -11,6 +11,7 @@ import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
 import 'package:root_wallet/features/wallet/data/services/add_wallet_service.dart';
+import 'package:root_wallet/features/wallet/data/services/wallet_migration_service.dart';
 import 'package:root_wallet/features/wallet/data/services/wallet_storage_cleaner.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
@@ -421,7 +422,716 @@ void main() {
         isNotNull,
       );
     });
+
+    group('Strict Registry Schema Validation (Items 9, 10, 11)', () {
+      test('unknown or missing wallet type throws WalletRegistryException', () async {
+        final registry = WalletRegistry(prefs);
+
+        // Unknown wallet type
+        await prefs.setString(
+          WalletRegistry.registryKey,
+          jsonEncode([
+            {
+              'id': 'w_bad_type',
+              'name': 'Bad Type',
+              'type': 'quantum_multisig',
+              'scriptType': 'nativeSegwit',
+              'network': 'testnet',
+              'createdAt': DateTime.now().toIso8601String(),
+            }
+          ]),
+        );
+        expect(
+          () => registry.getWallets(),
+          throwsA(
+            isA<WalletRegistryException>().having(
+              (e) => e.message.toLowerCase(),
+              'message',
+              contains('wallet type'),
+            ),
+          ),
+        );
+
+        // Missing wallet type
+        await prefs.setString(
+          WalletRegistry.registryKey,
+          jsonEncode([
+            {
+              'id': 'w_missing_type',
+              'name': 'Missing Type',
+              'scriptType': 'nativeSegwit',
+              'network': 'testnet',
+              'createdAt': DateTime.now().toIso8601String(),
+            }
+          ]),
+        );
+        expect(
+          () => registry.getWallets(),
+          throwsA(
+            isA<WalletRegistryException>().having(
+              (e) => e.message.toLowerCase(),
+              'message',
+              contains('wallet "type"'),
+            ),
+          ),
+        );
+      });
+
+      test('unknown or missing script type throws WalletRegistryException', () async {
+        final registry = WalletRegistry(prefs);
+
+        // Unknown script type
+        await prefs.setString(
+          WalletRegistry.registryKey,
+          jsonEncode([
+            {
+              'id': 'w_bad_script',
+              'name': 'Bad Script',
+              'type': 'signing',
+              'scriptType': 'p2sh_unknown',
+              'network': 'testnet',
+              'createdAt': DateTime.now().toIso8601String(),
+            }
+          ]),
+        );
+        expect(
+          () => registry.getWallets(),
+          throwsA(
+            isA<WalletRegistryException>().having(
+              (e) => e.message.toLowerCase(),
+              'message',
+              contains('script type'),
+            ),
+          ),
+        );
+
+        // Missing script type
+        await prefs.setString(
+          WalletRegistry.registryKey,
+          jsonEncode([
+            {
+              'id': 'w_missing_script',
+              'name': 'Missing Script',
+              'type': 'signing',
+              'network': 'testnet',
+              'createdAt': DateTime.now().toIso8601String(),
+            }
+          ]),
+        );
+        expect(
+          () => registry.getWallets(),
+          throwsA(
+            isA<WalletRegistryException>().having(
+              (e) => e.message.toLowerCase(),
+              'message',
+              contains('wallet "scripttype"'),
+            ),
+          ),
+        );
+      });
+
+      test('network validation: mainnet, unknown network, or missing network throws WalletRegistryException', () async {
+        final registry = WalletRegistry(prefs);
+
+        // Mainnet disallowed
+        await prefs.setString(
+          WalletRegistry.registryKey,
+          jsonEncode([
+            {
+              'id': 'w_mainnet',
+              'name': 'Mainnet Wallet',
+              'type': 'signing',
+              'scriptType': 'nativeSegwit',
+              'network': 'mainnet',
+              'createdAt': DateTime.now().toIso8601String(),
+            }
+          ]),
+        );
+        expect(
+          () => registry.getWallets(),
+          throwsA(
+            isA<WalletRegistryException>().having(
+              (e) => e.message.toLowerCase(),
+              'message',
+              contains('network'),
+            ),
+          ),
+        );
+
+        // Unknown network
+        await prefs.setString(
+          WalletRegistry.registryKey,
+          jsonEncode([
+            {
+              'id': 'w_unknown_net',
+              'name': 'Unknown Net Wallet',
+              'type': 'signing',
+              'scriptType': 'nativeSegwit',
+              'network': 'signet',
+              'createdAt': DateTime.now().toIso8601String(),
+            }
+          ]),
+        );
+        expect(
+          () => registry.getWallets(),
+          throwsA(
+            isA<WalletRegistryException>().having(
+              (e) => e.message.toLowerCase(),
+              'message',
+              contains('network'),
+            ),
+          ),
+        );
+
+        // Missing network
+        await prefs.setString(
+          WalletRegistry.registryKey,
+          jsonEncode([
+            {
+              'id': 'w_missing_net',
+              'name': 'Missing Net Wallet',
+              'type': 'signing',
+              'scriptType': 'nativeSegwit',
+              'createdAt': DateTime.now().toIso8601String(),
+            }
+          ]),
+        );
+        expect(
+          () => registry.getWallets(),
+          throwsA(
+            isA<WalletRegistryException>().having(
+              (e) => e.message.toLowerCase(),
+              'message',
+              contains('network'),
+            ),
+          ),
+        );
+      });
+
+      test('malformed createdAt throws WalletRegistryException', () async {
+        final registry = WalletRegistry(prefs);
+
+        await prefs.setString(
+          WalletRegistry.registryKey,
+          jsonEncode([
+            {
+              'id': 'w_bad_date',
+              'name': 'Bad Date Wallet',
+              'type': 'signing',
+              'scriptType': 'nativeSegwit',
+              'network': 'testnet',
+              'createdAt': 'not_a_valid_iso_date',
+            }
+          ]),
+        );
+        expect(
+          () => registry.getWallets(),
+          throwsA(
+            isA<WalletRegistryException>().having(
+              (e) => e.message.toLowerCase(),
+              'message',
+              contains('createdat'),
+            ),
+          ),
+        );
+      });
+
+      test('fingerprint validation: non-8-hex throws, valid uppercase 8-hex and null succeed', () async {
+        final registry = WalletRegistry(prefs);
+
+        // Invalid fingerprints (e.g. 'xyz', '12345', '123456789', 'GHIJKLMN')
+        for (final badFp in ['xyz', '12345', '123456789', 'GHIJKLMN']) {
+          await prefs.setString(
+            WalletRegistry.registryKey,
+            jsonEncode([
+              {
+                'id': 'w_bad_fp',
+                'name': 'Bad Fp Wallet',
+                'type': 'signing',
+                'scriptType': 'nativeSegwit',
+                'network': 'testnet',
+                'createdAt': DateTime.now().toIso8601String(),
+                'fingerprint': badFp,
+              }
+            ]),
+          );
+          expect(
+            () => registry.getWallets(),
+            throwsA(
+              isA<WalletRegistryException>().having(
+                (e) => e.message.toLowerCase(),
+                'message',
+                contains('fingerprint'),
+              ),
+            ),
+            reason: 'Fingerprint "$badFp" must fail schema validation',
+          );
+        }
+
+        // Valid uppercase 8-hex fingerprint
+        await prefs.setString(
+          WalletRegistry.registryKey,
+          jsonEncode([
+            {
+              'id': 'w_valid_fp',
+              'name': 'Valid Fp Wallet',
+              'type': 'signing',
+              'scriptType': 'nativeSegwit',
+              'network': 'testnet',
+              'createdAt': DateTime.now().toIso8601String(),
+              'fingerprint': '73C5DA0A',
+            }
+          ]),
+        );
+        final walletsWithFp = registry.getWallets();
+        expect(walletsWithFp.length, equals(1));
+        expect(walletsWithFp.first.fingerprint, equals('73C5DA0A'));
+
+        // Valid null / omitted fingerprint
+        await prefs.setString(
+          WalletRegistry.registryKey,
+          jsonEncode([
+            {
+              'id': 'w_null_fp',
+              'name': 'Null Fp Wallet',
+              'type': 'signing',
+              'scriptType': 'nativeSegwit',
+              'network': 'testnet',
+              'createdAt': DateTime.now().toIso8601String(),
+              'fingerprint': null,
+            }
+          ]),
+        );
+        final walletsWithNullFp = registry.getWallets();
+        expect(walletsWithNullFp.length, equals(1));
+        expect(walletsWithNullFp.first.fingerprint, isNull);
+      });
+    });
+
+    group('Transactional Add-Wallet Rollback & Failure Injection (Items 3, 4)', () {
+      test('secure-storage write failure rolls back partial wallet without touching wallet A or decoy', () async {
+        final tempDir = Directory.systemTemp.createTempSync('add_fail_sec_');
+        addTearDown(() {
+          try {
+            tempDir.deleteSync(recursive: true);
+          } catch (_) {}
+        });
+
+        final faultyStorage = FaultySecureStorage(storage);
+        const decoyPhrase = 'decoy seed phrase preserved 123';
+        await faultyStorage.write(
+          key: WalletStorageKeys.decoyMnemonic,
+          value: decoyPhrase,
+        );
+
+        // Pre-create Wallet A
+        final addWalletService = AddWalletService(
+          secureStorage: faultyStorage,
+          preferences: prefs,
+          walletStoragePathLoader: () async => tempDir.path,
+        );
+
+        final resultA = await addWalletService.createWallet(
+          scriptType: WalletScriptType.nativeSegwit,
+          walletName: 'Wallet A',
+        );
+        final walletAId = resultA.walletRecord!.id;
+        final phraseA = resultA.recoveryPhrase;
+
+        final registry = WalletRegistry(prefs);
+        expect(registry.getWallets().length, equals(1));
+
+        // Arm faulty storage to fail on capability key write of subsequent wallet
+        faultyStorage.failOnWrite = true;
+        faultyStorage.failKeySubstring = 'capability';
+
+        await expectLater(
+          addWalletService.createWallet(
+            scriptType: WalletScriptType.nativeSegwit,
+            walletName: 'Wallet B (Fails)',
+          ),
+          throwsA(isA<AddWalletException>()),
+        );
+
+        // Disarm
+        faultyStorage.failOnWrite = false;
+        faultyStorage.failKeySubstring = null;
+
+        // Registry still only contains Wallet A
+        final wallets = registry.getWallets();
+        expect(wallets.length, equals(1));
+        expect(wallets.first.id, equals(walletAId));
+
+        // Wallet A secrets and files remain 100% intact
+        expect(
+          await faultyStorage.read(key: WalletStorageKeys.mnemonicFor(walletAId)),
+          equals(phraseA),
+        );
+        expect(
+          await Directory('${tempDir.path}/wallets/$walletAId').exists(),
+          isTrue,
+        );
+
+        // Decoy phrase remains 100% intact
+        expect(
+          await faultyStorage.read(key: WalletStorageKeys.decoyMnemonic),
+          equals(decoyPhrase),
+        );
+      });
+
+      test('directory creation failure rolls back partial wallet without touching wallet A or decoy', () async {
+        final tempDir = Directory.systemTemp.createTempSync('add_fail_dir_');
+        addTearDown(() {
+          try {
+            tempDir.deleteSync(recursive: true);
+          } catch (_) {}
+        });
+
+        const decoyPhrase = 'decoy seed phrase preserved 456';
+        await storage.write(
+          key: WalletStorageKeys.decoyMnemonic,
+          value: decoyPhrase,
+        );
+
+        // Setup Wallet A
+        final normalService = AddWalletService(
+          secureStorage: storage,
+          preferences: prefs,
+          walletStoragePathLoader: () async => tempDir.path,
+        );
+        final resultA = await normalService.createWallet(
+          scriptType: WalletScriptType.nativeSegwit,
+          walletName: 'Wallet A',
+        );
+        final walletAId = resultA.walletRecord!.id;
+
+        // Create service with path loader that throws
+        final faultyService = AddWalletService(
+          secureStorage: storage,
+          preferences: prefs,
+          walletStoragePathLoader: () async => throw const FileSystemException('Path loader failed'),
+        );
+
+        await expectLater(
+          faultyService.createWallet(
+            scriptType: WalletScriptType.nativeSegwit,
+            walletName: 'Wallet B (Fails)',
+          ),
+          throwsA(
+            isA<AddWalletException>().having(
+              (e) => e.message,
+              'message',
+              contains('isolated storage directory'),
+            ),
+          ),
+        );
+
+        // Registry still only contains Wallet A
+        final registry = WalletRegistry(prefs);
+        final wallets = registry.getWallets();
+        expect(wallets.length, equals(1));
+        expect(wallets.first.id, equals(walletAId));
+
+        // Decoy preserved
+        expect(
+          await storage.read(key: WalletStorageKeys.decoyMnemonic),
+          equals(decoyPhrase),
+        );
+      });
+
+      test('registry write failure rolls back partial wallet and preserves existing wallets', () async {
+        final tempDir = Directory.systemTemp.createTempSync('add_fail_reg_');
+        addTearDown(() {
+          try {
+            tempDir.deleteSync(recursive: true);
+          } catch (_) {}
+        });
+
+        final normalService = AddWalletService(
+          secureStorage: storage,
+          preferences: prefs,
+          walletStoragePathLoader: () async => tempDir.path,
+        );
+        final resultA = await normalService.createWallet(
+          scriptType: WalletScriptType.nativeSegwit,
+          walletName: 'Wallet A',
+        );
+        final walletAId = resultA.walletRecord!.id;
+
+        final faultyRegistry = FaultyWalletRegistry(prefs);
+        final faultyService = AddWalletService(
+          secureStorage: storage,
+          preferences: prefs,
+          registry: faultyRegistry,
+          walletStoragePathLoader: () async => tempDir.path,
+        );
+
+        // Arm registry failure
+        faultyRegistry.failOnRegister = true;
+
+        await expectLater(
+          faultyService.createWallet(
+            scriptType: WalletScriptType.nativeSegwit,
+            walletName: 'Wallet B (Fails)',
+          ),
+          throwsA(
+            isA<AddWalletException>().having(
+              (e) => e.message,
+              'message',
+              contains('Injected WalletRegistry write failure'),
+            ),
+          ),
+        );
+
+        // Registry only contains Wallet A
+        final wallets = faultyRegistry.getWallets();
+        expect(wallets.length, equals(1));
+        expect(wallets.first.id, equals(walletAId));
+      });
+    });
+
+    group('Safe Delete Failure Injection & Retryability (Items 5, 6, 7, 8)', () {
+      test('cleaner failure keeps wallet in registry, switches active safely, and is retryable', () async {
+        final tempDir = Directory.systemTemp.createTempSync('del_fail_');
+        addTearDown(() {
+          try {
+            tempDir.deleteSync(recursive: true);
+          } catch (_) {}
+        });
+
+        final faultyStorage = FaultySecureStorage(storage);
+        const decoyPhrase = 'decoy canary delete test 789';
+        await faultyStorage.write(
+          key: WalletStorageKeys.decoyMnemonic,
+          value: decoyPhrase,
+        );
+
+        final addWalletService = AddWalletService(
+          secureStorage: faultyStorage,
+          preferences: prefs,
+          walletStoragePathLoader: () async => tempDir.path,
+        );
+
+        final resultA = await addWalletService.createWallet(
+          scriptType: WalletScriptType.nativeSegwit,
+          walletName: 'Wallet A',
+        );
+        final walletAId = resultA.walletRecord!.id;
+
+        final resultB = await addWalletService.createWallet(
+          scriptType: WalletScriptType.nativeSegwit,
+          walletName: 'Wallet B',
+        );
+        final walletBId = resultB.walletRecord!.id;
+
+        final registry = WalletRegistry(prefs);
+        await registry.setActiveWalletId(walletBId);
+
+        final container = ProviderContainer(
+          overrides: [
+            secureStorageProvider.overrideWithValue(faultyStorage),
+            sharedPreferencesProvider.overrideWith((ref) => prefs),
+            walletRegistryProvider.overrideWith((ref) => registry),
+            walletStoragePathProvider.overrideWith((ref) => tempDir.path),
+            walletStorageCleanerProvider.overrideWith(
+              (ref) => WalletStorageCleaner(
+                secureStorage: faultyStorage,
+                preferences: prefs,
+                walletStoragePathLoader: () async => tempDir.path,
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        // Initialize active wallet
+        await container.read(activeWalletIdProvider.future);
+        await container.read(walletsListProvider.future);
+        expect(registry.getActiveWalletId(), equals(walletBId));
+
+        // Arm faulty storage to fail on delete of Wallet B's keys
+        faultyStorage.failOnDelete = true;
+        faultyStorage.failKeySubstring = walletBId;
+
+        // Attempt to delete active Wallet B -> cleaner throws WalletStorageCleanupException
+        await expectLater(
+          container.read(walletsListProvider.notifier).deleteWallet(walletBId),
+          throwsA(isA<WalletStorageCleanupException>()),
+        );
+
+        // 1. Registry entry for B remains intact (not deleted)
+        expect(registry.getWallets().any((w) => w.id == walletBId), isTrue);
+        expect(registry.getWallets().length, equals(2));
+
+        // 2. Active wallet points safely to replacement (Wallet A)
+        expect(registry.getActiveWalletId(), equals(walletAId));
+        expect(container.read(activeWalletIdProvider).value, equals(walletAId));
+
+        // 3. Wallet A secrets and decoy are untouched
+        expect(
+          await faultyStorage.read(key: WalletStorageKeys.mnemonicFor(walletAId)),
+          equals(resultA.recoveryPhrase),
+        );
+        expect(
+          await faultyStorage.read(key: WalletStorageKeys.decoyMnemonic),
+          equals(decoyPhrase),
+        );
+
+        // 4. Disarm storage failure and retry deletion -> succeeds!
+        faultyStorage.failOnDelete = false;
+        faultyStorage.failKeySubstring = null;
+
+        await container.read(walletsListProvider.notifier).deleteWallet(walletBId);
+
+        // Now B is completely purged from registry and storage
+        expect(registry.getWallets().any((w) => w.id == walletBId), isFalse);
+        expect(registry.getWallets().length, equals(1));
+        expect(await faultyStorage.read(key: WalletStorageKeys.mnemonicFor(walletBId)), isNull);
+        expect(await Directory('${tempDir.path}/wallets/$walletBId').exists(), isFalse);
+
+        // A and decoy still intact
+        expect(registry.getActiveWalletId(), equals(walletAId));
+        expect(
+          await faultyStorage.read(key: WalletStorageKeys.mnemonicFor(walletAId)),
+          equals(resultA.recoveryPhrase),
+        );
+        expect(
+          await faultyStorage.read(key: WalletStorageKeys.decoyMnemonic),
+          equals(decoyPhrase),
+        );
+      });
+
+      test('filesystem deletion failure in cleaner throws WalletStorageCleanupException and preserves registry', () async {
+        final tempDir = Directory.systemTemp.createTempSync('del_fail_fs_');
+        addTearDown(() {
+          try {
+            tempDir.deleteSync(recursive: true);
+          } catch (_) {}
+        });
+
+        final addWalletService = AddWalletService(
+          secureStorage: storage,
+          preferences: prefs,
+          walletStoragePathLoader: () async => tempDir.path,
+        );
+
+        await addWalletService.createWallet(
+          scriptType: WalletScriptType.nativeSegwit,
+          walletName: 'Wallet A',
+        );
+        final resultB = await addWalletService.createWallet(
+          scriptType: WalletScriptType.nativeSegwit,
+          walletName: 'Wallet B',
+        );
+
+        final registry = WalletRegistry(prefs);
+
+        // Create cleaner whose path loader fails during directory deletion
+        final faultyCleaner = WalletStorageCleaner(
+          secureStorage: storage,
+          preferences: prefs,
+          walletStoragePathLoader: () async => throw const FileSystemException('Path loader error'),
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            secureStorageProvider.overrideWithValue(storage),
+            sharedPreferencesProvider.overrideWith((ref) => prefs),
+            walletRegistryProvider.overrideWith((ref) => registry),
+            walletStoragePathProvider.overrideWith((ref) => tempDir.path),
+            walletStorageCleanerProvider.overrideWith((ref) => faultyCleaner),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await container.read(activeWalletIdProvider.future);
+        await container.read(walletsListProvider.future);
+
+        await expectLater(
+          container.read(walletsListProvider.notifier).deleteWallet(resultB.walletRecord!.id),
+          throwsA(isA<WalletStorageCleanupException>()),
+        );
+
+        // Registry entry remains intact
+        expect(registry.getWallets().any((w) => w.id == resultB.walletRecord!.id), isTrue);
+      });
+    });
+
+    group('Migration Path-Loader Failure Injection (Item 12)', () {
+      test('path loader throwing fails closed with WalletMigrationException', () async {
+        // Setup legacy data
+        await storage.write(
+          key: WalletStorageKeys.legacyMnemonic,
+          value: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+        );
+        await storage.write(
+          key: WalletStorageKeys.legacyScriptType,
+          value: 'nativeSegwit',
+        );
+
+        final migrationService = WalletMigrationService(
+          secureStorage: storage,
+          preferences: prefs,
+          walletStoragePathLoader: () async => throw const FileSystemException('Cannot access storage'),
+        );
+
+        await expectLater(
+          migrationService.migrateIfNeeded(),
+          throwsA(
+            isA<WalletMigrationException>().having(
+              (e) => e.message,
+              'message',
+              contains('wallet storage path'),
+            ),
+          ),
+        );
+
+        // Registry is unmigrated and clean
+        final registry = WalletRegistry(prefs);
+        expect(registry.hasWallets(), isFalse);
+      });
+    });
   });
+}
+
+class FaultySecureStorage implements SecureStorage {
+  FaultySecureStorage([SecureStorage? inner]) : _inner = inner ?? InMemorySecureStorage();
+  final SecureStorage _inner;
+  bool failOnWrite = false;
+  bool failOnDelete = false;
+  String? failKeySubstring;
+
+  @override
+  Future<void> write({required String key, required String value}) async {
+    if (failOnWrite && (failKeySubstring == null || key.contains(failKeySubstring!))) {
+      throw const FileSystemException('Injected SecureStorage write failure');
+    }
+    return _inner.write(key: key, value: value);
+  }
+
+  @override
+  Future<String?> read({required String key}) => _inner.read(key: key);
+
+  @override
+  Future<void> delete({required String key}) async {
+    if (failOnDelete && (failKeySubstring == null || key.contains(failKeySubstring!))) {
+      throw const FileSystemException('Injected SecureStorage delete failure');
+    }
+    return _inner.delete(key: key);
+  }
+}
+
+class FaultyWalletRegistry extends WalletRegistry {
+  FaultyWalletRegistry(super.preferences);
+  bool failOnRegister = false;
+
+  @override
+  Future<void> registerWallet(WalletRecord record, {bool makeActive = false}) async {
+    if (failOnRegister) {
+      throw const FileSystemException('Injected WalletRegistry write failure');
+    }
+    return super.registerWallet(record, makeActive: makeActive);
+  }
 }
 
 class _FakeBiometrics implements BiometricService {

@@ -12,28 +12,38 @@ import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AddWalletDuplicateException implements Exception {
-  const AddWalletDuplicateException(this.message);
+class AddWalletException implements Exception {
+  const AddWalletException(this.message, [this.cause]);
   final String message;
+  final Object? cause;
 
   @override
-  String toString() => message;
+  String toString() => 'AddWalletException: $message${cause != null ? " ($cause)" : ""}';
+}
+
+class AddWalletDuplicateException extends AddWalletException {
+  const AddWalletDuplicateException(super.message, [super.cause]);
 }
 
 /// Service executing "Add Wallet" flows (create, restore, import watch-only)
-/// with strict isolation and zero interference with existing wallets or decoy storage.
+/// with strict isolation, transactionality, and zero interference with existing wallets or decoy storage.
 class AddWalletService {
   AddWalletService({
     required SecureStorage secureStorage,
     required SharedPreferences preferences,
     required Future<String> Function() walletStoragePathLoader,
+    WalletRegistry? registry,
   })  : _secureStorage = secureStorage,
         _preferences = preferences,
-        _walletStoragePathLoader = walletStoragePathLoader;
+        _walletStoragePathLoader = walletStoragePathLoader,
+        _registry = registry;
 
   final SecureStorage _secureStorage;
   final SharedPreferences _preferences;
   final Future<String> Function() _walletStoragePathLoader;
+  final WalletRegistry? _registry;
+
+  WalletRegistry get _registryInstance => _registry ?? WalletRegistry(_preferences);
 
   static const _networkKind = bdk.NetworkKind.test;
   static const _networkName = 'testnet';
@@ -44,8 +54,8 @@ class AddWalletService {
   /// - Generates a new unique [WalletRecord.generateId()].
   /// - Writes only to wallet-scoped secure storage keys (`wallet.<id>.*`).
   /// - Never touches global legacy keys or decoy mnemonic.
-  /// - Creates isolated database directory `wallets/<id>/`.
-  /// - Registers in [WalletRegistry] and activates only after full success.
+  /// - Creates isolated database directory `wallets/<id>/` (fails closed if creation fails).
+  /// - Rolls back newly created wallet data on any failure before completion.
   /// - Preserves all existing wallets, databases, and labels.
   Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
@@ -67,56 +77,73 @@ class AddWalletService {
     pubKey.dispose();
     parsed.dispose();
 
-    // Scoped storage writes only
-    await _secureStorage.write(
-      key: WalletStorageKeys.mnemonicFor(id),
-      value: phrase,
-    );
-    await _secureStorage.write(
-      key: WalletStorageKeys.scriptTypeFor(id),
-      value: scriptType.storageValue,
-    );
-    await _secureStorage.write(
-      key: WalletStorageKeys.capabilityFor(id),
-      value: WalletCapability.signing.storageValue,
-    );
-    await _secureStorage.delete(
-      key: WalletStorageKeys.externalDescriptorFor(id),
-    );
-    await _secureStorage.delete(
-      key: WalletStorageKeys.internalDescriptorFor(id),
-    );
+    try {
+      // 1. Scoped storage writes
+      await _secureStorage.write(
+        key: WalletStorageKeys.mnemonicFor(id),
+        value: phrase,
+      );
+      await _secureStorage.write(
+        key: WalletStorageKeys.scriptTypeFor(id),
+        value: scriptType.storageValue,
+      );
+      await _secureStorage.write(
+        key: WalletStorageKeys.capabilityFor(id),
+        value: WalletCapability.signing.storageValue,
+      );
+      await _secureStorage.delete(
+        key: WalletStorageKeys.externalDescriptorFor(id),
+      );
+      await _secureStorage.delete(
+        key: WalletStorageKeys.internalDescriptorFor(id),
+      );
 
-    // Create isolated directory
-    await _createIsolatedDir(id);
+      // 2. Verify scoped storage write
+      final readBack = await _secureStorage.read(
+        key: WalletStorageKeys.mnemonicFor(id),
+      );
+      if (readBack != phrase) {
+        throw const AddWalletException(
+          'Secure storage verification failed: written mnemonic mismatch.',
+        );
+      }
 
-    final registry = WalletRegistry(_preferences);
-    final defaultName = 'Wallet ${registry.getWallets().length + 1}';
-    final record = WalletRecord(
-      id: id,
-      name: walletName ?? defaultName,
-      type: WalletType.signing,
-      scriptType: scriptType,
-      network: _networkName,
-      createdAt: DateTime.now(),
-      fingerprint: fingerprint,
-      isActive: true,
-    );
+      // 3. Create isolated directory (fail closed)
+      await _createIsolatedDir(id);
 
-    await registry.registerWallet(record, makeActive: true);
+      // 4. Register record in registry
+      final registry = _registryInstance;
+      final defaultName = 'Wallet ${registry.getWallets().length + 1}';
+      final record = WalletRecord(
+        id: id,
+        name: walletName ?? defaultName,
+        type: WalletType.signing,
+        scriptType: scriptType,
+        network: _networkName,
+        createdAt: DateTime.now(),
+        fingerprint: fingerprint,
+        isActive: false,
+      );
 
-    final identity = WalletIdentity(
-      id: id,
-      fingerprint: fingerprint,
-      network: _networkName,
-      capability: WalletCapability.signing,
-    );
+      await registry.registerWallet(record, makeActive: false);
 
-    return WalletCreationResult(
-      walletIdentity: identity,
-      recoveryPhrase: phrase,
-      walletRecord: record,
-    );
+      final identity = WalletIdentity(
+        id: id,
+        fingerprint: fingerprint,
+        network: _networkName,
+        capability: WalletCapability.signing,
+      );
+
+      return WalletCreationResult(
+        walletIdentity: identity,
+        recoveryPhrase: phrase,
+        walletRecord: record,
+      );
+    } catch (e) {
+      await _rollbackPartialWallet(id);
+      if (e is AddWalletException) rethrow;
+      throw AddWalletException('Failed to create wallet "$id": $e', e);
+    }
   }
 
   /// Restores an existing wallet from recovery phrase into an isolated namespace.
@@ -127,8 +154,8 @@ class AddWalletService {
   /// - Prevents duplicate signing wallets with the same master fingerprint and script type.
   /// - Writes only to wallet-scoped secure storage keys (`wallet.<id>.*`).
   /// - Never touches global legacy keys or decoy credentials.
-  /// - Creates isolated database directory `wallets/<id>/`.
-  /// - Registers in [WalletRegistry] and activates on success.
+  /// - Creates isolated database directory `wallets/<id>/` (fails closed if creation fails).
+  /// - Rolls back newly created wallet data on any failure before completion.
   Future<WalletRecord> restoreWallet({
     required String mnemonic,
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
@@ -156,7 +183,7 @@ class AddWalletService {
     parsed.dispose();
 
     // Duplicate detection: check if same signing wallet + script type already exists
-    final registry = WalletRegistry(_preferences);
+    final registry = _registryInstance;
     final existingWallets = registry.getWallets();
     for (final w in existingWallets) {
       if (w.isSigning &&
@@ -171,43 +198,60 @@ class AddWalletService {
 
     final id = WalletRecord.generateId();
 
-    // Scoped storage writes only
-    await _secureStorage.write(
-      key: WalletStorageKeys.mnemonicFor(id),
-      value: normalized,
-    );
-    await _secureStorage.write(
-      key: WalletStorageKeys.scriptTypeFor(id),
-      value: scriptType.storageValue,
-    );
-    await _secureStorage.write(
-      key: WalletStorageKeys.capabilityFor(id),
-      value: WalletCapability.signing.storageValue,
-    );
-    await _secureStorage.delete(
-      key: WalletStorageKeys.externalDescriptorFor(id),
-    );
-    await _secureStorage.delete(
-      key: WalletStorageKeys.internalDescriptorFor(id),
-    );
+    try {
+      // 1. Scoped storage writes
+      await _secureStorage.write(
+        key: WalletStorageKeys.mnemonicFor(id),
+        value: normalized,
+      );
+      await _secureStorage.write(
+        key: WalletStorageKeys.scriptTypeFor(id),
+        value: scriptType.storageValue,
+      );
+      await _secureStorage.write(
+        key: WalletStorageKeys.capabilityFor(id),
+        value: WalletCapability.signing.storageValue,
+      );
+      await _secureStorage.delete(
+        key: WalletStorageKeys.externalDescriptorFor(id),
+      );
+      await _secureStorage.delete(
+        key: WalletStorageKeys.internalDescriptorFor(id),
+      );
 
-    // Create isolated directory
-    await _createIsolatedDir(id);
+      // 2. Verify scoped storage write
+      final readBack = await _secureStorage.read(
+        key: WalletStorageKeys.mnemonicFor(id),
+      );
+      if (readBack != normalized) {
+        throw const AddWalletException(
+          'Secure storage verification failed: written mnemonic mismatch.',
+        );
+      }
 
-    final defaultName = 'Restored Wallet ${existingWallets.length + 1}';
-    final record = WalletRecord(
-      id: id,
-      name: walletName ?? defaultName,
-      type: WalletType.signing,
-      scriptType: scriptType,
-      network: _networkName,
-      createdAt: DateTime.now(),
-      fingerprint: fingerprint,
-      isActive: true,
-    );
+      // 3. Create isolated directory (fail closed)
+      await _createIsolatedDir(id);
 
-    await registry.registerWallet(record, makeActive: true);
-    return record;
+      // 4. Register record in registry
+      final defaultName = 'Restored Wallet ${existingWallets.length + 1}';
+      final record = WalletRecord(
+        id: id,
+        name: walletName ?? defaultName,
+        type: WalletType.signing,
+        scriptType: scriptType,
+        network: _networkName,
+        createdAt: DateTime.now(),
+        fingerprint: fingerprint,
+        isActive: false,
+      );
+
+      await registry.registerWallet(record, makeActive: false);
+      return record;
+    } catch (e) {
+      await _rollbackPartialWallet(id);
+      if (e is AddWalletException) rethrow;
+      throw AddWalletException('Failed to restore wallet "$id": $e', e);
+    }
   }
 
   /// Imports a watch-only wallet from public descriptor / tpub into an isolated namespace.
@@ -217,8 +261,8 @@ class AddWalletService {
   /// - Prevents duplicate watch-only wallets with identical external descriptor.
   /// - Writes only to wallet-scoped secure storage keys (`wallet.<id>.*`).
   /// - NEVER deletes or touches decoy mnemonic or signing mnemonics.
-  /// - Creates isolated database directory `wallets/<id>/`.
-  /// - Registers in [WalletRegistry] and activates on success.
+  /// - Creates isolated database directory `wallets/<id>/` (fails closed if creation fails).
+  /// - Rolls back newly created wallet data on any failure before completion.
   Future<WalletRecord> importWatchOnlyWallet({
     required String externalDescriptor,
     String? internalDescriptor,
@@ -230,7 +274,7 @@ class AddWalletService {
     );
 
     // Duplicate detection: check if identical external descriptor is already imported
-    final registry = WalletRegistry(_preferences);
+    final registry = _registryInstance;
     final existingWallets = registry.getWallets();
     for (final w in existingWallets) {
       if (w.isWatchOnly) {
@@ -248,49 +292,66 @@ class AddWalletService {
 
     final id = WalletRecord.generateId();
 
-    // Scoped storage writes only
-    await _secureStorage.write(
-      key: WalletStorageKeys.capabilityFor(id),
-      value: WalletCapability.watchOnly.storageValue,
-    );
-    await _secureStorage.write(
-      key: WalletStorageKeys.externalDescriptorFor(id),
-      value: validated.externalDescriptor,
-    );
-    if (validated.internalDescriptor != null &&
-        validated.internalDescriptor!.isNotEmpty) {
+    try {
+      // 1. Scoped storage writes
       await _secureStorage.write(
-        key: WalletStorageKeys.internalDescriptorFor(id),
-        value: validated.internalDescriptor!,
+        key: WalletStorageKeys.capabilityFor(id),
+        value: WalletCapability.watchOnly.storageValue,
       );
-    } else {
-      await _secureStorage.delete(
-        key: WalletStorageKeys.internalDescriptorFor(id),
+      await _secureStorage.write(
+        key: WalletStorageKeys.externalDescriptorFor(id),
+        value: validated.externalDescriptor,
       );
+      if (validated.internalDescriptor != null &&
+          validated.internalDescriptor!.isNotEmpty) {
+        await _secureStorage.write(
+          key: WalletStorageKeys.internalDescriptorFor(id),
+          value: validated.internalDescriptor!,
+        );
+      } else {
+        await _secureStorage.delete(
+          key: WalletStorageKeys.internalDescriptorFor(id),
+        );
+      }
+      await _secureStorage.write(
+        key: WalletStorageKeys.scriptTypeFor(id),
+        value: validated.scriptType.storageValue,
+      );
+      await _secureStorage.delete(key: WalletStorageKeys.mnemonicFor(id));
+
+      // 2. Verify scoped storage write
+      final readBack = await _secureStorage.read(
+        key: WalletStorageKeys.externalDescriptorFor(id),
+      );
+      if (readBack != validated.externalDescriptor) {
+        throw const AddWalletException(
+          'Secure storage verification failed: written descriptor mismatch.',
+        );
+      }
+
+      // 3. Create isolated directory (fail closed)
+      await _createIsolatedDir(id);
+
+      // 4. Register record in registry
+      final defaultName = 'Watch-Only ${existingWallets.length + 1}';
+      final record = WalletRecord(
+        id: id,
+        name: walletName ?? defaultName,
+        type: WalletType.watchOnly,
+        scriptType: validated.scriptType,
+        network: _networkName,
+        createdAt: DateTime.now(),
+        fingerprint: validated.fingerprint,
+        isActive: false,
+      );
+
+      await registry.registerWallet(record, makeActive: false);
+      return record;
+    } catch (e) {
+      await _rollbackPartialWallet(id);
+      if (e is AddWalletException) rethrow;
+      throw AddWalletException('Failed to import watch-only wallet "$id": $e', e);
     }
-    await _secureStorage.write(
-      key: WalletStorageKeys.scriptTypeFor(id),
-      value: validated.scriptType.storageValue,
-    );
-    await _secureStorage.delete(key: WalletStorageKeys.mnemonicFor(id));
-
-    // Create isolated directory
-    await _createIsolatedDir(id);
-
-    final defaultName = 'Watch-Only ${existingWallets.length + 1}';
-    final record = WalletRecord(
-      id: id,
-      name: walletName ?? defaultName,
-      type: WalletType.watchOnly,
-      scriptType: validated.scriptType,
-      network: _networkName,
-      createdAt: DateTime.now(),
-      fingerprint: validated.fingerprint,
-      isActive: true,
-    );
-
-    await registry.registerWallet(record, makeActive: true);
-    return record;
   }
 
   Future<void> _createIsolatedDir(String walletId) async {
@@ -301,9 +362,38 @@ class AddWalletService {
         await isolatedDir.delete(recursive: true);
       }
       await isolatedDir.create(recursive: true);
-    } catch (_) {
-      // Non-fatal in headless unit tests where path loader is mock/unavailable
+    } catch (e) {
+      throw AddWalletException(
+        'Failed to create isolated storage directory for wallet "$walletId": $e',
+        e,
+      );
     }
+  }
+
+  Future<void> _rollbackPartialWallet(String walletId) async {
+    // 1. Delete scoped secure storage keys
+    for (final key in WalletStorageKeys.allKeysFor(walletId)) {
+      try {
+        await _secureStorage.delete(key: key);
+      } catch (_) {}
+    }
+
+    // 2. Delete isolated directory if created
+    try {
+      final basePath = await _walletStoragePathLoader();
+      final dir = Directory('$basePath/wallets/$walletId');
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
+    } catch (_) {}
+
+    // 3. Remove from registry if registered
+    try {
+      final registry = _registryInstance;
+      if (registry.getWallets().any((w) => w.id == walletId)) {
+        await registry.deleteWallet(walletId);
+      }
+    } catch (_) {}
   }
 
   String _normalizeMnemonic(String mnemonic) {

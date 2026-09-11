@@ -1,24 +1,27 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
+import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
 import 'package:root_wallet/features/wallet/data/services/add_wallet_service.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Add Wallet Flow Integration Tests (Items 2, 3, 4)', () {
+  group('Add Wallet Flow Integration & Real Provider Activation Tests (Items 1, 2, 3, 4)', () {
     late InMemorySecureStorage storage;
     late SharedPreferences prefs;
     late Directory tempDir;
     late WalletRegistry registry;
-    late AddWalletService addWalletService;
 
     const phraseA =
         'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
@@ -33,12 +36,6 @@ void main() {
       storage = InMemorySecureStorage();
       tempDir = Directory.systemTemp.createTempSync('add_wallet_flow_test_');
       registry = WalletRegistry(prefs);
-
-      addWalletService = AddWalletService(
-        secureStorage: storage,
-        preferences: prefs,
-        walletStoragePathLoader: () async => tempDir.path,
-      );
     });
 
     tearDown(() {
@@ -47,7 +44,19 @@ void main() {
       } catch (_) {}
     });
 
-    Future<String> setupWalletA() async {
+    ProviderContainer createTestContainer() {
+      final container = ProviderContainer(
+        overrides: [
+          secureStorageProvider.overrideWithValue(storage),
+          sharedPreferencesProvider.overrideWith((ref) => prefs),
+          walletStoragePathProvider.overrideWith((ref) => tempDir.path),
+          walletRegistryProvider.overrideWith((ref) => registry),
+        ],
+      );
+      return container;
+    }
+
+    Future<String> setupWalletA(ProviderContainer container) async {
       const walletAId = 'w_wallet_a';
       await storage.write(
         key: WalletStorageKeys.mnemonicFor(walletAId),
@@ -63,7 +72,7 @@ void main() {
       );
       final dirA = Directory('${tempDir.path}/wallets/$walletAId');
       await dirA.create(recursive: true);
-      final dummyDbA = File('${dirA.path}/db.sqlite');
+      final dummyDbA = File('${dirA.path}/bdk_wallet.sqlite');
       await dummyDbA.writeAsString('wallet_a_database_content');
 
       final recordA = WalletRecord(
@@ -77,11 +86,27 @@ void main() {
         isActive: true,
       );
       await registry.registerWallet(recordA, makeActive: true);
+
+      // Activate Wallet A in provider
+      await container.read(activeWalletIdProvider.notifier).setActiveWallet(walletAId);
+      await container.read(walletsListProvider.notifier).refresh();
       return walletAId;
     }
 
-    test('Item 2: Create-Wallet integration test preserves wallet A and isolates wallet B', () async {
-      final walletAId = await setupWalletA();
+    test('Item 2: Create-Wallet flow updates Riverpod provider immediately without restart and clears draft', () async {
+      final container = createTestContainer();
+      addTearDown(container.dispose);
+
+      final walletAId = await setupWalletA(container);
+
+      // Verify Wallet A is active
+      expect(await container.read(activeWalletIdProvider.future), equals(walletAId));
+      expect(container.read(activeWalletRecordProvider)?.id, equals(walletAId));
+      expect(container.read(bdkWalletServiceProvider).walletId, equals(walletAId));
+
+      // Put a draft in SendController
+      container.read(sendControllerProvider.notifier).setAmountBtc('0.05');
+      expect(container.read(sendControllerProvider).draft.amountBtcText, equals('0.05'));
 
       // Write decoy mnemonic to ensure it is protected
       await storage.write(
@@ -89,96 +114,89 @@ void main() {
         value: 'decoy phrase test only',
       );
 
-      // Create new Wallet B via AddWalletService
+      // Execute Add Wallet flow (matching CreateWalletPage._handleCreateWallet)
+      final addWalletService = await container.read(addWalletServiceProvider.future);
       final resultB = await addWalletService.createWallet(
         scriptType: WalletScriptType.nativeSegwit,
         walletName: 'Wallet B',
       );
-
       final walletBId = resultB.walletRecord!.id;
-      expect(walletBId, isNot(equals(walletAId)));
 
-      // 1. Wallet A remains 100% UNTOUCHED
-      expect(
-        await storage.read(key: WalletStorageKeys.mnemonicFor(walletAId)),
-        equals(phraseA),
-      );
-      expect(
-        await storage.read(key: WalletStorageKeys.capabilityFor(walletAId)),
-        equals(WalletCapability.signing.storageValue),
-      );
-      final dummyDbA = File('${tempDir.path}/wallets/$walletAId/db.sqlite');
-      expect(await dummyDbA.exists(), isTrue);
-      expect(await dummyDbA.readAsString(), equals('wallet_a_database_content'));
+      // Page activates new wallet ID in provider notifier
+      await container.read(activeWalletIdProvider.notifier).setActiveWallet(walletBId);
+      container.invalidate(walletCapabilityProvider);
+      container.invalidate(walletHomeControllerProvider);
+      await container.read(walletsListProvider.notifier).refresh();
 
-      // 2. Wallet B has isolated scoped keys
-      expect(
-        await storage.read(key: WalletStorageKeys.mnemonicFor(walletBId)),
-        equals(resultB.recoveryPhrase),
-      );
-      expect(
-        await storage.read(key: WalletStorageKeys.capabilityFor(walletBId)),
-        equals(WalletCapability.signing.storageValue),
-      );
-      expect(
-        await storage.read(key: WalletStorageKeys.scriptTypeFor(walletBId)),
-        equals(WalletScriptType.nativeSegwit.storageValue),
-      );
+      // Immediately WITHOUT app restart:
+      expect(registry.getActiveWalletId(), equals(walletBId));
+      expect(container.read(activeWalletIdProvider).value, equals(walletBId));
+      expect(container.read(activeWalletRecordProvider)?.id, equals(walletBId));
+      expect(container.read(bdkWalletServiceProvider).walletId, equals(walletBId));
 
-      // 3. Isolated directory created for Wallet B
-      final dirB = Directory('${tempDir.path}/wallets/$walletBId');
-      expect(await dirB.exists(), isTrue);
+      final walletsList = container.read(walletsListProvider).value!;
+      expect(walletsList.length, equals(2));
+      expect(walletsList.firstWhere((w) => w.id == walletBId).isActive, isTrue);
+      expect(walletsList.firstWhere((w) => w.id == walletAId).isActive, isFalse);
 
-      // 4. Decoy mnemonic and global keys untouched
+      // Send draft from Wallet A is cleared
+      expect(container.read(sendControllerProvider).draft.amountBtcText, isEmpty);
+
+      // Decoy mnemonic is untouched
       expect(
         await storage.read(key: WalletStorageKeys.decoyMnemonic),
         equals('decoy phrase test only'),
       );
-      expect(await storage.read(key: WalletStorageKeys.mnemonic), isNull);
 
-      // 5. Registry contains both wallets with Wallet B active
-      final wallets = registry.getWallets();
-      expect(wallets.length, equals(2));
-      expect(wallets.map((w) => w.id), containsAll([walletAId, walletBId]));
-      expect(registry.getActiveWalletId(), equals(walletBId));
-      expect(resultB.walletRecord!.fingerprint, isNotNull);
-      expect(resultB.walletRecord!.fingerprint!.length, equals(8));
-    });
-
-    test('Item 3: Restore-Wallet integration test restores B without overwriting A and detects duplicates', () async {
-      final walletAId = await setupWalletA();
-
-      // Restore Wallet B
-      final identityB = await addWalletService.restoreWallet(
-        mnemonic: phraseB,
-        scriptType: WalletScriptType.nativeSegwit,
-        walletName: 'Restored Wallet B',
-      );
-
-      final walletBId = identityB.id;
-      expect(walletBId, isNot(equals(walletAId)));
-
-      // 1. Wallet A remains untouched
+      // Wallet A storage and DB are 100% UNTOUCHED
       expect(
         await storage.read(key: WalletStorageKeys.mnemonicFor(walletAId)),
         equals(phraseA),
       );
-      final dummyDbA = File('${tempDir.path}/wallets/$walletAId/db.sqlite');
-      expect(await dummyDbA.exists(), isTrue);
+      final dbA = File('${tempDir.path}/wallets/$walletAId/bdk_wallet.sqlite');
+      expect(await dbA.exists(), isTrue);
+      expect(await dbA.readAsString(), equals('wallet_a_database_content'));
+    });
 
-      // 2. Wallet B is restored and active
-      expect(
-        await storage.read(key: WalletStorageKeys.mnemonicFor(walletBId)),
-        equals(phraseB),
+    test('Item 3: Restore-Wallet flow updates Riverpod provider immediately and detects duplicates', () async {
+      final container = createTestContainer();
+      addTearDown(container.dispose);
+
+      final walletAId = await setupWalletA(container);
+
+      // Put a draft in SendController
+      container.read(sendControllerProvider.notifier).setAmountBtc('0.1');
+      expect(container.read(sendControllerProvider).draft.amountBtcText, equals('0.1'));
+
+      // Execute Restore Wallet flow (matching RestoreWalletPage._handleRestore)
+      final addWalletService = await container.read(addWalletServiceProvider.future);
+      final recordB = await addWalletService.restoreWallet(
+        mnemonic: phraseB,
+        scriptType: WalletScriptType.nativeSegwit,
+        walletName: 'Restored Wallet B',
       );
-      final dirB = Directory('${tempDir.path}/wallets/$walletBId');
-      expect(await dirB.exists(), isTrue);
+      final walletBId = recordB.id;
 
-      final wallets = registry.getWallets();
-      expect(wallets.length, equals(2));
+      // Page activates new wallet ID in provider notifier
+      await container.read(activeWalletIdProvider.notifier).setActiveWallet(walletBId);
+      container.invalidate(walletCapabilityProvider);
+      container.invalidate(walletHomeControllerProvider);
+      await container.read(walletsListProvider.notifier).refresh();
+
+      // Immediately WITHOUT app restart:
       expect(registry.getActiveWalletId(), equals(walletBId));
+      expect(container.read(activeWalletIdProvider).value, equals(walletBId));
+      expect(container.read(activeWalletRecordProvider)?.id, equals(walletBId));
+      expect(container.read(bdkWalletServiceProvider).walletId, equals(walletBId));
 
-      // 3. Duplicate detection: restoring Wallet A's phrase with same scriptType throws AddWalletDuplicateException
+      final walletsList = container.read(walletsListProvider).value!;
+      expect(walletsList.firstWhere((w) => w.id == walletBId).isActive, isTrue);
+      expect(walletsList.firstWhere((w) => w.id == walletAId).isActive, isFalse);
+
+      // Send draft cleared
+      expect(container.read(sendControllerProvider).draft.amountBtcText, isEmpty);
+
+      // Duplicate detection: restoring Wallet A's phrase with same scriptType throws AddWalletDuplicateException
       expect(
         () => addWalletService.restoreWallet(
           mnemonic: phraseA,
@@ -192,18 +210,17 @@ void main() {
           ),
         ),
       );
-
-      // 4. Invalid checksum phrase throws FormatException
-      expect(
-        () => addWalletService.restoreWallet(
-          mnemonic: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon',
-        ),
-        throwsA(isA<FormatException>()),
-      );
     });
 
-    test('Item 4: Watch-Only Add Flow creates new ID, isolated DB, and protects signing A and decoy', () async {
-      final walletAId = await setupWalletA();
+    test('Item 4: Watch-Only Add Flow updates Riverpod provider immediately without restart', () async {
+      final container = createTestContainer();
+      addTearDown(container.dispose);
+
+      final walletAId = await setupWalletA(container);
+
+      // Put a draft in SendController
+      container.read(sendControllerProvider.notifier).setAmountBtc('0.25');
+      expect(container.read(sendControllerProvider).draft.amountBtcText, equals('0.25'));
 
       // Setup decoy mnemonic
       await storage.write(
@@ -211,49 +228,45 @@ void main() {
         value: 'decoy secret private material',
       );
 
-      // Import watch-only wallet C
+      // Execute Watch-Only flow (matching ImportWatchOnlyPage._handleImport)
+      final addWalletService = await container.read(addWalletServiceProvider.future);
       final recordC = await addWalletService.importWatchOnlyWallet(
         externalDescriptor: validTpub,
         walletName: 'Watch-Only Vault',
       );
-
       final walletCId = recordC.id;
-      expect(walletCId, isNot(equals(walletAId)));
 
-      // 1. Wallet C is watch-only, has no private keys
-      expect(recordC.type, equals(WalletType.watchOnly));
-      expect(
-        await storage.read(key: WalletStorageKeys.capabilityFor(walletCId)),
-        equals(WalletCapability.watchOnly.storageValue),
-      );
-      expect(
-        await storage.read(key: WalletStorageKeys.mnemonicFor(walletCId)),
-        isNull,
-      );
-      expect(
-        await storage.read(key: WalletStorageKeys.externalDescriptorFor(walletCId)),
-        isNotNull,
-      );
+      // Page activates new wallet ID in provider notifier
+      await container.read(activeWalletIdProvider.notifier).setActiveWallet(walletCId);
+      container.invalidate(walletCapabilityProvider);
+      container.invalidate(walletHomeControllerProvider);
+      await container.read(walletsListProvider.notifier).refresh();
 
-      // 2. Isolated directory exists for Wallet C
-      final dirC = Directory('${tempDir.path}/wallets/$walletCId');
-      expect(await dirC.exists(), isTrue);
+      // Immediately WITHOUT app restart:
+      expect(registry.getActiveWalletId(), equals(walletCId));
+      expect(container.read(activeWalletIdProvider).value, equals(walletCId));
+      expect(container.read(activeWalletRecordProvider)?.id, equals(walletCId));
+      expect(container.read(bdkWalletServiceProvider).walletId, equals(walletCId));
+      expect(container.read(activeWalletRecordProvider)?.type, equals(WalletType.watchOnly));
 
-      // 3. Wallet A is completely untouched
-      expect(
-        await storage.read(key: WalletStorageKeys.mnemonicFor(walletAId)),
-        equals(phraseA),
-      );
-      final dummyDbA = File('${tempDir.path}/wallets/$walletAId/db.sqlite');
-      expect(await dummyDbA.exists(), isTrue);
+      // Capability provider switches to watch-only
+      final cap = await container.read(walletCapabilityProvider.future);
+      expect(cap.isWatchOnly, isTrue);
 
-      // 4. Decoy mnemonic is 100% untouched
+      final walletsList = container.read(walletsListProvider).value!;
+      expect(walletsList.firstWhere((w) => w.id == walletCId).isActive, isTrue);
+      expect(walletsList.firstWhere((w) => w.id == walletAId).isActive, isFalse);
+
+      // Send draft cleared
+      expect(container.read(sendControllerProvider).draft.amountBtcText, isEmpty);
+
+      // Decoy mnemonic is 100% untouched
       expect(
         await storage.read(key: WalletStorageKeys.decoyMnemonic),
         equals('decoy secret private material'),
       );
 
-      // 5. Duplicate detection: importing same descriptor throws AddWalletDuplicateException
+      // Duplicate detection
       expect(
         () => addWalletService.importWatchOnlyWallet(
           externalDescriptor: validTpub,

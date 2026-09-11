@@ -4,10 +4,20 @@ import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class WalletStorageCleanupException implements Exception {
+  const WalletStorageCleanupException(this.message, [this.cause]);
+  final String message;
+  final Object? cause;
+
+  @override
+  String toString() =>
+      'WalletStorageCleanupException: $message${cause != null ? " ($cause)" : ""}';
+}
+
 /// Standalone service for permanently cleaning up isolated per-wallet storage data.
 ///
-/// Designed to execute destructively without depending on the lifecycle of active
-/// [BdkWalletService] or Riverpod providers.
+/// Designed to execute destructively via an idempotent multi-step cleanup without
+/// depending on the lifecycle of active [BdkWalletService] or Riverpod providers.
 class WalletStorageCleaner {
   const WalletStorageCleaner({
     required SecureStorage secureStorage,
@@ -21,36 +31,53 @@ class WalletStorageCleaner {
   final SharedPreferences _preferences;
   final Future<String> Function() _walletStoragePathLoader;
 
-  /// Completely deletes all data, databases, labels, and secrets associated with [walletId].
+  /// Deletes all data, databases, labels, and secrets associated with [walletId].
   ///
   /// Guarantees:
   /// - Leaves all other wallet keys and databases completely untouched.
   /// - Decoy storage is preserved.
-  /// - Idempotent: can be safely retried if interrupted.
+  /// - Idempotent multi-step cleanup: can be safely retried if interrupted.
+  /// - Throws [WalletStorageCleanupException] if any stage of cleanup fails.
   Future<void> deleteWalletData(String walletId) async {
+    final failures = <String>[];
+
     // 1. Delete all wallet-scoped keys from SecureStorage
     for (final key in WalletStorageKeys.allKeysFor(walletId)) {
       try {
         await _secureStorage.delete(key: key);
-      } catch (_) {}
+      } catch (e) {
+        failures.add('SecureStorage key "$key": $e');
+      }
     }
 
     // 2. Remove wallet-scoped labels, locked UTXOs, and snapshot cache
-    try {
-      await _preferences.remove('wallet.local_labels.v3.$walletId');
-      await _preferences.remove('wallet.$walletId.locked_utxos');
-      await _preferences.remove('wallet.snapshot.$walletId.v3');
-    } catch (_) {}
+    for (final prefKey in [
+      'wallet.local_labels.v3.$walletId',
+      'wallet.$walletId.locked_utxos',
+      'wallet.snapshot.$walletId.v3',
+    ]) {
+      try {
+        await _preferences.remove(prefKey);
+      } catch (e) {
+        failures.add('SharedPreferences key "$prefKey": $e');
+      }
+    }
 
-    // 3. Relocate / purge isolated SQLite directory
+    // 3. Purge isolated SQLite directory
     try {
       final basePath = await _walletStoragePathLoader();
       final isolatedDir = Directory('$basePath/wallets/$walletId');
       if (await isolatedDir.exists()) {
         await isolatedDir.delete(recursive: true);
       }
-    } catch (_) {
-      // Non-fatal if filesystem is unavailable in unit test harness
+    } catch (e) {
+      failures.add('Isolated directory for "$walletId": $e');
+    }
+
+    if (failures.isNotEmpty) {
+      throw WalletStorageCleanupException(
+        'Failed to clean up wallet data for "$walletId":\n- ${failures.join("\n- ")}',
+      );
     }
   }
 

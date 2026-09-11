@@ -72,8 +72,10 @@ class WalletRegistry {
         );
       }
       try {
-        final record = WalletRecord.fromJson(map);
+        final record = WalletRecord.fromRegistryJson(map);
         records.add(record.copyWith(isActive: record.id == activeId));
+      } on FormatException catch (e) {
+        throw WalletRegistryException(e.message);
       } catch (e) {
         throw WalletRegistryException('Failed to parse wallet record "$id": $e');
       }

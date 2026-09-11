@@ -198,10 +198,26 @@ class WalletMigrationService {
 
     // Database copy
     try {
-      final basePath = await _walletStoragePathLoader();
+      final String basePath;
+      try {
+        basePath = await _walletStoragePathLoader();
+      } catch (e) {
+        throw WalletMigrationException(
+          'Failed to obtain wallet storage path during migration: $e',
+          e,
+        );
+      }
+
       final targetDir = Directory('$basePath/wallets/$walletId');
-      if (!await targetDir.exists()) {
-        await targetDir.create(recursive: true);
+      try {
+        if (!await targetDir.exists()) {
+          await targetDir.create(recursive: true);
+        }
+      } catch (e) {
+        throw WalletMigrationException(
+          'Failed to create migration target directory "${targetDir.path}": $e',
+          e,
+        );
       }
 
       final targetDb = File('${targetDir.path}/bdk_wallet.sqlite');
@@ -217,9 +233,16 @@ class WalletMigrationService {
         File? sourceDb;
         for (final filename in candidateFilenames) {
           final legacyFile = File('$basePath/$filename');
-          if (await legacyFile.exists() && await legacyFile.length() > 0) {
-            sourceDb = legacyFile;
-            break;
+          try {
+            if (await legacyFile.exists() && await legacyFile.length() > 0) {
+              sourceDb = legacyFile;
+              break;
+            }
+          } catch (e) {
+            throw WalletMigrationException(
+              'Failed to inspect legacy database candidate "${legacyFile.path}": $e',
+              e,
+            );
           }
         }
 
@@ -245,8 +268,11 @@ class WalletMigrationService {
       }
     } on WalletMigrationException {
       rethrow;
-    } catch (_) {
-      // In headless test environments where path loader throws, proceed if DB was absent.
+    } catch (e) {
+      throw WalletMigrationException(
+        'Database migration filesystem access failed: $e',
+        e,
+      );
     }
 
     // Migrate BIP-329 labels

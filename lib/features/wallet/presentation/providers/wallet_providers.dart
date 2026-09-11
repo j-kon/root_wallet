@@ -111,6 +111,9 @@ class ActiveWalletIdNotifier extends AsyncNotifier<String?> {
 
     // Reset pending send draft state
     ref.read(sendControllerProvider.notifier).reset();
+
+    // Keep wallets list in sync
+    await ref.read(walletsListProvider.notifier).refresh();
   }
 }
 
@@ -123,14 +126,14 @@ class WalletsListNotifier extends AsyncNotifier<List<WalletRecord>> {
   @override
   Future<List<WalletRecord>> build() async {
     final registry = await ref.watch(walletRegistryProvider.future);
-    final activeId = ref.watch(activeWalletIdProvider).valueOrNull;
+    final activeId = registry.getActiveWalletId();
     final wallets = registry.getWallets();
     return wallets.map((w) => w.copyWith(isActive: w.id == activeId)).toList();
   }
 
   Future<void> refresh() async {
     final registry = await ref.read(walletRegistryProvider.future);
-    final activeId = ref.read(activeWalletIdProvider).valueOrNull;
+    final activeId = registry.getActiveWalletId();
     final wallets = registry.getWallets();
     state = AsyncData(
       wallets.map((w) => w.copyWith(isActive: w.id == activeId)).toList(),
@@ -157,25 +160,37 @@ class WalletsListNotifier extends AsyncNotifier<List<WalletRecord>> {
   }
 
   Future<void> deleteWallet(String walletId) async {
-    final cleaner = await ref.read(walletStorageCleanerProvider.future);
     final registry = await ref.read(walletRegistryProvider.future);
-    final activeId = ref.read(activeWalletIdProvider).valueOrNull;
-    final isDeletingActive = activeId == walletId;
-
+    final cleaner = await ref.read(walletStorageCleanerProvider.future);
     final currentWallets = registry.getWallets();
+
+    // A. Validate target exists
+    if (!currentWallets.any((w) => w.id == walletId)) {
+      throw StateError('Cannot delete wallet: wallet "$walletId" not found in registry.');
+    }
+
+    // B. Validate not last wallet
     if (currentWallets.length <= 1) {
       throw StateError(
         'Cannot delete the last remaining wallet. At least one wallet must be maintained.',
       );
     }
 
+    // C. Choose safe replacement and switch if target is active
+    final activeId = registry.getActiveWalletId();
+    final isDeletingActive = activeId == walletId;
     if (isDeletingActive) {
-      final remaining = currentWallets.firstWhere((w) => w.id != walletId);
-      await ref.read(activeWalletIdProvider.notifier).setActiveWallet(remaining.id);
+      final safeReplacement = currentWallets.firstWhere((w) => w.id != walletId);
+      await ref.read(activeWalletIdProvider.notifier).setActiveWallet(safeReplacement.id);
     }
 
-    await cleaner.cleanWalletData(walletId);
+    // D & E. Perform target cleanup (throws WalletStorageCleanupException if any stage fails)
+    await cleaner.deleteWalletData(walletId);
+
+    // F. Remove target from registry only after cleanup succeeds
     await registry.deleteWallet(walletId);
+
+    // G & H. Refresh UI
     await refresh();
   }
 }

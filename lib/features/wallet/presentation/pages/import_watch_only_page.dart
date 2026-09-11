@@ -64,11 +64,13 @@ class _ImportWatchOnlyPageState extends ConsumerState<ImportWatchOnlyPage> {
 
     try {
       final addWalletService = await ref.read(addWalletServiceProvider.future);
-      await addWalletService.importWatchOnlyWallet(
+      final record = await addWalletService.importWatchOnlyWallet(
         externalDescriptor: ext,
         internalDescriptor: internal.isEmpty ? null : internal,
       );
-
+      await ref
+          .read(activeWalletIdProvider.notifier)
+          .setActiveWallet(record.id);
       ref.invalidate(walletCapabilityProvider);
       ref.invalidate(walletHomeControllerProvider);
       await ref.read(walletsListProvider.notifier).refresh();

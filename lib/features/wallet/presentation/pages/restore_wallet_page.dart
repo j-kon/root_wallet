@@ -49,11 +49,15 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
         _errorMessage = null;
       });
       try {
-        final addWalletService = await ref.read(addWalletServiceProvider.future);
-        await addWalletService.restoreWallet(
+        final addWalletService =
+            await ref.read(addWalletServiceProvider.future);
+        final record = await addWalletService.restoreWallet(
           mnemonic: phrase,
           scriptType: _scriptType,
         );
+        await ref
+            .read(activeWalletIdProvider.notifier)
+            .setActiveWallet(record.id);
         ref.invalidate(walletCapabilityProvider);
         ref.invalidate(walletHomeControllerProvider);
         await ref.read(walletsListProvider.notifier).refresh();
