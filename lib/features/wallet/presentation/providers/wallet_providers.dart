@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:root_wallet/app/di/providers.dart';
@@ -130,9 +132,36 @@ final walletSnapshotCacheProvider = FutureProvider<WalletSnapshotCache>((
 
 final bip329ServiceProvider = Provider<Bip329Service>((ref) => const Bip329Service());
 
+final walletLabelScopeProvider = FutureProvider<String>((ref) async {
+  try {
+    final bdkService = ref.watch(bdkWalletServiceProvider);
+    if (bdkService.isDecoyActive) {
+      return 'decoy';
+    }
+    final capability = await bdkService.getCapability();
+    if (capability.isWatchOnly) {
+      final desc = await ref
+          .watch(secureStorageProvider)
+          .read(key: WalletStorageKeys.externalDescriptor);
+      if (desc != null && desc.isNotEmpty) {
+        final fp = sha256
+            .convert(utf8.encode(desc))
+            .toString()
+            .substring(0, 8);
+        return 'watch_only_$fp';
+      }
+      return 'watch_only';
+    }
+    return WalletLabelStore.defaultScope;
+  } catch (_) {
+    return WalletLabelStore.defaultScope;
+  }
+});
+
 final walletLabelStoreProvider = FutureProvider<WalletLabelStore>((ref) async {
   final prefs = await ref.watch(sharedPreferencesProvider.future);
-  return WalletLabelStore(prefs);
+  final scope = await ref.watch(walletLabelScopeProvider.future);
+  return WalletLabelStore(prefs, scope: scope);
 });
 
 class WalletLabelsController extends AsyncNotifier<WalletLabelsSnapshot> {

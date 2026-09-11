@@ -94,13 +94,27 @@ class WalletLabelsSnapshot {
 }
 
 class WalletLabelStore {
-  WalletLabelStore(this._prefs);
+  WalletLabelStore(this._prefs, {String scope = defaultScope})
+      : scope = _sanitizeScope(scope);
 
-  static const _key = 'wallet.local_labels.v1';
+  static const defaultScope = 'primary';
+  static const legacyKey = 'wallet.local_labels.v1';
+  static const _baseKeyPrefix = 'wallet.local_labels.v2.';
+
   final SharedPreferences _prefs;
+  final String scope;
+
+  String get storageKey => '$_baseKeyPrefix$scope';
+
+  static String _sanitizeScope(String raw) {
+    final cleaned = raw.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+    return cleaned.isEmpty ? defaultScope : cleaned;
+  }
 
   WalletLabelsSnapshot read() {
-    final raw = _prefs.getString(_key);
+    _performMigrationIfNeeded();
+
+    final raw = _prefs.getString(storageKey);
     if (raw == null || raw.trim().isEmpty) {
       return const WalletLabelsSnapshot();
     }
@@ -113,8 +127,23 @@ class WalletLabelStore {
     return WalletLabelsSnapshot.fromJson(decoded.cast<String, Object?>());
   }
 
+  /// Migrates legacy v1 labels into v2.primary deterministically.
+  ///
+  /// Strictly prevents leaking legacy labels into decoy or watch-only wallets.
+  void _performMigrationIfNeeded() {
+    if (scope == defaultScope) {
+      final existingV2 = _prefs.getString(storageKey);
+      if (existingV2 == null || existingV2.trim().isEmpty) {
+        final legacyRaw = _prefs.getString(legacyKey);
+        if (legacyRaw != null && legacyRaw.trim().isNotEmpty) {
+          _prefs.setString(storageKey, legacyRaw);
+        }
+      }
+    }
+  }
+
   Future<void> write(WalletLabelsSnapshot snapshot) {
-    return _prefs.setString(_key, jsonEncode(snapshot.toJson()));
+    return _prefs.setString(storageKey, jsonEncode(snapshot.toJson()));
   }
 
   Future<void> setAddressLabel(String address, String label) async {
@@ -162,8 +191,11 @@ class WalletLabelStore {
     await write(snapshot.copyWith(outputLabels: nextOutputs));
   }
 
-  Future<void> clear() {
-    return _prefs.remove(_key);
+  Future<void> clear() async {
+    await _prefs.remove(storageKey);
+    if (scope == defaultScope) {
+      await _prefs.remove(legacyKey);
+    }
   }
 
   String _normalize(String value, {required int maxLength}) {

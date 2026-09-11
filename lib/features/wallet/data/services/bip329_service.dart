@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
 
 class Bip329ImportResult {
@@ -14,11 +15,24 @@ class Bip329ImportResult {
   final int skippedCount;
 }
 
+/// BIP-329 Labels parser and serializer.
+///
+/// Root Wallet policy:
+/// - Enforces UTF-8 byte length limits (2 MB) and max line counts (10,000).
+/// - Validates field types strictly before casting; malformed lines never crash import.
+/// - Normalizes label and note lengths (label: max 80, note: max 280).
+/// - Validates that `addr` records conform to valid Bitcoin Testnet address syntax.
+///   Valid testnet addresses from external/historical wallets are preserved even if not
+///   derived by the current wallet instance.
+/// - Rejects malformed txids and outpoints.
+/// - Safely ignores unsupported record types (e.g., `pubkey`, `input`, `xpub`).
 class Bip329Service {
   const Bip329Service();
 
   static const int maxFileSizeBytes = 2 * 1024 * 1024; // 2 MB
   static const int maxLineCount = 10000;
+  static const int maxLabelLength = 80;
+  static const int maxNoteLength = 280;
 
   static final RegExp _txidRegex = RegExp(r'^[0-9a-fA-F]{64}$');
   static final RegExp _outpointRegex = RegExp(r'^[0-9a-fA-F]{64}:[0-9]+$');
@@ -76,17 +90,13 @@ class Bip329Service {
   }
 
   /// Parses BIP-329 JSONL string and merges into [existingSnapshot] (or fresh if null).
-  ///
-  /// Enforces:
-  /// - Max size: 2 MB
-  /// - Max lines: 10,000
-  /// - Strict type/ref validation for known types (`tx`, `addr`, `output`)
-  /// - Unknown types gracefully ignored
   Bip329ImportResult parseJsonl(
     String jsonlContent, {
     WalletLabelsSnapshot? existingSnapshot,
   }) {
-    if (jsonlContent.length > maxFileSizeBytes) {
+    // Check actual UTF-8 byte length
+    final byteLength = utf8.encode(jsonlContent).length;
+    if (byteLength > maxFileSizeBytes) {
       throw ArgumentError('BIP-329 content exceeds maximum size of 2 MB.');
     }
 
@@ -124,30 +134,45 @@ class Bip329Service {
         continue;
       }
 
-      final type = record['type'];
-      final ref = record['ref'];
-      final label = record['label'] as String? ?? '';
-      final note = record['note'] as String? ?? '';
+      // Strictly validate field types BEFORE casting
+      final rawType = record['type'];
+      final rawRef = record['ref'];
+      final rawLabel = record['label'];
+      final rawNote = record['note'];
 
-      if (type is! String || ref is! String) {
+      if (rawType is! String || rawRef is! String) {
         skippedCount++;
         continue;
       }
 
-      final cleanRef = ref.trim();
-      final cleanLabel = label.trim();
-      final cleanNote = note.trim();
+      if (rawLabel != null && rawLabel is! String) {
+        skippedCount++;
+        continue;
+      }
 
-      switch (type.trim().toLowerCase()) {
+      if (rawNote != null && rawNote is! String) {
+        skippedCount++;
+        continue;
+      }
+
+      final cleanRef = rawRef.trim();
+      final cleanLabel = _normalize(rawLabel as String?, maxLength: maxLabelLength);
+      final cleanNote = _normalize(rawNote as String?, maxLength: maxNoteLength);
+
+      switch (rawType.trim().toLowerCase()) {
         case 'addr':
-          // Testnet address length reasonable check
-          if (cleanRef.length < 14 || cleanRef.length > 90) {
+          // Validate Bitcoin Testnet address syntax
+          try {
+            bdk.Address(address: cleanRef, network: bdk.Network.testnet);
+          } catch (_) {
             skippedCount++;
             continue;
           }
           if (cleanLabel.isNotEmpty) {
             addressMap[cleanRef] = cleanLabel;
             importedCount++;
+          } else {
+            skippedCount++;
           }
           break;
 
@@ -165,6 +190,8 @@ class Bip329Service {
               note: cleanNote.isNotEmpty ? cleanNote : (existing?.note ?? ''),
             );
             importedCount++;
+          } else {
+            skippedCount++;
           }
           break;
 
@@ -176,11 +203,13 @@ class Bip329Service {
           if (cleanLabel.isNotEmpty) {
             outputMap[cleanRef] = cleanLabel;
             importedCount++;
+          } else {
+            skippedCount++;
           }
           break;
 
         default:
-          // Gracefully skip unknown or unsupported record types (e.g. pubkey, xpub, input)
+          // Safely skip unknown or unsupported record types (e.g. pubkey, xpub, input)
           skippedCount++;
           break;
       }
@@ -197,5 +226,14 @@ class Bip329Service {
       importedCount: importedCount,
       skippedCount: skippedCount,
     );
+  }
+
+  static String _normalize(String? value, {required int maxLength}) {
+    if (value == null) return '';
+    final compact = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (compact.length <= maxLength) {
+      return compact;
+    }
+    return compact.substring(0, maxLength).trimRight();
   }
 }

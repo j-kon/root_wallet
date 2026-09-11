@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,10 +36,25 @@ class _Bip329LabelsPageState extends ConsumerState<Bip329LabelsPage> {
     }
 
     await Clipboard.setData(ClipboardData(text: jsonl));
+
+    // Safe clipboard clearing: clear after 60s only if clipboard still matches exported data
+    Timer(const Duration(seconds: 60), () async {
+      try {
+        final current = await Clipboard.getData(Clipboard.kTextPlain);
+        if (current?.text == jsonl) {
+          await Clipboard.setData(const ClipboardData(text: ''));
+        }
+      } catch (_) {}
+    });
+
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('BIP-329 labels copied to clipboard (JSONL).'),
+          content: Text(
+            'BIP-329 labels copied to clipboard (JSONL). '
+            'Warning: labels contain personal metadata. Clipboard will auto-clear in 60s.',
+          ),
+          duration: Duration(seconds: 4),
         ),
       );
     }
@@ -412,7 +429,7 @@ class _Bip329LabelsPageState extends ConsumerState<Bip329LabelsPage> {
                 const SizedBox(width: RootSpacing.sm),
                 Expanded(
                   child: Text(
-                    'BIP-329 labels are stored exclusively in local device storage. They are never sent to Electrum or Esplora servers, maintaining absolute transaction privacy.',
+                    'Wallet labels are stored locally and are not sent to configured Esplora or Electrum backends. Copying or exporting labels places that data outside Root Wallet\'s local label store, for example on the system clipboard.',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark

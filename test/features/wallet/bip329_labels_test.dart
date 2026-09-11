@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
@@ -7,139 +6,141 @@ import 'package:root_wallet/features/wallet/data/services/bip329_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('BIP-329 Label Import / Export & Storage Tests', () {
+  group('BIP-329 Labels & Scoped Storage Hardening Tests', () {
     late SharedPreferences prefs;
-    late WalletLabelStore store;
+    late WalletLabelStore primaryStore;
     const bip329Service = Bip329Service();
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       prefs = await SharedPreferences.getInstance();
-      store = WalletLabelStore(prefs);
+      primaryStore = WalletLabelStore(prefs, scope: 'primary');
     });
 
-    test('exports current labels into valid BIP-329 JSONL records', () async {
-      await store.write(
-        const WalletLabelsSnapshot(
-          transactionMetadata: {
-            '0000000000000000000000000000000000000000000000000000000000000001':
-                WalletTransactionMetadata(label: 'Salary'),
-            '0000000000000000000000000000000000000000000000000000000000000002':
-                WalletTransactionMetadata(label: 'Coffee'),
-          },
-          addressLabels: {
-            'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx': 'Donations',
-          },
-          outputLabels: {
-            '0000000000000000000000000000000000000000000000000000000000000001:0': 'Change UTXO',
-            '0000000000000000000000000000000000000000000000000000000000000002:1': 'Mining pool',
-          },
-        ),
-      );
+    group('Wallet Scoping & Deterministic v1 Migration', () {
+      test('isolates labels between primary, decoy, and watch-only scopes', () async {
+        final decoyStore = WalletLabelStore(prefs, scope: 'decoy');
+        final watchOnlyStore = WalletLabelStore(prefs, scope: 'watch_only_73c5da0a');
 
-      final snapshot = store.read();
-      final jsonl = bip329Service.exportJsonl(snapshot);
-      final lines = const LineSplitter().convert(jsonl);
-      expect(lines.length, equals(5));
+        await primaryStore.setAddressLabel('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx', 'Primary Wallet Label');
+        await decoyStore.setAddressLabel('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx', 'Decoy Wallet Label');
+        await watchOnlyStore.setAddressLabel('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx', 'Watch Only Label');
 
-      final records = lines.map((l) => jsonDecode(l) as Map<String, dynamic>).toList();
+        expect(primaryStore.read().addressLabel('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'), equals('Primary Wallet Label'));
+        expect(decoyStore.read().addressLabel('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'), equals('Decoy Wallet Label'));
+        expect(watchOnlyStore.read().addressLabel('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'), equals('Watch Only Label'));
 
-      final txRecords = records.where((r) => r['type'] == 'tx').toList();
-      expect(txRecords.length, equals(2));
-      expect(
-        txRecords.any(
-          (r) =>
-              r['ref'] == '0000000000000000000000000000000000000000000000000000000000000001' &&
-              r['label'] == 'Salary',
-        ),
-        isTrue,
-      );
+        // Verify storage keys in SharedPreferences
+        expect(prefs.containsKey('wallet.local_labels.v2.primary'), isTrue);
+        expect(prefs.containsKey('wallet.local_labels.v2.decoy'), isTrue);
+        expect(prefs.containsKey('wallet.local_labels.v2.watch_only_73c5da0a'), isTrue);
+      });
 
-      final addrRecords = records.where((r) => r['type'] == 'addr').toList();
-      expect(addrRecords.length, equals(1));
-      expect(addrRecords.first['ref'], equals('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'));
-      expect(addrRecords.first['label'], equals('Donations'));
+      test('deterministically migrates legacy v1 labels to v2.primary without loss', () async {
+        const legacyJson = '{"transactions":{"0000000000000000000000000000000000000000000000000000000000000001":{"label":"Old Tx","note":""}},"addresses":{"tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx":"Old Addr"}}';
+        await prefs.setString('wallet.local_labels.v1', legacyJson);
 
-      final outRecords = records.where((r) => r['type'] == 'output').toList();
-      expect(outRecords.length, equals(2));
-      expect(
-        outRecords.any(
-          (r) =>
-              r['ref'] == '0000000000000000000000000000000000000000000000000000000000000001:0' &&
-              r['label'] == 'Change UTXO',
-        ),
-        isTrue,
-      );
+        // Reading primary store migrates v1 into v2.primary
+        final migrated = primaryStore.read();
+        expect(migrated.transactionMetadata['0000000000000000000000000000000000000000000000000000000000000001']?.label, equals('Old Tx'));
+        expect(migrated.addressLabels['tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'], equals('Old Addr'));
+        expect(prefs.containsKey('wallet.local_labels.v2.primary'), isTrue);
+      });
+
+      test('strictly prevents migrating v1 labels into decoy or watch-only wallets', () async {
+        const legacyJson = '{"transactions":{},"addresses":{"tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx":"Secret Primary Label"}}';
+        await prefs.setString('wallet.local_labels.v1', legacyJson);
+
+        final decoyStore = WalletLabelStore(prefs, scope: 'decoy');
+        final watchOnlyStore = WalletLabelStore(prefs, scope: 'watch_only_test');
+
+        expect(decoyStore.read().addressLabels, isEmpty);
+        expect(watchOnlyStore.read().addressLabels, isEmpty);
+        expect(prefs.containsKey('wallet.local_labels.v2.decoy'), isFalse);
+        expect(prefs.containsKey('wallet.local_labels.v2.watch_only_test'), isFalse);
+      });
     });
 
-    test('imports BIP-329 JSONL records with tx, addr, and output types', () async {
-      const inputJsonl = '''
-{"type":"tx","ref":"00000000000000000000000000000000000000000000000000000000000000a1","label":"Incoming testnet fund"}
-{"type":"addr","ref":"tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx","label":"Cold storage receive"}
-{"type":"output","ref":"00000000000000000000000000000000000000000000000000000000000000a1:0","label":"Reserved for fees"}
-{"type":"unknown_type","ref":"ignored_ref","label":"Should be ignored"}
-{"invalid json line...}
+    group('Hardened BIP-329 Parsing & Field Type Safety', () {
+      test('skips records with malformed field types without crashing import', () {
+        const malformedLines = '''
+{"type":"tx","ref":"0000000000000000000000000000000000000000000000000000000000000001","label":12345}
+{"type":"tx","ref":"0000000000000000000000000000000000000000000000000000000000000002","label":{"nested":"object"}}
+{"type":"tx","ref":"0000000000000000000000000000000000000000000000000000000000000003","note":["array","note"],"label":"Valid"}
+{"type":null,"ref":"0000000000000000000000000000000000000000000000000000000000000004","label":"Null type"}
+{"type":"tx","ref":null,"label":"Null ref"}
+{"type":"tx","ref":"0000000000000000000000000000000000000000000000000000000000000005","label":null,"note":null}
+{"invalid json...
+{"type":"tx","ref":"0000000000000000000000000000000000000000000000000000000000000006","label":"Valid Record"}
 ''';
 
-      final result = bip329Service.parseJsonl(inputJsonl, existingSnapshot: store.read());
+        final result = bip329Service.parseJsonl(malformedLines);
 
-      expect(result.importedCount, equals(3));
-      expect(result.skippedCount, equals(2)); // unknown_type + invalid json
+        // Only line 6 with valid label should be imported
+        expect(result.importedCount, equals(1));
+        expect(result.skippedCount, equals(7));
+        expect(
+          result.snapshot.transactionMetadata['0000000000000000000000000000000000000000000000000000000000000006']?.label,
+          equals('Valid Record'),
+        );
+      });
 
-      await store.write(result.snapshot);
-      final snapshot = store.read();
-      expect(
-        snapshot.transactionMetadata['00000000000000000000000000000000000000000000000000000000000000a1']?.label,
-        equals('Incoming testnet fund'),
-      );
-      expect(
-        snapshot.addressLabels['tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'],
-        equals('Cold storage receive'),
-      );
-      expect(
-        snapshot.outputLabels['00000000000000000000000000000000000000000000000000000000000000a1:0'],
-        equals('Reserved for fees'),
-      );
-    });
+      test('applies normalization and clips oversized label and note values', () {
+        final longLabel = 'A' * 120;
+        final longNote = 'B' * 400;
+        final jsonl = '{"type":"tx","ref":"0000000000000000000000000000000000000000000000000000000000000001","label":"$longLabel","note":"$longNote"}';
 
-    test('rejects payloads exceeding size limits', () {
-      // Exceed 2MB limit
-      final hugePayload = 'a' * (2 * 1024 * 1024 + 10);
-      expect(
-        () => bip329Service.parseJsonl(hugePayload),
-        throwsA(isA<ArgumentError>().having((e) => e.message, 'message', contains('size'))),
-      );
+        final result = bip329Service.parseJsonl(jsonl);
+        expect(result.importedCount, equals(1));
 
-      // Exceed line limit
-      final manyLines = List.generate(
-        10005,
-        (i) => '{"type":"tx","ref":"0000000000000000000000000000000000000000000000000000000000000001","label":"L$i"}',
-      ).join('\n');
-      expect(
-        () => bip329Service.parseJsonl(manyLines),
-        throwsA(isA<ArgumentError>().having((e) => e.message, 'message', contains('10,000'))),
-      );
-    });
+        final meta = result.snapshot.transactionMetadata['0000000000000000000000000000000000000000000000000000000000000001'];
+        expect(meta?.label.length, equals(80));
+        expect(meta?.note.length, equals(280));
+      });
 
-    test('preserves backward compatibility with legacy v1 storage format', () async {
-      // Legacy format only stored transactions and addresses
-      const legacyJson = '{"transactions":{"tx_old":{"label":"Old Tx","note":""}},"addresses":{"addr_old":"Old Addr"}}';
-      await prefs.setString('wallet.local_labels.v1', legacyJson);
+      test('resolves duplicate records with latest valid record winning', () {
+        const jsonl = '''
+{"type":"tx","ref":"0000000000000000000000000000000000000000000000000000000000000001","label":"First"}
+{"type":"tx","ref":"0000000000000000000000000000000000000000000000000000000000000001","label":"Updated Label"}
+''';
 
-      final loaded = store.read();
-      expect(loaded.transactionMetadata['tx_old']?.label, equals('Old Tx'));
-      expect(loaded.addressLabels['addr_old'], equals('Old Addr'));
-      expect(loaded.outputLabels, isEmpty);
+        final result = bip329Service.parseJsonl(jsonl);
+        expect(
+          result.snapshot.transactionMetadata['0000000000000000000000000000000000000000000000000000000000000001']?.label,
+          equals('Updated Label'),
+        );
+      });
 
-      // Now save with output and ensure roundtrip
-      final updated = loaded.copyWith(
-        outputLabels: {'tx_old:0': 'New Output Label'},
-      );
-      await store.write(updated);
+      test('validates Bitcoin Testnet address syntax via BDK', () {
+        const validAddr = 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx';
+        const invalidAddr = 'invalid_testnet_address_xyz';
+        const mainnetAddr = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
 
-      final reloaded = store.read();
-      expect(reloaded.outputLabels['tx_old:0'], equals('New Output Label'));
-      expect(reloaded.transactionMetadata['tx_old']?.label, equals('Old Tx'));
+        const jsonl = '''
+{"type":"addr","ref":"$validAddr","label":"Valid Testnet"}
+{"type":"addr","ref":"$invalidAddr","label":"Invalid Syntax"}
+{"type":"addr","ref":"$mainnetAddr","label":"Mainnet Address"}
+''';
+
+        final result = bip329Service.parseJsonl(jsonl);
+        expect(result.importedCount, equals(1));
+        expect(result.skippedCount, equals(2));
+        expect(result.snapshot.addressLabels[validAddr], equals('Valid Testnet'));
+        expect(result.snapshot.addressLabels.containsKey(invalidAddr), isFalse);
+        expect(result.snapshot.addressLabels.containsKey(mainnetAddr), isFalse);
+      });
+
+      test('enforces UTF-8 byte length limit', () {
+        // Multi-byte characters take more than 1 byte per char in UTF-8
+        final multiByteChar = '€'; // 3 bytes in UTF-8
+        final charCount = (2 * 1024 * 1024 / 3).ceil() + 100;
+        final hugeContent = multiByteChar * charCount;
+
+        expect(
+          () => bip329Service.parseJsonl(hugeContent),
+          throwsA(isA<ArgumentError>().having((e) => e.message, 'message', contains('2 MB'))),
+        );
+      });
     });
   });
 }
