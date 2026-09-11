@@ -26,6 +26,14 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
 - [x] **Auto-Clearing Clipboard:** Sanitizes sensitive seed words from clipboard after 60 seconds.
 - [x] **Network Safety Guard:** Mainnet disabled by a compile-time constant (`AppConstants.isMainnetAllowed = false`) and enforced by runtime network checks.
 - [x] **Sanitized Logging:** Stripped all debug prints across codebase.
+- [x] **Watch-Only Wallets & PSBT Lifecycle (Milestone 1):**
+  - Watch-only wallet support using public descriptors (`wpkh`, `tr`, `sh(wpkh)`, `pkh`) and Testnet `tpub` without private key storage.
+  - Fail-closed PSBT signing re-authentication with Argon2id PIN fallback.
+  - Centralized PSBT input validation enforcing decoded binary limits (<= 500 KB) across inspect, sign, and broadcast.
+  - Real Bitcoin unsigned transaction TxID extraction (no fabricated SHA-256 fallback hashes).
+  - Authoritative change output classification (no heuristic guessing).
+  - Finalization verification rejecting unfinalized PSBT broadcast.
+  - Wallet-scoped BIP-329 label storage (`wallet.local_labels.v2.<scope>`) with deterministic v1 migration.
 - [x] Dedicated automated CI security test suite (`test/security/`).
 
 ---
