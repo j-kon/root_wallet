@@ -11,6 +11,7 @@ import 'package:root_wallet/features/send/presentation/pages/review_transfer_pag
 import 'package:root_wallet/features/send/presentation/pages/send_success_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/about_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/bip329_labels_page.dart';
+import 'package:root_wallet/features/settings/presentation/pages/connection_routing_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/security_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/wallet_diagnostics_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/coin_control_page.dart';
@@ -98,6 +99,8 @@ abstract final class AppRouter {
         return _page(settings, const WalletDiagnosticsPage());
       case AppRoutes.coinControl:
         return _page(settings, const CoinControlPage());
+      case AppRoutes.connectionRouting:
+        return _page(settings, const ConnectionRoutingPage());
       case AppRoutes.bip329Labels:
         return _page(settings, const Bip329LabelsPage());
       case AppRoutes.backupMetadata:

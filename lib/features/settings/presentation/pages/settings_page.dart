@@ -10,10 +10,12 @@ import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/theme_mode_provider.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
+import 'package:root_wallet/core/network/network_transport_config.dart';
 import 'package:root_wallet/core/utils/date_time.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/pin_entry_dialog.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/app_start_providers.dart';
+import 'package:root_wallet/features/settings/presentation/providers/network_transport_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
@@ -52,6 +54,9 @@ class SettingsPage extends ConsumerWidget {
     final healthReady = backupConfirmed && isLockActive;
 
     final customNode = ref.watch(customNodeProvider).valueOrNull;
+    final transportConfig =
+        ref.watch(networkTransportProvider).valueOrNull ??
+        const NetworkConfiguration();
     final wallets = ref.watch(walletsListProvider).valueOrNull ?? const [];
     final activeWallet = ref.watch(activeWalletRecordProvider);
 
@@ -234,6 +239,26 @@ class SettingsPage extends ConsumerWidget {
           const SizedBox(height: RootSpacing.xs),
           _SettingsSectionCard(
             children: [
+              _SettingsRow(
+                key: const ValueKey('settings_connection_routing_row'),
+                icon: useCupertino
+                    ? CupertinoIcons.shield_lefthalf_fill
+                    : Icons.security_rounded,
+                title: 'Connection Routing',
+                subtitle: transportConfig.isSocks5
+                    ? 'SOCKS5 Proxy (${transportConfig.proxyConfig?.displayAddress ?? "Active"})'
+                    : 'Direct testnet connection',
+                badgeText: transportConfig.isSocks5 ? 'SOCKS5' : 'Direct',
+                badgeTone: transportConfig.isSocks5
+                    ? (transportConfig.isProxyVerified
+                        ? RootBrandColors.pineGreen
+                        : RootBrandColors.amberAccent)
+                    : RootBrandColors.pineGreen,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.of(context).pushNamed(AppRoutes.connectionRouting);
+                },
+              ),
               _SettingsRow(
                 icon: useCupertino ? CupertinoIcons.link : Icons.lan_outlined,
                 title: 'Electrum Node Connection',
