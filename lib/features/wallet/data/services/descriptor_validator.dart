@@ -39,9 +39,12 @@ abstract final class DescriptorValidator {
     caseSensitive: false,
   );
 
+  static final RegExp _terminalExternalDerivation = RegExp(r'/0/\*\)$');
+
   /// Validates and normalizes descriptors for watch-only wallet import.
   ///
-  /// Rejects private keys, mainnet keys, and invalid descriptor miniscript.
+  /// Rejects private keys, mainnet keys, unsupported descriptor types,
+  /// and invalid descriptor miniscript fail-closed.
   static ValidatedDescriptorResult validate({
     required String externalInput,
     String? internalInput,
@@ -106,11 +109,23 @@ abstract final class DescriptorValidator {
             'but Internal is ${intScriptType.displayName}. Both must match.',
           );
         }
+
+        // Verify key lineage if fingerprint is present in both
+        final intFingerprint = _extractFingerprint(cleanInt);
+        if (fingerprint != null &&
+            intFingerprint != null &&
+            fingerprint != intFingerprint) {
+          throw DescriptorValidationException(
+            'Key lineage mismatch: External descriptor master fingerprint ($fingerprint) '
+            'does not match internal descriptor master fingerprint ($intFingerprint).',
+          );
+        }
       } finally {
         internalDescObj.dispose();
       }
-    } else if (cleanExt.contains('/0/*')) {
-      final candidate = cleanExt.replaceFirst('/0/*', '/1/*');
+    } else if (_terminalExternalDerivation.hasMatch(cleanExt)) {
+      // Safe terminal substitution only for standard single-key paths
+      final candidate = cleanExt.replaceFirst(_terminalExternalDerivation, '/1/*)');
       try {
         final candObj = _parseBdkDescriptor(candidate, 'Internal');
         candObj.dispose();
@@ -194,6 +209,17 @@ abstract final class DescriptorValidator {
     final typeName = descriptor.descType().name.toLowerCase();
     final str = descriptor.toString().toLowerCase();
 
+    // Explicitly reject unsupported descriptor types fail-closed
+    if (str.startsWith('wsh(') ||
+        typeName.contains('wsh') ||
+        str.contains('multi(') ||
+        str.contains('sortedmulti(')) {
+      throw const DescriptorValidationException(
+        'Multisig and complex Miniscript (wsh) descriptors are currently unsupported. '
+        'Root Wallet supports standard single-sig descriptors: pkh, sh(wpkh), wpkh, and tr.',
+      );
+    }
+
     if (typeName.contains('bip86') || str.startsWith('tr(')) {
       return WalletScriptType.taproot;
     }
@@ -207,7 +233,10 @@ abstract final class DescriptorValidator {
       return WalletScriptType.legacy;
     }
 
-    return WalletScriptType.nativeSegwit;
+    throw DescriptorValidationException(
+      'Unsupported descriptor script type "${descriptor.descType().name}". '
+      'Root Wallet supports standard single-sig descriptors: pkh, sh(wpkh), wpkh, and tr.',
+    );
   }
 
   static String? _extractFingerprint(String descriptor) {

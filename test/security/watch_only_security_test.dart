@@ -6,6 +6,7 @@ import 'package:root_wallet/features/wallet/data/repositories/wallet_repository_
 import 'package:root_wallet/features/wallet/data/services/descriptor_validator.dart';
 import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -13,29 +14,104 @@ void main() {
   group('Watch-Only Descriptor & Security Tests', () {
     const validTpub =
         'tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s';
-    const validExternal =
+    const validExternalWpkh =
         "wpkh([73c5da0a/84'/1'/0']$validTpub/0/*)";
-    const validInternal =
+    const validInternalWpkh =
         "wpkh([73c5da0a/84'/1'/0']$validTpub/1/*)";
 
     test('validates and accepts valid testnet wpkh descriptors', () {
       final result = DescriptorValidator.validate(
-        externalInput: validExternal,
-        internalInput: validInternal,
+        externalInput: validExternalWpkh,
+        internalInput: validInternalWpkh,
       );
 
-      expect(result.externalDescriptor, equals(validExternal));
-      expect(result.internalDescriptor, equals(validInternal));
+      expect(result.externalDescriptor, equals(validExternalWpkh));
+      expect(result.internalDescriptor, equals(validInternalWpkh));
+      expect(result.scriptType, equals(WalletScriptType.nativeSegwit));
       expect(result.fingerprint, equals('73c5da0a'));
     });
 
-    test('auto-derives internal change descriptor when only external provided', () {
+    test('validates and accepts supported script types (tr, sh(wpkh), pkh)', () {
+      // Taproot (tr)
+      final trResult = DescriptorValidator.validate(
+        externalInput: "tr([73c5da0a/86'/1'/0']$validTpub/0/*)",
+      );
+      expect(trResult.scriptType, equals(WalletScriptType.taproot));
+
+      // Nested SegWit (sh(wpkh))
+      final shResult = DescriptorValidator.validate(
+        externalInput: "sh(wpkh([73c5da0a/49'/1'/0']$validTpub/0/*))",
+      );
+      expect(shResult.scriptType, equals(WalletScriptType.nestedSegwit));
+
+      // Legacy (pkh)
+      final pkhResult = DescriptorValidator.validate(
+        externalInput: "pkh([73c5da0a/44'/1'/0']$validTpub/0/*)",
+      );
+      expect(pkhResult.scriptType, equals(WalletScriptType.legacy));
+    });
+
+    test('strictly rejects unsupported descriptor types (wsh, multisig, miniscript) fail-closed', () {
+      const wshDescriptor =
+          "wsh(multi(2,[73c5da0a/48'/1'/0'/2']$validTpub/0/*,[84d6eb1b/48'/1'/0'/2']$validTpub/0/*))";
+
+      expect(
+        () => DescriptorValidator.validate(externalInput: wshDescriptor),
+        throwsA(
+          isA<DescriptorValidationException>().having(
+            (e) => e.message,
+            'message',
+            contains('unsupported'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects key lineage mismatch between external and internal descriptors', () {
+      const mismatchedInternal =
+          "wpkh([deadbeef/84'/1'/0']$validTpub/1/*)";
+
+      expect(
+        () => DescriptorValidator.validate(
+          externalInput: validExternalWpkh,
+          internalInput: mismatchedInternal,
+        ),
+        throwsA(
+          isA<DescriptorValidationException>().having(
+            (e) => e.message,
+            'message',
+            contains('Key lineage mismatch'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects script type mismatch between external and internal descriptors', () {
+      const taprootInternal =
+          "tr([73c5da0a/86'/1'/0']$validTpub/1/*)";
+
+      expect(
+        () => DescriptorValidator.validate(
+          externalInput: validExternalWpkh,
+          internalInput: taprootInternal,
+        ),
+        throwsA(
+          isA<DescriptorValidationException>().having(
+            (e) => e.message,
+            'message',
+            contains('script type mismatch'),
+          ),
+        ),
+      );
+    });
+
+    test('auto-derives internal change descriptor safely only on terminal /0/*)', () {
       final result = DescriptorValidator.validate(
-        externalInput: validExternal,
+        externalInput: validExternalWpkh,
       );
 
-      expect(result.externalDescriptor, equals(validExternal));
-      expect(result.internalDescriptor, contains('/1/*'));
+      expect(result.externalDescriptor, equals(validExternalWpkh));
+      expect(result.internalDescriptor, equals(validInternalWpkh));
       expect(result.fingerprint, equals('73c5da0a'));
     });
 
@@ -46,6 +122,7 @@ void main() {
 
       expect(result.externalDescriptor, equals('wpkh($validTpub/0/*)'));
       expect(result.internalDescriptor, equals('wpkh($validTpub/1/*)'));
+      expect(result.scriptType, equals(WalletScriptType.nativeSegwit));
       expect(result.fingerprint, isNull);
     });
 

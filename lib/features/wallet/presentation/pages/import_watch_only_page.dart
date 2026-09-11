@@ -209,6 +209,17 @@ class _ImportWatchOnlyPageState extends ConsumerState<ImportWatchOnlyPage> {
               fontSize: 12,
             ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            'Convenience Import Assumption: Raw tpub imports automatically assume standard BIP-84 '
+            '(Native SegWit) with /0/* for external and /1/* for internal change derivation. '
+            'For other script types or derivation levels, supply full explicit descriptors.',
+            style: TextStyle(
+              color: textSecondary.withValues(alpha: 0.8),
+              fontSize: 11,
+              height: 1.35,
+            ),
+          ),
           const SizedBox(height: RootSpacing.sm),
           Container(
             decoration: BoxDecoration(
