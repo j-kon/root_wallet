@@ -77,11 +77,30 @@ Root Wallet supports routing Bitcoin backend traffic through a user-configured S
 - BDK's Esplora client (`bdk_esplora 0.22.2` / `esplora-client 0.12.3`) relies on `minreq 2.14.1`, which only supports HTTP CONNECT proxies and errors on SOCKS5.
 - Therefore, when SOCKS5 mode is active, Root Wallet automatically bypasses Esplora completely and routes all synchronization, broadcasting, fee queries, and chain height calls exclusively through Electrum over SOCKS5.
 
-### Platform-Isolated Credential Security
-- Non-sensitive proxy settings (host, port, username) are stored in standard application preferences.
-- Proxy passwords are treated as sensitive authentication material and stored strictly in platform `SecureStorage` (iOS Keychain / Android KeyStore with hardware-backed encryption).
-- Credentials are NEVER logged, serialized into diagnostic exports, or included in `toString()` output.
-- Note: BDK FFI currently connects unauthenticated; entered credentials are safely retained for forward compatibility without premature transmission.
+### Custom Backend Isolation (No Public Fallback)
+- When a custom Electrum server is configured, Root Wallet queries only that server.
+- If the custom server is unreachable or offline, wallet operations fail closed immediately.
+- The wallet **NEVER** silently falls back to public Electrum nodes when a custom server is defined, preserving single-backend isolation and avoiding metadata exposure.
+
+### Transport Mode Fail-Closed Parsing
+- Persisted transport configuration uses strict validation (`NetworkTransportMode.parsePersisted`).
+- If stored configuration is corrupted or invalid (`"socks"`, `"sock5"`, `"tor"`, `""`, `"unknown"`), the parser throws `NetworkConfigurationException` and wallet initialization fails closed.
+- Only an absent key (`null`) on a genuine fresh install defaults to `direct` mode.
+
+### Destination Target vs Proxy Host Separation
+- SOCKS5 proxy host must be a local or reachable network endpoint (e.g., `127.0.0.1`, `localhost`, or LAN IP).
+- Tor `.onion` addresses are strictly destination targets, not proxy listeners. Entering `.onion` as a proxy host is rejected with actionable error guidance.
+- Onion targets are configured in the Custom Electrum Server field and validated against the Tor v3 specification (exactly 56 base32 characters).
+
+### Transport Encryption vs Proxy Routing
+- SOCKS5 routing anonymizes the client IP address but does NOT encrypt plaintext TCP streams (`tcp://`).
+- For encrypted Electrum transport over clearnet proxies, `ssl://` or `tls://` endpoints must be used.
+- Root Wallet strictly enforces TLS domain certificate validation (`validateDomain: true`) for `ssl://` and `tls://` endpoints, preventing active TLS MITM attacks.
+- For Tor hidden services, onion routing provides end-to-end circuit encryption at the Tor protocol level.
+
+### Address-Only Unauthenticated SOCKS5 Proxy
+- The underlying BDK Rust FFI accepts an address-only SOCKS5 endpoint (`host:port`).
+- To avoid deceptive security promises, Root Wallet does not present or persist unsupported username/password credentials.
 
 ### External Daemon Boundary
 - Root Wallet deliberately does not bundle a compiled Tor binary or daemon, avoiding binary bloat, supply-chain expansion, and OS background lifecycle complications.

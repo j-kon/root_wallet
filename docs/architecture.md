@@ -172,15 +172,17 @@ Sensitive material belongs behind providers and security services, never in pres
 Network routing follows a strict capability-gated, fail-closed architecture:
 
 - `core/network/network_transport_config.dart`
-  - `NetworkTransportMode`: `direct` (clearnet) or `socks5` (proxy).
-  - `Socks5ProxyConfig`: host, port, username, password with strict normalization (scheme/slash stripping), port bounds checking (1–65535), and credential redaction in `toString()`.
+  - `NetworkTransportMode`: `direct` (clearnet) or `socks5` (proxy), with strict fail-closed persisted parsing (`parsePersisted`).
+  - `Socks5ProxyConfig`: host and port with strict normalization (IPv6 bracketed format `[::1]:port`, scheme/slash stripping), port bounds checking (1–65535), Tor v3 onion address validation, and target vs proxy separation (rejecting `.onion` in proxy host).
   - `NetworkConfiguration`: immutable global transport state.
 - `features/settings/presentation/providers/network_transport_providers.dart`
-  - `NetworkTransportController`: persists non-secret settings in `SharedPreferences`, isolates proxy password in `SecureStorage`, and probes connections using real BDK `ElectrumClient` via Rust FFI.
+  - `NetworkTransportController`: persists transport settings in `SharedPreferences` and probes connections using real BDK `ElectrumClient` via Rust FFI targeting the configured custom Electrum endpoint.
   - Invalidates `bdkWalletServiceProvider` upon transport mode or proxy configuration changes.
 - `features/wallet/data/services/bdk_wallet_service.dart`
   - **Capability Gating:** Electrum supports native SOCKS5 proxying with remote DNS (`0x03` domain addressing) and `.onion` support. Esplora (`minreq` HTTP CONNECT only) is bypassed completely in SOCKS5 mode.
   - **Fail-Closed Guarantee:** When SOCKS5 is active, sync, fee estimation, transaction broadcast, and tip height queries fail immediately if the proxy is unreachable. Silent fallback to clearnet is strictly prohibited.
+  - **Single-Backend Isolation:** When a custom Electrum server is set, failure never triggers fallback to public Electrum servers.
+  - **TLS Domain Validation:** Strictly enforces domain certificate validation (`validateDomain: true`) for `ssl://` and `tls://` endpoints.
 
 ## Persistence Model
 
@@ -189,10 +191,9 @@ The app uses multiple storage layers intentionally:
 - `flutter_secure_storage`
   - PIN hash/salt
   - sensitive wallet metadata (seed phrases, script types)
-  - SOCKS5 proxy password
 - `shared_preferences`
   - non-sensitive app flags and preferences
-  - SOCKS5 proxy host, port, username, and transport mode
+  - SOCKS5 proxy host, port, and transport mode
 - wallet persistence / snapshot cache
   - wallet and UI recovery state
 

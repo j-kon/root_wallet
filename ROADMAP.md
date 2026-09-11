@@ -48,7 +48,9 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
   - Native remote DNS resolution (`0x03` domain addressing) and Tor v3 `.onion` support via Rust `electrum-client 0.25.0`.
   - Fail-closed privacy guarantee: immediate graceful failure upon proxy unreachable, with strict avoidance of silent clearnet fallback.
   - Upstream capability gating: Esplora bypassed during SOCKS5 mode due to `bdk_esplora` `minreq` HTTP CONNECT-only limitation.
-  - Platform secure credential isolation: proxy password persisted strictly in Keychain/KeyStore, isolated from SharedPreferences and diagnostics exports.
+  - Custom Electrum backend isolation: configured custom nodes never fall back to public servers on failure.
+  - Domain validation policy: TLS certificate verification enforced on `ssl://` and `tls://` endpoints.
+  - Address-only unauthenticated SOCKS5: removed unsupported credential storage to strictly match BDK FFI capabilities.
   - Dedicated Connection Routing settings interface with real-time FFI connectivity probing and honest technical disclosures.
 - [x] Dedicated automated CI security test suite (`test/security/`).
 
