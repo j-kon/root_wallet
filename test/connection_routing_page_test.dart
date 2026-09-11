@@ -318,5 +318,71 @@ void main() {
       expect(prefs.getString(NetworkStorageKeys.proxyHost), equals('127.0.0.1'));
       expect(prefs.getInt(NetworkStorageKeys.proxyPort), equals(9050));
     });
+
+    testWidgets('renders SOCKS5 configuration invalid status honestly when host is missing', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await prefs.setString(NetworkStorageKeys.transportMode, 'socks5');
+      await prefs.remove(NetworkStorageKeys.proxyHost);
+      await prefs.setInt(NetworkStorageKeys.proxyPort, 9050);
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('SOCKS5 configuration invalid'), findsOneWidget);
+      expect(find.text('SOCKS5 configured'), findsNothing);
+      expect(
+        find.textContaining('SOCKS5 configuration is invalid or missing'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('renders SOCKS5 configuration invalid status honestly when host is malformed', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await prefs.setString(NetworkStorageKeys.transportMode, 'socks5');
+      await prefs.setString(NetworkStorageKeys.proxyHost, 'invalid host with spaces');
+      await prefs.setInt(NetworkStorageKeys.proxyPort, 9050);
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('SOCKS5 configuration invalid'), findsOneWidget);
+      expect(find.text('SOCKS5 configured'), findsNothing);
+      expect(
+        find.textContaining('SOCKS5 configuration is invalid or missing'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('renders SOCKS5 configuration invalid status honestly when port is invalid', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await prefs.setString(NetworkStorageKeys.transportMode, 'socks5');
+      await prefs.setString(NetworkStorageKeys.proxyHost, '127.0.0.1');
+      await prefs.setInt(NetworkStorageKeys.proxyPort, 0);
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('SOCKS5 configuration invalid'), findsOneWidget);
+      expect(find.text('SOCKS5 configured'), findsNothing);
+      expect(
+        find.textContaining('SOCKS5 configuration is invalid or missing'),
+        findsOneWidget,
+      );
+    });
   });
 }

@@ -98,6 +98,42 @@ class FailingDeleteSecureStorage implements SecureStorage {
   }
 }
 
+class MockFailingSharedPreferences implements SharedPreferences {
+  MockFailingSharedPreferences(
+    this._delegate, {
+    this.failSetStringKey,
+    this.failSetIntKey,
+  });
+
+  final SharedPreferences _delegate;
+  final String? failSetStringKey;
+  final String? failSetIntKey;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  String? getString(String key) => _delegate.getString(key);
+
+  @override
+  int? getInt(String key) => _delegate.getInt(key);
+
+  @override
+  Future<bool> setString(String key, String value) async {
+    if (failSetStringKey == key) return false;
+    return _delegate.setString(key, value);
+  }
+
+  @override
+  Future<bool> setInt(String key, int value) async {
+    if (failSetIntKey == key) return false;
+    return _delegate.setInt(key, value);
+  }
+
+  @override
+  Future<bool> remove(String key) => _delegate.remove(key);
+}
+
 void main() {
   group('SOCKS5 & Privacy Routing Security Tests', () {
     late Directory tempDir;
@@ -889,6 +925,44 @@ void main() {
         expect(container.read(customNodeProvider).value, isNull);
         expect(prefs.getString('settings.custom_electrum_url'), isNull);
       });
+
+      test('invalid replacement input throws FormatException before persistence and leaves existing valid node intact', () async {
+        final prefs = await SharedPreferences.getInstance();
+        const validNodeA = 'tcp://node-a.example.org:50001';
+        await prefs.setString(NetworkStorageKeys.customElectrumUrl, validNodeA);
+
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((ref) => prefs),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        // 1. Initial valid custom node A is loaded
+        final initial = await container.read(customNodeProvider.future);
+        expect(initial, equals(validNodeA));
+        expect(prefs.getString(NetworkStorageKeys.customElectrumUrl), equals(validNodeA));
+
+        // 2. Attempt invalid custom node B (invalid scheme, malformed host, or invalid port)
+        final controller = container.read(customNodeProvider.notifier);
+        await expectLater(
+          controller.setNodeUrl('ftp://invalid-node-b.example.org:50001'),
+          throwsA(
+            isA<FormatException>().having(
+              (e) => e.message,
+              'message',
+              contains('Unsupported Electrum scheme "ftp"'),
+            ),
+          ),
+        );
+
+        // 3. Validation failed BEFORE persistence
+        // 4. Persisted node in storage MUST still equal valid node A
+        expect(prefs.getString(NetworkStorageKeys.customElectrumUrl), equals(validNodeA));
+
+        // 5. Controller state must still represent valid node A
+        expect(container.read(customNodeProvider).value, equals(validNodeA));
+      });
     });
 
     group('Proxy Persistence & Legacy Credential Cleanup Transactionality', () {
@@ -981,10 +1055,355 @@ void main() {
         container.read(bdkWalletServiceProvider);
         expect(bdkServiceBuildCount, equals(2));
       });
+
+      test('saveProxyConfig fails when setString for proxyHost returns false, leaving state uncommitted and rolling back to previous known-good config', () async {
+        final realPrefs = await SharedPreferences.getInstance();
+        await realPrefs.setString(NetworkStorageKeys.proxyHost, '127.0.0.1');
+        await realPrefs.setInt(NetworkStorageKeys.proxyPort, 9050);
+        await realPrefs.setString(NetworkStorageKeys.transportMode, 'direct');
+
+        final failingPrefs = MockFailingSharedPreferences(
+          realPrefs,
+          failSetStringKey: NetworkStorageKeys.proxyHost,
+        );
+
+        int bdkBuildCount = 0;
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((ref) => failingPrefs),
+            secureStorageProvider.overrideWithValue(secureStorage),
+            bdkWalletServiceProvider.overrideWith((ref) {
+              bdkBuildCount++;
+              return BdkWalletService(
+                secureStorage: secureStorage,
+                walletStoragePathLoader: () async => tempDir.path,
+                preferencesLoader: () async => failingPrefs,
+                allowCustomEsploraEndpoint: false,
+              );
+            }),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        // Initial build
+        container.read(bdkWalletServiceProvider);
+        expect(bdkBuildCount, equals(1));
+        final initialConfig = await container.read(networkTransportProvider.future);
+        expect(initialConfig.transportMode, equals(NetworkTransportMode.direct));
+
+        final controller = container.read(networkTransportProvider.notifier);
+        final newConfig = Socks5ProxyConfig(host: '10.0.0.1', port: 1080);
+
+        await expectLater(
+          controller.saveProxyConfig(newConfig, activate: true),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('Failed to persist proxy host'),
+            ),
+          ),
+        );
+
+        // Verify Riverpod state is NOT updated
+        final stateAfterFailure = container.read(networkTransportProvider).value!;
+        expect(stateAfterFailure.transportMode, equals(NetworkTransportMode.direct));
+        expect(stateAfterFailure.proxyConfig?.host, equals('127.0.0.1'));
+        expect(stateAfterFailure.proxyConfig?.port, equals(9050));
+
+        // bdkWalletServiceProvider was NOT invalidated
+        expect(bdkBuildCount, equals(1));
+
+        // Best-effort rollback restored previous known-good values in storage
+        expect(realPrefs.getString(NetworkStorageKeys.proxyHost), equals('127.0.0.1'));
+        expect(realPrefs.getInt(NetworkStorageKeys.proxyPort), equals(9050));
+        expect(realPrefs.getString(NetworkStorageKeys.transportMode), equals('direct'));
+      });
+
+      test('saveProxyConfig fails when setInt for proxyPort returns false, leaving state uncommitted and rolling back to previous known-good config', () async {
+        final realPrefs = await SharedPreferences.getInstance();
+        await realPrefs.setString(NetworkStorageKeys.proxyHost, '127.0.0.1');
+        await realPrefs.setInt(NetworkStorageKeys.proxyPort, 9050);
+        await realPrefs.setString(NetworkStorageKeys.transportMode, 'direct');
+
+        final failingPrefs = MockFailingSharedPreferences(
+          realPrefs,
+          failSetIntKey: NetworkStorageKeys.proxyPort,
+        );
+
+        int bdkBuildCount = 0;
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((ref) => failingPrefs),
+            secureStorageProvider.overrideWithValue(secureStorage),
+            bdkWalletServiceProvider.overrideWith((ref) {
+              bdkBuildCount++;
+              return BdkWalletService(
+                secureStorage: secureStorage,
+                walletStoragePathLoader: () async => tempDir.path,
+                preferencesLoader: () async => failingPrefs,
+                allowCustomEsploraEndpoint: false,
+              );
+            }),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        container.read(bdkWalletServiceProvider);
+        expect(bdkBuildCount, equals(1));
+
+        final controller = container.read(networkTransportProvider.notifier);
+        final newConfig = Socks5ProxyConfig(host: '10.0.0.1', port: 1080);
+
+        await expectLater(
+          controller.saveProxyConfig(newConfig, activate: true),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('Failed to persist proxy port'),
+            ),
+          ),
+        );
+
+        final stateAfterFailure = container.read(networkTransportProvider).value!;
+        expect(stateAfterFailure.transportMode, equals(NetworkTransportMode.direct));
+        expect(bdkBuildCount, equals(1));
+
+        expect(realPrefs.getString(NetworkStorageKeys.proxyHost), equals('127.0.0.1'));
+        expect(realPrefs.getInt(NetworkStorageKeys.proxyPort), equals(9050));
+        expect(realPrefs.getString(NetworkStorageKeys.transportMode), equals('direct'));
+      });
+
+      test('saveProxyConfig fails when setString for transportMode returns false, leaving state uncommitted and rolling back to previous known-good config', () async {
+        final realPrefs = await SharedPreferences.getInstance();
+        await realPrefs.setString(NetworkStorageKeys.proxyHost, '127.0.0.1');
+        await realPrefs.setInt(NetworkStorageKeys.proxyPort, 9050);
+        await realPrefs.setString(NetworkStorageKeys.transportMode, 'direct');
+
+        final failingPrefs = MockFailingSharedPreferences(
+          realPrefs,
+          failSetStringKey: NetworkStorageKeys.transportMode,
+        );
+
+        int bdkBuildCount = 0;
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((ref) => failingPrefs),
+            secureStorageProvider.overrideWithValue(secureStorage),
+            bdkWalletServiceProvider.overrideWith((ref) {
+              bdkBuildCount++;
+              return BdkWalletService(
+                secureStorage: secureStorage,
+                walletStoragePathLoader: () async => tempDir.path,
+                preferencesLoader: () async => failingPrefs,
+                allowCustomEsploraEndpoint: false,
+              );
+            }),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        container.read(bdkWalletServiceProvider);
+        expect(bdkBuildCount, equals(1));
+
+        final controller = container.read(networkTransportProvider.notifier);
+        final newConfig = Socks5ProxyConfig(host: '10.0.0.1', port: 1080);
+
+        await expectLater(
+          controller.saveProxyConfig(newConfig, activate: true),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('Failed to persist transport mode'),
+            ),
+          ),
+        );
+
+        final stateAfterFailure = container.read(networkTransportProvider).value!;
+        expect(stateAfterFailure.transportMode, equals(NetworkTransportMode.direct));
+        expect(bdkBuildCount, equals(1));
+
+        expect(realPrefs.getString(NetworkStorageKeys.proxyHost), equals('127.0.0.1'));
+        expect(realPrefs.getInt(NetworkStorageKeys.proxyPort), equals(9050));
+        expect(realPrefs.getString(NetworkStorageKeys.transportMode), equals('direct'));
+      });
+    });
+
+    group('Invalid Persisted SOCKS5 Configuration Honesty & Fail-Closed', () {
+      Future<void> assertOperationsFailClosedWithoutFallback(
+        BdkWalletService bdkService,
+        MockClientTracker tracker,
+      ) async {
+        const rawTxHex =
+            '02000000010000000000000000000000000000000000000000000000000000000000000000ffffffff00ffffffff010000000000000000010000000000';
+        final rawTxBytes = List<int>.generate(
+          rawTxHex.length ~/ 2,
+          (i) => int.parse(rawTxHex.substring(i * 2, i * 2 + 2), radix: 16),
+        );
+        final dummyTx = bdk.Transaction(
+          transactionBytes: Uint8List.fromList(rawTxBytes),
+        );
+
+        await expectLater(
+          bdkService.syncWallet(),
+          throwsA(
+            isA<BdkWalletServiceException>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.'),
+            ),
+          ),
+        );
+
+        await expectLater(
+          bdkService.chainHeight(),
+          throwsA(
+            isA<BdkWalletServiceException>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.'),
+            ),
+          ),
+        );
+
+        await expectLater(
+          bdkService.estimateFeeSatPerVbyte(),
+          throwsA(
+            isA<BdkWalletServiceException>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.'),
+            ),
+          ),
+        );
+
+        await expectLater(
+          bdkService.broadcastTransaction(dummyTx),
+          throwsA(
+            isA<BdkWalletServiceException>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.'),
+            ),
+          ),
+        );
+
+        expect(tracker.directElectrumAttempts, equals(0));
+        expect(tracker.esploraAttempts, equals(0));
+        expect(tracker.socksElectrumAttempts, equals(0));
+      }
+
+      test('A. transport=socks5 + missing host reports "SOCKS5 configuration invalid" and fails closed with zero direct fallback', () async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(NetworkStorageKeys.transportMode, 'socks5');
+        await prefs.remove(NetworkStorageKeys.proxyHost);
+        await prefs.setInt(NetworkStorageKeys.proxyPort, 9050);
+
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((ref) => prefs),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final config = await container.read(networkTransportProvider.future);
+        expect(config.transportMode, equals(NetworkTransportMode.socks5));
+        expect(config.proxyConfig, isNull);
+        expect(config.statusDescription, equals('SOCKS5 configuration invalid'));
+        expect(config.statusDescription, isNot(contains('configured')));
+        expect(config.statusDescription, isNot(contains('Active')));
+        expect(config.activeSocks5Address, isNull);
+
+        final tracker = MockClientTracker();
+        final bdkService = BdkWalletService(
+          secureStorage: secureStorage,
+          walletStoragePathLoader: () async => tempDir.path,
+          preferencesLoader: () async => prefs,
+          allowCustomEsploraEndpoint: false,
+          electrumClientFactory: tracker.createElectrumFactory(),
+          esploraClientFactory: tracker.createEsploraFactory(),
+        );
+
+        await assertOperationsFailClosedWithoutFallback(bdkService, tracker);
+      });
+
+      test('B. transport=socks5 + invalid host reports "SOCKS5 configuration invalid" and fails closed with zero direct fallback', () async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(NetworkStorageKeys.transportMode, 'socks5');
+        await prefs.setString(NetworkStorageKeys.proxyHost, 'invalid host with spaces');
+        await prefs.setInt(NetworkStorageKeys.proxyPort, 9050);
+
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((ref) => prefs),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final config = await container.read(networkTransportProvider.future);
+        expect(config.transportMode, equals(NetworkTransportMode.socks5));
+        expect(config.proxyConfig, isNull);
+        expect(config.statusDescription, equals('SOCKS5 configuration invalid'));
+        expect(config.statusDescription, isNot(contains('configured')));
+        expect(config.statusDescription, isNot(contains('Active')));
+        expect(config.activeSocks5Address, isNull);
+
+        final tracker = MockClientTracker();
+        final bdkService = BdkWalletService(
+          secureStorage: secureStorage,
+          walletStoragePathLoader: () async => tempDir.path,
+          preferencesLoader: () async => prefs,
+          allowCustomEsploraEndpoint: false,
+          electrumClientFactory: tracker.createElectrumFactory(),
+          esploraClientFactory: tracker.createEsploraFactory(),
+        );
+
+        await assertOperationsFailClosedWithoutFallback(bdkService, tracker);
+      });
+
+      test('C. transport=socks5 + invalid port reports "SOCKS5 configuration invalid" and fails closed with zero direct fallback', () async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(NetworkStorageKeys.transportMode, 'socks5');
+        await prefs.setString(NetworkStorageKeys.proxyHost, '127.0.0.1');
+        await prefs.setInt(NetworkStorageKeys.proxyPort, 0); // 0 is invalid port
+
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((ref) => prefs),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final config = await container.read(networkTransportProvider.future);
+        expect(config.transportMode, equals(NetworkTransportMode.socks5));
+        expect(config.proxyConfig, isNull);
+        expect(config.statusDescription, equals('SOCKS5 configuration invalid'));
+        expect(config.statusDescription, isNot(contains('configured')));
+        expect(config.statusDescription, isNot(contains('Active')));
+        expect(config.activeSocks5Address, isNull);
+
+        final tracker = MockClientTracker();
+        final bdkService = BdkWalletService(
+          secureStorage: secureStorage,
+          walletStoragePathLoader: () async => tempDir.path,
+          preferencesLoader: () async => prefs,
+          allowCustomEsploraEndpoint: false,
+          electrumClientFactory: tracker.createElectrumFactory(),
+          esploraClientFactory: tracker.createEsploraFactory(),
+        );
+
+        await assertOperationsFailClosedWithoutFallback(bdkService, tracker);
+      });
     });
 
     group('Fee Policy Default Verification', () {
-      test('estimateFeeSatPerVbyte preserves pre-PR default of 3 target blocks', () async {
+      test('estimateFeeSatPerVbyte invokes fee estimation through SOCKS proxy without fallback (default 3 target blocks code-verified)', () async {
+        // Note: Production code parameter default `int targetBlocks = 3` on
+        // BdkWalletService.estimateFeeSatPerVbyte({int targetBlocks = 3})
+        // is verified via code review at lib/features/wallet/data/services/bdk_wallet_service.dart:738.
+        // This test verifies behavioral fail-closed SOCKS proxy routing without direct fallback.
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(NetworkStorageKeys.transportMode, 'socks5');
         await prefs.setString(NetworkStorageKeys.proxyHost, '127.0.0.1');
