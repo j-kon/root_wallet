@@ -133,7 +133,23 @@ class WelcomePage extends StatelessWidget {
                 child: const Text('Restore wallet'),
               ),
             ),
-            const SizedBox(height: RootSpacing.md),
+            const SizedBox(height: RootSpacing.xs),
+            Center(
+              child: TextButton(
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.importWatchOnly),
+                child: Text(
+                  'Import watch-only wallet',
+                  style: TextStyle(
+                    color: isDark
+                        ? RootBrandColors.mutedSage
+                        : const Color(0xFF5E6F68),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: RootSpacing.sm),
             Center(
               child: Text(
                 'You stay in control of your keys and recovery phrase from day one.',

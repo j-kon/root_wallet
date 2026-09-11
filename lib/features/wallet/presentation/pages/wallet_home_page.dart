@@ -56,6 +56,8 @@ class WalletHomePage extends ConsumerWidget {
     final btcNgnRate = ref.watch(btcNgnRateProvider);
     final walletLabels = ref.watch(walletLabelsControllerProvider);
     final scriptTypeAsync = ref.watch(walletScriptTypeProvider);
+    final capabilityAsync = ref.watch(walletCapabilityProvider);
+    final isWatchOnly = capabilityAsync.valueOrNull?.isWatchOnly ?? false;
     final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
     const networkLabel = AppConstants.networkDisplayName;
 
@@ -90,6 +92,34 @@ class WalletHomePage extends ConsumerWidget {
                 : Icons.refresh_rounded,
           ),
         ),
+        if (isWatchOnly)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(right: RootSpacing.xs),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: RootSpacing.sm,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: RootBrandColors.amberAccent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(RootRadius.pill),
+                  border: Border.all(
+                    color: RootBrandColors.amberAccent,
+                    width: 1.0,
+                  ),
+                ),
+                child: const Text(
+                  'WATCH ONLY',
+                  style: TextStyle(
+                    color: RootBrandColors.amberAccent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
         Center(
           child: Padding(
             padding: const EdgeInsets.only(right: RootSpacing.xs),
@@ -297,31 +327,43 @@ class WalletHomePage extends ConsumerWidget {
                     ],
                   ),
                 const SizedBox(height: RootSpacing.md),
-                // Security / Backup status card
-                _WalletAttentionCard(
-                  icon: isBackupConfirmed
-                      ? Icons.verified_user_outlined
-                      : Icons.shield_outlined,
-                  title: isBackupConfirmed
-                      ? 'Recovery phrase secured'
-                      : 'Secure your recovery phrase',
-                  message: isBackupConfirmed
-                      ? 'Your backup reminder is complete. Keep your phrase stored offline and private.'
-                      : 'A backup is still outstanding. Completing it now protects your sovereignty.',
-                  actionLabel: isBackupConfirmed
-                      ? 'Review phrase'
-                      : 'Back up now',
-                  action: () => Navigator.of(context).pushNamed(
-                    AppRoutes.backupSeed,
-                    arguments: const BackupSeedPageArgs(
-                      requireReauth: true,
-                      isOnboardingFlow: false,
+                // Security / Backup status card or Watch-only explanation card
+                if (isWatchOnly)
+                  _WalletAttentionCard(
+                    icon: Icons.visibility_outlined,
+                    title: 'Watch-only wallet',
+                    message:
+                        'This wallet can monitor funds and create unsigned transactions, but it cannot sign or spend Bitcoin on this device.',
+                    actionLabel: 'PSBT Operations',
+                    action: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.psbtImport),
+                    tone: RootBrandColors.pineGreen,
+                  )
+                else
+                  _WalletAttentionCard(
+                    icon: isBackupConfirmed
+                        ? Icons.verified_user_outlined
+                        : Icons.shield_outlined,
+                    title: isBackupConfirmed
+                        ? 'Recovery phrase secured'
+                        : 'Secure your recovery phrase',
+                    message: isBackupConfirmed
+                        ? 'Your backup reminder is complete. Keep your phrase stored offline and private.'
+                        : 'A backup is still outstanding. Completing it now protects your sovereignty.',
+                    actionLabel: isBackupConfirmed
+                        ? 'Review phrase'
+                        : 'Back up now',
+                    action: () => Navigator.of(context).pushNamed(
+                      AppRoutes.backupSeed,
+                      arguments: const BackupSeedPageArgs(
+                        requireReauth: true,
+                        isOnboardingFlow: false,
+                      ),
                     ),
+                    tone: isBackupConfirmed
+                        ? RootBrandColors.pineGreen
+                        : RootBrandColors.amberAccent,
                   ),
-                  tone: isBackupConfirmed
-                      ? RootBrandColors.pineGreen
-                      : RootBrandColors.amberAccent,
-                ),
                 if (data.isOffline) ...[
                   const SizedBox(height: RootSpacing.md),
                   InfoBanner(

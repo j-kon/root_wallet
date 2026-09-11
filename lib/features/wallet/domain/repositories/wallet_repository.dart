@@ -1,5 +1,6 @@
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
@@ -8,12 +9,17 @@ import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.d
 
 abstract class WalletRepository {
   Future<bool> hasWallet();
+  Future<WalletCapability> getCapability();
   Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
   });
   Future<WalletIdentity> restoreWallet({
     required String mnemonic,
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+  });
+  Future<WalletIdentity> importWatchOnlyWallet({
+    required String externalDescriptor,
+    String? internalDescriptor,
   });
   Future<void> resetWallet();
   Future<String> getRecoveryPhrase();
@@ -25,3 +31,4 @@ abstract class WalletRepository {
   Future<void> rotateBackend();
   Future<void> setCustomBackend(String? endpoint);
 }
+

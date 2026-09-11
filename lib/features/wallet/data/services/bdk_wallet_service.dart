@@ -7,7 +7,9 @@ import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:crypto/crypto.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
+import 'package:root_wallet/features/wallet/data/services/descriptor_validator.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
@@ -72,6 +74,26 @@ class BdkWalletService {
     AppConstants.testnetEsploraFallbackUrls,
   );
 
+  Future<WalletCapability> getCapability() async {
+    final stored = await _secureStorage.read(
+      key: WalletStorageKeys.walletCapability,
+    );
+    if (stored != null) {
+      return WalletCapability.fromStorageValue(stored);
+    }
+    final mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
+    if (mnemonic != null && mnemonic.trim().isNotEmpty) {
+      return WalletCapability.signing;
+    }
+    final extDesc = await _secureStorage.read(
+      key: WalletStorageKeys.externalDescriptor,
+    );
+    if (extDesc != null && extDesc.trim().isNotEmpty) {
+      return WalletCapability.watchOnly;
+    }
+    return WalletCapability.signing;
+  }
+
   Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
   }) {
@@ -87,6 +109,12 @@ class BdkWalletService {
         key: WalletStorageKeys.scriptType,
         value: scriptType.storageValue,
       );
+      await _secureStorage.write(
+        key: WalletStorageKeys.walletCapability,
+        value: WalletCapability.signing.storageValue,
+      );
+      await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
+      await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
 
       await _resetSession();
       await _deleteWalletDatabase();
@@ -98,6 +126,7 @@ class BdkWalletService {
       );
     });
   }
+
 
   Future<String> getAddress() {
     return _guard('generate receive address', () async {
@@ -122,6 +151,10 @@ class BdkWalletService {
     required int newFeeRateSatVb,
   }) {
     return _guard('bump transaction fee', () async {
+      final capability = await getCapability();
+      if (capability.isWatchOnly) {
+        throw StateError('Watch-only wallets cannot sign or bump transaction fees.');
+      }
       final wallet = await _loadWallet();
       final txid = bdk.Txid.fromString(hex: txidHex);
       final feeRate = bdk.FeeRate.fromSatPerVb(satVb: newFeeRateSatVb);
@@ -140,13 +173,23 @@ class BdkWalletService {
     });
   }
 
-  Future<String?> getMnemonic() {
+  Future<String?> getMnemonic() async {
+    final capability = await getCapability();
+    if (capability.isWatchOnly) {
+      return null;
+    }
     return _secureStorage.read(key: WalletStorageKeys.mnemonic);
   }
 
   Future<bool> hasWallet() async {
     final mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
-    return mnemonic != null && mnemonic.trim().isNotEmpty;
+    if (mnemonic != null && mnemonic.trim().isNotEmpty) {
+      return true;
+    }
+    final extDesc = await _secureStorage.read(
+      key: WalletStorageKeys.externalDescriptor,
+    );
+    return extDesc != null && extDesc.trim().isNotEmpty;
   }
 
   Future<WalletIdentity> restoreWallet({
@@ -173,6 +216,12 @@ class BdkWalletService {
         key: WalletStorageKeys.scriptType,
         value: scriptType.storageValue,
       );
+      await _secureStorage.write(
+        key: WalletStorageKeys.walletCapability,
+        value: WalletCapability.signing.storageValue,
+      );
+      await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
+      await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
 
       await _resetSession();
       await _deleteWalletDatabase();
@@ -181,15 +230,74 @@ class BdkWalletService {
     });
   }
 
+  Future<WalletIdentity> importWatchOnlyWallet({
+    required String externalDescriptor,
+    String? internalDescriptor,
+  }) {
+    return _guard('import watch-only wallet', () async {
+      final validated = DescriptorValidator.validate(
+        externalInput: externalDescriptor,
+        internalInput: internalDescriptor,
+      );
+
+      await _secureStorage.write(
+        key: WalletStorageKeys.walletCapability,
+        value: WalletCapability.watchOnly.storageValue,
+      );
+      await _secureStorage.write(
+        key: WalletStorageKeys.externalDescriptor,
+        value: validated.externalDescriptor,
+      );
+      if (validated.internalDescriptor != null &&
+          validated.internalDescriptor!.isNotEmpty) {
+        await _secureStorage.write(
+          key: WalletStorageKeys.internalDescriptor,
+          value: validated.internalDescriptor!,
+        );
+      } else {
+        await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+      }
+      await _secureStorage.write(
+        key: WalletStorageKeys.scriptType,
+        value: validated.scriptType.storageValue,
+      );
+
+      // Strictly purge any mnemonic or seed material from storage
+      await _secureStorage.delete(key: WalletStorageKeys.mnemonic);
+      await _secureStorage.delete(key: WalletStorageKeys.decoyMnemonic);
+
+      await _resetSession();
+      await _deleteWalletDatabase();
+
+      final fingerprint = validated.fingerprint ??
+          sha256
+              .convert(utf8.encode(validated.externalDescriptor))
+              .toString()
+              .substring(0, 8)
+              .toUpperCase();
+
+      return WalletIdentity(
+        id: 'wallet_${_network.name}_watch_only_${validated.scriptType.storageValue}',
+        fingerprint: fingerprint,
+        network: _network.name,
+        capability: WalletCapability.watchOnly,
+      );
+    });
+  }
+
   Future<void> resetWallet() {
     return _guard('reset wallet', () async {
       await _secureStorage.delete(key: WalletStorageKeys.mnemonic);
       await _secureStorage.delete(key: WalletStorageKeys.decoyMnemonic);
       await _secureStorage.delete(key: WalletStorageKeys.scriptType);
+      await _secureStorage.delete(key: WalletStorageKeys.walletCapability);
+      await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
+      await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
       await _resetSession();
       await _deleteWalletDatabase();
     });
   }
+
 
   Future<void> syncWallet() {
     return _guard('sync wallet', () async {
@@ -509,6 +617,77 @@ class BdkWalletService {
   }
 
   Future<bdk.Wallet> _createWalletFromStorage() async {
+    final capability = await getCapability();
+    if (capability.isWatchOnly) {
+      final extDescStr = await _secureStorage.read(
+        key: WalletStorageKeys.externalDescriptor,
+      );
+      if (extDescStr == null || extDescStr.trim().isEmpty) {
+        throw StateError(
+          'Watch-only wallet not initialized. Import descriptor first.',
+        );
+      }
+      final intDescStr = await _secureStorage.read(
+        key: WalletStorageKeys.internalDescriptor,
+      );
+
+      final externalDescriptor = bdk.Descriptor(
+        descriptor: extDescStr,
+        networkKind: _networkKind,
+      );
+      bdk.Descriptor? internalDescriptor;
+      if (intDescStr != null && intDescStr.trim().isNotEmpty) {
+        internalDescriptor = bdk.Descriptor(
+          descriptor: intDescStr,
+          networkKind: _networkKind,
+        );
+      }
+
+      final databasePath = await _databasePath();
+      final persister = bdk.Persister.newSqlite(path: databasePath);
+      final databaseFile = File(databasePath);
+      final hasExistingDatabase =
+          await databaseFile.exists() && await databaseFile.length() > 0;
+
+      final bdk.Wallet wallet;
+      if (internalDescriptor != null) {
+        wallet = hasExistingDatabase
+            ? bdk.Wallet.load(
+                descriptor: externalDescriptor,
+                changeDescriptor: internalDescriptor,
+                persister: persister,
+                lookahead: AppConstants.walletAddressDiscoveryStopGap,
+              )
+            : bdk.Wallet(
+                descriptor: externalDescriptor,
+                changeDescriptor: internalDescriptor,
+                network: _network,
+                persister: persister,
+                lookahead: AppConstants.walletAddressDiscoveryStopGap,
+              );
+      } else {
+        wallet = hasExistingDatabase
+            ? bdk.Wallet.loadSingle(
+                descriptor: externalDescriptor,
+                persister: persister,
+                lookahead: AppConstants.walletAddressDiscoveryStopGap,
+              )
+            : bdk.Wallet.createSingle(
+                descriptor: externalDescriptor,
+                network: _network,
+                persister: persister,
+                lookahead: AppConstants.walletAddressDiscoveryStopGap,
+              );
+      }
+
+      _mnemonic = null;
+      _descriptorSecretKey = null;
+      _externalDescriptor = externalDescriptor;
+      _internalDescriptor = internalDescriptor;
+      _persister = persister;
+      return wallet;
+    }
+
     String? mnemonic;
     if (_isDecoyActive) {
       mnemonic = await _secureStorage.read(
@@ -592,17 +771,19 @@ class BdkWalletService {
 
   Future<String> _databasePath() async {
     final scriptType = await _readWalletScriptType();
+    final capability = await getCapability();
     final walletDirectory = await _walletStoragePathLoader();
     final prefix = _isDecoyActive ? 'decoy_' : '';
+    final watchOnlyPrefix = capability.isWatchOnly ? 'watch_only_' : '';
     final versionedPath =
-        '$walletDirectory/${prefix}root_wallet_${_network.name}_${scriptType.storageValue}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite';
+        '$walletDirectory/${prefix}root_wallet_${watchOnlyPrefix}${_network.name}_${scriptType.storageValue}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite';
     final legacyPath =
         '$walletDirectory/${prefix}root_wallet_${_network.name}.sqlite';
 
     if (await File(versionedPath).exists()) {
       return versionedPath;
     }
-    if (await File(legacyPath).exists()) {
+    if (!capability.isWatchOnly && await File(legacyPath).exists()) {
       return legacyPath;
     }
     return versionedPath;
@@ -624,9 +805,13 @@ class BdkWalletService {
           targetPaths.add(
             '$walletDirectory/${prefix}root_wallet_${net}_${scriptType.storageValue}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite',
           );
+          targetPaths.add(
+            '$walletDirectory/${prefix}root_wallet_watch_only_${net}_${scriptType.storageValue}_v${AppConstants.walletDatabaseSchemaVersion}.sqlite',
+          );
         }
       }
     }
+
 
     for (final dbPath in targetPaths) {
       for (final path in <String>[
@@ -724,24 +909,43 @@ class BdkWalletService {
   Future<WalletOverviewData> loadWalletOverviewInBackground() async {
     return _guard('load wallet overview in background', () async {
       await _loadEndpointPreferences();
+      final capability = await getCapability();
       String? mnemonic;
-      if (_isDecoyActive) {
-        mnemonic = await _secureStorage.read(
-          key: WalletStorageKeys.decoyMnemonic,
+      String? externalDescriptor;
+      String? internalDescriptor;
+
+      if (capability.isWatchOnly) {
+        externalDescriptor = await _secureStorage.read(
+          key: WalletStorageKeys.externalDescriptor,
         );
-        if (mnemonic == null || mnemonic.trim().isEmpty) {
-          mnemonic = bdk.Mnemonic(wordCount: bdk.WordCount.words12).toString();
-          await _secureStorage.write(
-            key: WalletStorageKeys.decoyMnemonic,
-            value: mnemonic,
+        if (externalDescriptor == null || externalDescriptor.trim().isEmpty) {
+          throw StateError(
+            'Watch-only wallet not initialized. Import descriptor first.',
           );
         }
+        internalDescriptor = await _secureStorage.read(
+          key: WalletStorageKeys.internalDescriptor,
+        );
       } else {
-        mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
+        if (_isDecoyActive) {
+          mnemonic = await _secureStorage.read(
+            key: WalletStorageKeys.decoyMnemonic,
+          );
+          if (mnemonic == null || mnemonic.trim().isEmpty) {
+            mnemonic = bdk.Mnemonic(wordCount: bdk.WordCount.words12).toString();
+            await _secureStorage.write(
+              key: WalletStorageKeys.decoyMnemonic,
+              value: mnemonic,
+            );
+          }
+        } else {
+          mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
+        }
+        if (mnemonic == null || mnemonic.trim().isEmpty) {
+          throw StateError('Wallet not initialized. Create or restore first.');
+        }
       }
-      if (mnemonic == null || mnemonic.trim().isEmpty) {
-        throw StateError('Wallet not initialized. Create or restore first.');
-      }
+
       final scriptType = await _readWalletScriptType();
       final databasePath = await _databasePath();
 
@@ -753,6 +957,9 @@ class BdkWalletService {
 
       final params = IsolateSyncParams(
         mnemonic: mnemonic,
+        isWatchOnly: capability.isWatchOnly,
+        externalDescriptor: externalDescriptor,
+        internalDescriptor: internalDescriptor,
         scriptType: scriptType,
         network: _network,
         networkKind: _networkKind,
@@ -783,7 +990,10 @@ class BdkWalletService {
 
 class IsolateSyncParams {
   const IsolateSyncParams({
-    required this.mnemonic,
+    this.mnemonic,
+    this.isWatchOnly = false,
+    this.externalDescriptor,
+    this.internalDescriptor,
     required this.scriptType,
     required this.network,
     required this.networkKind,
@@ -795,7 +1005,10 @@ class IsolateSyncParams {
     this.customElectrumUrl,
   });
 
-  final String mnemonic;
+  final String? mnemonic;
+  final bool isWatchOnly;
+  final String? externalDescriptor;
+  final String? internalDescriptor;
   final WalletScriptType scriptType;
   final bdk.Network network;
   final bdk.NetworkKind networkKind;
@@ -921,25 +1134,43 @@ int _timestampMsStatic(bdk.ChainPosition chainPosition) {
 Future<IsolateSyncResult> _performBackgroundSync(
   IsolateSyncParams params,
 ) async {
-  final parsedMnemonic = bdk.Mnemonic.fromString(mnemonic: params.mnemonic);
-  final descriptorSecretKey = bdk.DescriptorSecretKey(
-    networkKind: params.networkKind,
-    mnemonic: parsedMnemonic,
-    password: null,
-  );
+  bdk.Descriptor externalDescriptor;
+  bdk.Descriptor? internalDescriptor;
+  bdk.DescriptorSecretKey? descriptorSecretKey;
+  bdk.Mnemonic? parsedMnemonic;
 
-  final externalDescriptor = _createDescriptorStatic(
-    secretKey: descriptorSecretKey,
-    scriptType: params.scriptType,
-    keychain: bdk.KeychainKind.external_,
-    networkKind: params.networkKind,
-  );
-  final internalDescriptor = _createDescriptorStatic(
-    secretKey: descriptorSecretKey,
-    scriptType: params.scriptType,
-    keychain: bdk.KeychainKind.internal,
-    networkKind: params.networkKind,
-  );
+  if (params.isWatchOnly) {
+    externalDescriptor = bdk.Descriptor(
+      descriptor: params.externalDescriptor!,
+      networkKind: params.networkKind,
+    );
+    if (params.internalDescriptor != null &&
+        params.internalDescriptor!.trim().isNotEmpty) {
+      internalDescriptor = bdk.Descriptor(
+        descriptor: params.internalDescriptor!,
+        networkKind: params.networkKind,
+      );
+    }
+  } else {
+    parsedMnemonic = bdk.Mnemonic.fromString(mnemonic: params.mnemonic!);
+    descriptorSecretKey = bdk.DescriptorSecretKey(
+      networkKind: params.networkKind,
+      mnemonic: parsedMnemonic,
+      password: null,
+    );
+    externalDescriptor = _createDescriptorStatic(
+      secretKey: descriptorSecretKey,
+      scriptType: params.scriptType,
+      keychain: bdk.KeychainKind.external_,
+      networkKind: params.networkKind,
+    );
+    internalDescriptor = _createDescriptorStatic(
+      secretKey: descriptorSecretKey,
+      scriptType: params.scriptType,
+      keychain: bdk.KeychainKind.internal,
+      networkKind: params.networkKind,
+    );
+  }
 
   final databaseFile = File(params.databasePath);
   final hasExistingDatabase =
@@ -948,20 +1179,36 @@ Future<IsolateSyncResult> _performBackgroundSync(
 
   bdk.Wallet? wallet;
   try {
-    wallet = hasExistingDatabase
-        ? bdk.Wallet.load(
-            descriptor: externalDescriptor,
-            changeDescriptor: internalDescriptor,
-            persister: persister,
-            lookahead: params.lookahead,
-          )
-        : bdk.Wallet(
-            descriptor: externalDescriptor,
-            changeDescriptor: internalDescriptor,
-            network: params.network,
-            persister: persister,
-            lookahead: params.lookahead,
-          );
+    if (internalDescriptor != null) {
+      wallet = hasExistingDatabase
+          ? bdk.Wallet.load(
+              descriptor: externalDescriptor,
+              changeDescriptor: internalDescriptor,
+              persister: persister,
+              lookahead: params.lookahead,
+            )
+          : bdk.Wallet(
+              descriptor: externalDescriptor,
+              changeDescriptor: internalDescriptor,
+              network: params.network,
+              persister: persister,
+              lookahead: params.lookahead,
+            );
+    } else {
+      wallet = hasExistingDatabase
+          ? bdk.Wallet.loadSingle(
+              descriptor: externalDescriptor,
+              persister: persister,
+              lookahead: params.lookahead,
+            )
+          : bdk.Wallet.createSingle(
+              descriptor: externalDescriptor,
+              network: params.network,
+              persister: persister,
+              lookahead: params.lookahead,
+            );
+    }
+
 
     Object? lastError;
     bool syncSucceeded = false;
@@ -1125,11 +1372,12 @@ Future<IsolateSyncResult> _performBackgroundSync(
     wallet?.dispose();
     persister.dispose();
     externalDescriptor.dispose();
-    internalDescriptor.dispose();
-    descriptorSecretKey.dispose();
-    parsedMnemonic.dispose();
+    internalDescriptor?.dispose();
+    descriptorSecretKey?.dispose();
+    parsedMnemonic?.dispose();
   }
 }
+
 
 Future<IsolateSyncResult> _runSyncIsolate(IsolateSyncParams params) {
   return Isolate.run(

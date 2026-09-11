@@ -1,6 +1,7 @@
 import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
@@ -17,6 +18,22 @@ class WalletRepositoryImpl implements WalletRepository {
   @override
   Future<bool> hasWallet() {
     return _walletService.hasWallet();
+  }
+
+  @override
+  Future<WalletCapability> getCapability() {
+    return _walletService.getCapability();
+  }
+
+  @override
+  Future<WalletIdentity> importWatchOnlyWallet({
+    required String externalDescriptor,
+    String? internalDescriptor,
+  }) {
+    return _walletService.importWatchOnlyWallet(
+      externalDescriptor: externalDescriptor,
+      internalDescriptor: internalDescriptor,
+    );
   }
 
   @override

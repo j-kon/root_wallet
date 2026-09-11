@@ -10,6 +10,7 @@ import 'package:root_wallet/features/send/domain/usecases/preview_tx.dart';
 import 'package:root_wallet/features/send/domain/usecases/sign_tx.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
@@ -238,6 +239,18 @@ class _FakeWalletRepository implements WalletRepository {
 
   @override
   Future<void> setCustomBackend(String? endpoint) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<WalletCapability> getCapability() async => WalletCapability.signing;
+
+  @override
+  Future<WalletIdentity> importWatchOnlyWallet({
+    required String externalDescriptor,
+    String? internalDescriptor,
+    WalletScriptType? scriptType,
+  }) {
     throw UnimplementedError();
   }
 }
