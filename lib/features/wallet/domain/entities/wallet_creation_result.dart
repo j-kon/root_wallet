@@ -1,4 +1,5 @@
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 
 /// Ephemeral result returned exclusively during wallet creation.
 ///
@@ -8,8 +9,10 @@ class WalletCreationResult {
   const WalletCreationResult({
     required this.walletIdentity,
     required this.recoveryPhrase,
+    this.walletRecord,
   });
 
   final WalletIdentity walletIdentity;
   final String recoveryPhrase;
+  final WalletRecord? walletRecord;
 }

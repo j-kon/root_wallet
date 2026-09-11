@@ -272,6 +272,11 @@ class SendController extends StateNotifier<SendState> {
     }
   }
 
+  void reset() {
+    _ref.read(selectedUtxosProvider.notifier).clear();
+    state = SendState.initial();
+  }
+
   void resetAfterSuccess() {
     _ref.read(selectedUtxosProvider.notifier).clear();
     final feePreset = state.draft.feePreset;

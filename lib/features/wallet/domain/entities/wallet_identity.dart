@@ -17,6 +17,17 @@ class WalletIdentity {
     this.capability = WalletCapability.signing,
   });
 
+  factory WalletIdentity.fromRecord(dynamic record) {
+    return WalletIdentity(
+      id: record.id as String,
+      fingerprint: record.fingerprint as String,
+      network: record.network as String,
+      capability: (record.type.name == 'watchOnly')
+          ? WalletCapability.watchOnly
+          : WalletCapability.signing,
+    );
+  }
+
   final String id;
   final String fingerprint;
   final String network;

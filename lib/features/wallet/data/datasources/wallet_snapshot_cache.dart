@@ -5,25 +5,49 @@ import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WalletSnapshotCache {
-  WalletSnapshotCache(this._prefs, [bool Function()? isDecoyActive])
-    : _isDecoyActive = isDecoyActive ?? (() => false);
+  WalletSnapshotCache(
+    this._prefs, {
+    this.walletId,
+    bool Function()? isDecoyActive,
+  }) : _isDecoyActive = isDecoyActive ?? (() => false);
 
   final SharedPreferences _prefs;
+  final String? walletId;
   final bool Function() _isDecoyActive;
 
-  String get _cacheKey =>
-      _isDecoyActive() ? 'wallet.snapshot.decoy.v2' : 'wallet.snapshot.v2';
-  String get _legacyCacheKey =>
-      _isDecoyActive() ? 'wallet.snapshot.decoy.v1' : 'wallet.snapshot.v1';
+  String get _cacheKey {
+    if (_isDecoyActive()) {
+      return 'wallet.snapshot.decoy.v3';
+    }
+    final id = walletId ?? 'default';
+    return 'wallet.snapshot.$id.v3';
+  }
+
+  List<String> get _legacyCacheKeys => _isDecoyActive()
+      ? const ['wallet.snapshot.decoy.v2', 'wallet.snapshot.decoy.v1']
+      : const ['wallet.snapshot.v2', 'wallet.snapshot.v1'];
 
   Future<void> clear() async {
     await _prefs.remove(_cacheKey);
-    await _prefs.remove(_legacyCacheKey);
+    if (walletId == 'w_primary_migrated' || walletId == null) {
+      for (final legacyKey in _legacyCacheKeys) {
+        await _prefs.remove(legacyKey);
+      }
+    }
   }
 
   Future<WalletSnapshot?> read() async {
-    final raw =
-        _prefs.getString(_cacheKey) ?? _prefs.getString(_legacyCacheKey);
+    String? raw = _prefs.getString(_cacheKey);
+    if ((raw == null || raw.isEmpty) &&
+        (walletId == 'w_primary_migrated' || walletId == null)) {
+      for (final legacyKey in _legacyCacheKeys) {
+        final val = _prefs.getString(legacyKey);
+        if (val != null && val.isNotEmpty) {
+          raw = val;
+          break;
+        }
+      }
+    }
     if (raw == null || raw.isEmpty) {
       return null;
     }
@@ -45,6 +69,10 @@ class WalletSnapshotCache {
   Future<void> write(WalletSnapshot snapshot) async {
     final encoded = jsonEncode(snapshot.toJson());
     await _prefs.setString(_cacheKey, encoded);
-    await _prefs.remove(_legacyCacheKey);
+    if (walletId == 'w_primary_migrated' || walletId == null) {
+      for (final legacyKey in _legacyCacheKeys) {
+        await _prefs.remove(legacyKey);
+      }
+    }
   }
 }

@@ -32,15 +32,142 @@ import 'package:root_wallet/features/wallet/domain/usecases/restore_wallet.dart'
 import 'package:root_wallet/features/wallet/domain/usecases/reset_wallet.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/rotate_wallet_backend.dart';
 import 'package:root_wallet/features/wallet/domain/usecases/set_custom_wallet_backend.dart';
+import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
+import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
+import 'package:root_wallet/features/wallet/data/services/wallet_migration_service.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 
+final walletRegistryProvider = FutureProvider<WalletRegistry>((ref) async {
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  return WalletRegistry(prefs);
+});
+
+final walletMigrationServiceProvider =
+    FutureProvider<WalletMigrationService>((ref) async {
+      final secureStorage = ref.watch(secureStorageProvider);
+      final prefs = await ref.watch(sharedPreferencesProvider.future);
+      return WalletMigrationService(
+        secureStorage: secureStorage,
+        preferences: prefs,
+        walletStoragePathLoader:
+            () => ref.read(walletStoragePathProvider.future),
+      );
+    });
+
+class ActiveWalletIdNotifier extends AsyncNotifier<String?> {
+  @override
+  Future<String?> build() async {
+    final registry = await ref.watch(walletRegistryProvider.future);
+    return registry.getActiveWalletId() ?? registry.getWallets().firstOrNull?.id;
+  }
+
+  Future<void> setActiveWallet(String walletId) async {
+    final registry = await ref.read(walletRegistryProvider.future);
+    await registry.setActiveWalletId(walletId);
+    state = AsyncData(walletId);
+
+    // Reset pending send draft state
+    ref.read(sendControllerProvider.notifier).reset();
+  }
+}
+
+final activeWalletIdProvider =
+    AsyncNotifierProvider<ActiveWalletIdNotifier, String?>(
+      ActiveWalletIdNotifier.new,
+    );
+
+class WalletsListNotifier extends AsyncNotifier<List<WalletRecord>> {
+  @override
+  Future<List<WalletRecord>> build() async {
+    final registry = await ref.watch(walletRegistryProvider.future);
+    final activeId = ref.watch(activeWalletIdProvider).valueOrNull;
+    final wallets = registry.getWallets();
+    return wallets.map((w) => w.copyWith(isActive: w.id == activeId)).toList();
+  }
+
+  Future<void> refresh() async {
+    final registry = await ref.read(walletRegistryProvider.future);
+    final activeId = ref.read(activeWalletIdProvider).valueOrNull;
+    final wallets = registry.getWallets();
+    state = AsyncData(
+      wallets.map((w) => w.copyWith(isActive: w.id == activeId)).toList(),
+    );
+  }
+
+  Future<void> renameWallet(String walletId, String newName) async {
+    final registry = await ref.read(walletRegistryProvider.future);
+    await registry.renameWallet(walletId, newName);
+    await refresh();
+  }
+
+  Future<void> registerWallet(
+    WalletRecord record, {
+    bool makeActive = false,
+  }) async {
+    final registry = await ref.read(walletRegistryProvider.future);
+    await registry.registerWallet(record, makeActive: makeActive);
+    if (makeActive) {
+      await ref.read(activeWalletIdProvider.notifier).setActiveWallet(record.id);
+    } else {
+      await refresh();
+    }
+  }
+
+  Future<void> deleteWallet(String walletId) async {
+    final registry = await ref.read(walletRegistryProvider.future);
+    final bdkService = ref.read(bdkWalletServiceProvider);
+    final activeId = ref.read(activeWalletIdProvider).valueOrNull;
+    final isDeletingActive = activeId == walletId;
+
+    final currentWallets = registry.getWallets();
+    if (currentWallets.length <= 1) {
+      throw StateError(
+        'Cannot delete the last remaining wallet. At least one wallet must be maintained.',
+      );
+    }
+
+    if (isDeletingActive) {
+      final remaining = currentWallets.firstWhere((w) => w.id != walletId);
+      await ref.read(activeWalletIdProvider.notifier).setActiveWallet(remaining.id);
+    }
+
+    await bdkService.deleteWalletData(walletId);
+    await registry.deleteWallet(walletId);
+    await refresh();
+  }
+}
+
+final walletsListProvider =
+    AsyncNotifierProvider<WalletsListNotifier, List<WalletRecord>>(
+      WalletsListNotifier.new,
+    );
+
+final activeWalletRecordProvider = Provider<WalletRecord?>((ref) {
+  final wallets = ref.watch(walletsListProvider).valueOrNull ?? [];
+  final activeId = ref.watch(activeWalletIdProvider).valueOrNull;
+  if (wallets.isEmpty) return null;
+  if (activeId == null) return wallets.first;
+  return wallets.firstWhere((w) => w.id == activeId, orElse: () => wallets.first);
+});
+
 final bdkWalletServiceProvider = Provider<BdkWalletService>(
-  (ref) => BdkWalletService(
-    secureStorage: ref.watch(secureStorageProvider),
-    walletStoragePathLoader: () => ref.read(walletStoragePathProvider.future),
-    preferencesLoader: () => ref.read(sharedPreferencesProvider.future),
-    allowCustomEsploraEndpoint: !ref.watch(appEnvProvider).isProduction,
-  ),
+  (ref) {
+    final activeId = ref.watch(
+      activeWalletIdProvider.select((v) => v.valueOrNull),
+    );
+    final service = BdkWalletService(
+      secureStorage: ref.watch(secureStorageProvider),
+      walletStoragePathLoader: () => ref.read(walletStoragePathProvider.future),
+      preferencesLoader: () => ref.read(sharedPreferencesProvider.future),
+      allowCustomEsploraEndpoint: !ref.watch(appEnvProvider).isProduction,
+      walletId: activeId,
+    );
+    ref.onDispose(() {
+      service.dispose();
+    });
+    return service;
+  },
 );
 
 final bdkSyncDatasourceProvider = Provider<BdkSyncDatasource>(
@@ -57,7 +184,16 @@ final walletRepositoryProvider = Provider<WalletRepository>((ref) {
 });
 
 final walletScriptTypeProvider = FutureProvider<WalletScriptType>((ref) async {
+  final activeId = ref.watch(activeWalletIdProvider).valueOrNull;
   final secureStorage = ref.watch(secureStorageProvider);
+  if (activeId != null) {
+    final value = await secureStorage.read(
+      key: WalletStorageKeys.scriptTypeFor(activeId),
+    );
+    if (value != null && value.trim().isNotEmpty) {
+      return WalletScriptType.fromStorageValue(value);
+    }
+  }
   final value = await secureStorage.read(key: WalletStorageKeys.scriptType);
   return WalletScriptType.fromStorageValue(value);
 });
@@ -124,9 +260,19 @@ final walletSnapshotCacheProvider = FutureProvider<WalletSnapshotCache>((
   ref,
 ) async {
   final prefs = await ref.watch(sharedPreferencesProvider.future);
+  final activeId = ref.watch(
+    activeWalletIdProvider.select((v) => v.valueOrNull),
+  );
   return WalletSnapshotCache(
     prefs,
-    () => ref.read(bdkWalletServiceProvider).isDecoyActive,
+    walletId: activeId,
+    isDecoyActive: () {
+      try {
+        return ref.read(bdkWalletServiceProvider).isDecoyActive;
+      } catch (_) {
+        return false;
+      }
+    },
   );
 });
 
@@ -137,6 +283,10 @@ final walletLabelScopeProvider = FutureProvider<String>((ref) async {
     final bdkService = ref.watch(bdkWalletServiceProvider);
     if (bdkService.isDecoyActive) {
       return 'decoy';
+    }
+    final activeId = ref.watch(activeWalletIdProvider).valueOrNull;
+    if (activeId != null && activeId.isNotEmpty) {
+      return activeId;
     }
     final capability = await bdkService.getCapability();
     if (capability.isWatchOnly) {
@@ -535,23 +685,44 @@ final balanceUnitProvider =
     );
 
 class LockedUtxosNotifier extends AsyncNotifier<Set<String>> {
-  String get _key {
-    final isDecoy = ref.read(bdkWalletServiceProvider).isDecoyActive;
-    return isDecoy ? 'settings.decoy_locked_utxos' : 'settings.locked_utxos';
+  String _computeKey(String? activeId, bool isDecoy) {
+    if (isDecoy) {
+      return 'settings.decoy_locked_utxos';
+    }
+    if (activeId != null && activeId.isNotEmpty) {
+      return 'wallet.$activeId.locked_utxos';
+    }
+    return 'settings.locked_utxos';
   }
 
   @override
   Future<Set<String>> build() async {
+    final activeId = ref.watch(activeWalletIdProvider).valueOrNull;
+    final isDecoy = ref.watch(bdkWalletServiceProvider).isDecoyActive;
     final prefs = await ref.read(sharedPreferencesProvider.future);
-    final list = prefs.getStringList(_key) ?? [];
-    return list.toSet();
+    final key = _computeKey(activeId, isDecoy);
+    var list = prefs.getStringList(key);
+    if (list == null && !isDecoy) {
+      final legacy = prefs.getStringList('settings.locked_utxos');
+      if (legacy != null) {
+        list = legacy;
+        await prefs.setStringList(key, legacy);
+      }
+    }
+    return (list ?? []).toSet();
+  }
+
+  String get _currentKey {
+    final activeId = ref.read(activeWalletIdProvider).valueOrNull;
+    final isDecoy = ref.read(bdkWalletServiceProvider).isDecoyActive;
+    return _computeKey(activeId, isDecoy);
   }
 
   Future<void> lockUtxo(String outpoint) async {
     final current = state.valueOrNull ?? {};
     final updated = {...current, outpoint};
     final prefs = await ref.read(sharedPreferencesProvider.future);
-    await prefs.setStringList(_key, updated.toList());
+    await prefs.setStringList(_currentKey, updated.toList());
     state = AsyncData(updated);
   }
 
@@ -559,7 +730,7 @@ class LockedUtxosNotifier extends AsyncNotifier<Set<String>> {
     final current = state.valueOrNull ?? {};
     final updated = {...current}..remove(outpoint);
     final prefs = await ref.read(sharedPreferencesProvider.future);
-    await prefs.setStringList(_key, updated.toList());
+    await prefs.setStringList(_currentKey, updated.toList());
     state = AsyncData(updated);
   }
 
