@@ -124,6 +124,38 @@ void main() {
       expect(find.text('Direct testnet connection'), findsOneWidget);
       expect(find.text('Direct'), findsOneWidget);
     });
+
+    testWidgets(
+      'shows Connection routing configuration error and Error badge when transport mode is corrupt',
+      (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(800, 1400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+
+        await prefs.setString(NetworkStorageKeys.transportMode, 'sock5');
+
+        await tester.pumpWidget(buildTestWidget());
+        await tester.pumpAndSettle();
+
+        final routingRow =
+            find.byKey(const ValueKey('settings_connection_routing_row'));
+        expect(routingRow, findsOneWidget);
+
+        // Honest error display matching fail-closed behavior
+        expect(
+          find.text('Connection routing configuration error'),
+          findsOneWidget,
+        );
+        expect(find.text('Error'), findsOneWidget);
+
+        // Must NOT collapse to Direct or pretend to be SOCKS5/Active
+        expect(find.text('Direct testnet connection'), findsNothing);
+        expect(find.text('Direct'), findsNothing);
+        expect(find.text('SOCKS5'), findsNothing);
+        expect(find.textContaining('Active'), findsNothing);
+        expect(find.textContaining('Connected'), findsNothing);
+      },
+    );
   });
 }
 

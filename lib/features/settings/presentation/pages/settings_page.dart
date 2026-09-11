@@ -54,11 +54,44 @@ class SettingsPage extends ConsumerWidget {
     final healthReady = backupConfirmed && isLockActive;
 
     final customNode = ref.watch(customNodeProvider).valueOrNull;
-    final transportConfig =
-        ref.watch(networkTransportProvider).valueOrNull ??
-        const NetworkConfiguration();
+    final transportAsync = ref.watch(networkTransportProvider);
     final wallets = ref.watch(walletsListProvider).valueOrNull ?? const [];
     final activeWallet = ref.watch(activeWalletRecordProvider);
+
+    final String routingSubtitle;
+    final String routingBadgeText;
+    final Color routingBadgeTone;
+
+    if (transportAsync.hasError) {
+      routingSubtitle = 'Connection routing configuration error';
+      routingBadgeText = 'Error';
+      routingBadgeTone = RootBrandColors.error;
+    } else if (transportAsync.isLoading) {
+      routingSubtitle = 'Loading connection configuration';
+      routingBadgeText = 'Loading';
+      routingBadgeTone =
+          isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68);
+    } else {
+      final config = transportAsync.value ?? const NetworkConfiguration();
+      if (config.isSocks5) {
+        if (config.proxyConfig != null) {
+          routingSubtitle =
+              'SOCKS5 Proxy (${config.proxyConfig!.displayAddress})';
+          routingBadgeText = 'SOCKS5';
+          routingBadgeTone = config.isProxyVerified
+              ? RootBrandColors.pineGreen
+              : RootBrandColors.amberAccent;
+        } else {
+          routingSubtitle = 'SOCKS5 configuration invalid';
+          routingBadgeText = 'Invalid';
+          routingBadgeTone = RootBrandColors.error;
+        }
+      } else {
+        routingSubtitle = 'Direct testnet connection';
+        routingBadgeText = 'Direct';
+        routingBadgeTone = RootBrandColors.pineGreen;
+      }
+    }
 
     return AppScaffold(
       title: 'Settings',
@@ -245,21 +278,9 @@ class SettingsPage extends ConsumerWidget {
                     ? CupertinoIcons.shield_lefthalf_fill
                     : Icons.security_rounded,
                 title: 'Connection Routing',
-                subtitle: transportConfig.isSocks5
-                    ? (transportConfig.proxyConfig != null
-                        ? 'SOCKS5 Proxy (${transportConfig.proxyConfig!.displayAddress})'
-                        : 'SOCKS5 configuration invalid')
-                    : 'Direct testnet connection',
-                badgeText: transportConfig.isSocks5
-                    ? (transportConfig.proxyConfig != null ? 'SOCKS5' : 'Invalid')
-                    : 'Direct',
-                badgeTone: transportConfig.isSocks5
-                    ? (transportConfig.proxyConfig != null
-                        ? (transportConfig.isProxyVerified
-                            ? RootBrandColors.pineGreen
-                            : RootBrandColors.amberAccent)
-                        : RootBrandColors.error)
-                    : RootBrandColors.pineGreen,
+                subtitle: routingSubtitle,
+                badgeText: routingBadgeText,
+                badgeTone: routingBadgeTone,
                 onTap: () {
                   HapticFeedback.selectionClick();
                   Navigator.of(context).pushNamed(AppRoutes.connectionRouting);
