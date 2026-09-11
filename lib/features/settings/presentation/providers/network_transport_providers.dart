@@ -99,25 +99,52 @@ class NetworkTransportController extends AsyncNotifier<NetworkConfiguration> {
     final prefs = await ref.read(sharedPreferencesProvider.future);
     final secureStorage = ref.read(secureStorageProvider);
 
-    // Persist proxy endpoint
-    await prefs.setString(NetworkStorageKeys.proxyHost, config.host);
-    await prefs.setInt(NetworkStorageKeys.proxyPort, config.port);
+    // Snapshot previous known-good state for rollback in case of partial persistence failure.
+    final previousHost = prefs.getString(NetworkStorageKeys.proxyHost);
+    final previousPort = prefs.getInt(NetworkStorageKeys.proxyPort);
+    final previousMode = prefs.getString(NetworkStorageKeys.transportMode);
 
-    // Clean up any legacy credential keys if previously stored
+    // Clean up any legacy credential keys BEFORE writing new active proxy configuration.
+    // If secureStorage.delete throws, preferences remain untouched and previous config is preserved.
     await prefs.remove('settings.network.proxy_username');
     await secureStorage.delete(key: 'secure.settings.network.proxy_password');
 
-    final mode = activate ? NetworkTransportMode.socks5 : NetworkTransportMode.direct;
-    await prefs.setString(NetworkStorageKeys.transportMode, mode.storageValue);
+    try {
+      // Persist proxy endpoint
+      await prefs.setString(NetworkStorageKeys.proxyHost, config.host);
+      await prefs.setInt(NetworkStorageKeys.proxyPort, config.port);
 
-    state = AsyncData(
-      NetworkConfiguration(
-        transportMode: mode,
-        proxyConfig: config,
-        isProxyVerified: verified,
-      ),
-    );
-    ref.invalidate(bdkWalletServiceProvider);
+      // Persist transport mode LAST
+      final mode = activate ? NetworkTransportMode.socks5 : NetworkTransportMode.direct;
+      await prefs.setString(NetworkStorageKeys.transportMode, mode.storageValue);
+
+      state = AsyncData(
+        NetworkConfiguration(
+          transportMode: mode,
+          proxyConfig: config,
+          isProxyVerified: verified,
+        ),
+      );
+      ref.invalidate(bdkWalletServiceProvider);
+    } catch (e) {
+      // Rollback to previous known-good configuration
+      if (previousHost != null) {
+        await prefs.setString(NetworkStorageKeys.proxyHost, previousHost);
+      } else {
+        await prefs.remove(NetworkStorageKeys.proxyHost);
+      }
+      if (previousPort != null) {
+        await prefs.setInt(NetworkStorageKeys.proxyPort, previousPort);
+      } else {
+        await prefs.remove(NetworkStorageKeys.proxyPort);
+      }
+      if (previousMode != null) {
+        await prefs.setString(NetworkStorageKeys.transportMode, previousMode);
+      } else {
+        await prefs.remove(NetworkStorageKeys.transportMode);
+      }
+      rethrow;
+    }
   }
 
   /// Explicit user action to switch from SOCKS5 to Direct.

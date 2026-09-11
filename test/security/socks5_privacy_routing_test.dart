@@ -75,6 +75,29 @@ class MockClientTracker {
   }
 }
 
+class FailingDeleteSecureStorage implements SecureStorage {
+  FailingDeleteSecureStorage({this.shouldFailDelete = false});
+
+  bool shouldFailDelete;
+  final Map<String, String> _data = {};
+
+  @override
+  Future<void> delete({required String key}) async {
+    if (shouldFailDelete && key == 'secure.settings.network.proxy_password') {
+      throw Exception('KeyStore deletion failed');
+    }
+    _data.remove(key);
+  }
+
+  @override
+  Future<String?> read({required String key}) async => _data[key];
+
+  @override
+  Future<void> write({required String key, required String value}) async {
+    _data[key] = value;
+  }
+}
+
 void main() {
   group('SOCKS5 & Privacy Routing Security Tests', () {
     late Directory tempDir;
@@ -865,6 +888,98 @@ void main() {
         await controller.setNodeUrl(null);
         expect(container.read(customNodeProvider).value, isNull);
         expect(prefs.getString('settings.custom_electrum_url'), isNull);
+      });
+    });
+
+    group('Proxy Persistence & Legacy Credential Cleanup Transactionality', () {
+      test('legacy secret cleanup failure prevents partial persistence and avoids invalidating BdkWalletService', () async {
+        final prefs = await SharedPreferences.getInstance();
+        // Pre-populate old known-good configuration
+        await prefs.setString(NetworkStorageKeys.proxyHost, '127.0.0.1');
+        await prefs.setInt(NetworkStorageKeys.proxyPort, 9050);
+        await prefs.setString(NetworkStorageKeys.transportMode, 'socks5');
+        await prefs.setString('settings.network.proxy_username', 'legacy_user');
+
+        final failingStorage = FailingDeleteSecureStorage(shouldFailDelete: true);
+        await failingStorage.write(
+          key: 'secure.settings.network.proxy_password',
+          value: 'legacy_pass',
+        );
+
+        int bdkServiceBuildCount = 0;
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((ref) => prefs),
+            secureStorageProvider.overrideWithValue(failingStorage),
+            walletStoragePathProvider.overrideWith((ref) => tempDir.path),
+            bdkWalletServiceProvider.overrideWith((ref) {
+              bdkServiceBuildCount++;
+              return BdkWalletService(
+                secureStorage: failingStorage,
+                walletStoragePathLoader: () async => tempDir.path,
+                preferencesLoader: () async => prefs,
+                allowCustomEsploraEndpoint: false,
+              );
+            }),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        // Initial build
+        container.read(bdkWalletServiceProvider);
+        expect(bdkServiceBuildCount, equals(1));
+
+        final controller = container.read(networkTransportProvider.notifier);
+        final newConfig = Socks5ProxyConfig(host: '10.0.0.1', port: 1080);
+
+        // Attempt to save new proxy config while secure storage delete fails
+        await expectLater(
+          controller.saveProxyConfig(newConfig, activate: true),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('KeyStore deletion failed'),
+            ),
+          ),
+        );
+
+        // Old proxy configuration in SharedPreferences must be unchanged
+        expect(prefs.getString(NetworkStorageKeys.proxyHost), equals('127.0.0.1'));
+        expect(prefs.getInt(NetworkStorageKeys.proxyPort), equals(9050));
+        expect(prefs.getString(NetworkStorageKeys.transportMode), equals('socks5'));
+
+        // Current state in provider must remain unchanged (old proxy)
+        final currentConfig = container.read(networkTransportProvider).value!;
+        expect(currentConfig.proxyConfig?.host, equals('127.0.0.1'));
+        expect(currentConfig.proxyConfig?.port, equals(9050));
+        expect(currentConfig.transportMode, equals(NetworkTransportMode.socks5));
+
+        // bdkWalletService must NOT have been invalidated or rebuilt to uncommitted state
+        expect(bdkServiceBuildCount, equals(1));
+
+        // Now verify successful cleanup and save when secure storage works
+        failingStorage.shouldFailDelete = false;
+        await controller.saveProxyConfig(newConfig, activate: true, verified: true);
+
+        // Verify new proxy configuration is now persisted
+        expect(prefs.getString(NetworkStorageKeys.proxyHost), equals('10.0.0.1'));
+        expect(prefs.getInt(NetworkStorageKeys.proxyPort), equals(1080));
+        expect(prefs.getString(NetworkStorageKeys.transportMode), equals('socks5'));
+
+        // Verify legacy secrets were removed
+        expect(prefs.getString('settings.network.proxy_username'), isNull);
+        expect(await failingStorage.read(key: 'secure.settings.network.proxy_password'), isNull);
+
+        // Verify state is updated and bdkWalletServiceProvider was invalidated
+        final updatedConfig = container.read(networkTransportProvider).value!;
+        expect(updatedConfig.proxyConfig?.host, equals('10.0.0.1'));
+        expect(updatedConfig.proxyConfig?.port, equals(1080));
+        expect(updatedConfig.isProxyVerified, isTrue);
+
+        // Read bdkWalletServiceProvider to trigger new build
+        container.read(bdkWalletServiceProvider);
+        expect(bdkServiceBuildCount, equals(2));
       });
     });
   });
