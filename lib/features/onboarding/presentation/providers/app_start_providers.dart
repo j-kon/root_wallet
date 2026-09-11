@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
-import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 
@@ -34,31 +33,14 @@ class AppStartController extends AsyncNotifier<AppStartState> {
   }
 
   Future<AppStartState> _load() async {
-    // 1. Run migration if needed
-    try {
-      final migrationService =
-          await ref.read(walletMigrationServiceProvider.future);
-      await migrationService.migrateIfNeeded();
-    } catch (_) {
-      // Non-fatal, continue with normal check
-    }
+    // 1. Run migration if needed (fail closed on migration or registry errors)
+    final migrationService =
+        await ref.read(walletMigrationServiceProvider.future);
+    await migrationService.migrateIfNeeded();
 
-    // 2. Check wallet existence via WalletRegistry
+    // 2. Check wallet existence via WalletRegistry (no legacy fallback)
     final registry = await ref.read(walletRegistryProvider.future);
-    var walletExists = registry.hasWallets();
-    if (!walletExists) {
-      final secureStorage = ref.read(secureStorageProvider);
-      final legacyMnemonic = await secureStorage.read(
-        key: WalletStorageKeys.legacyMnemonic,
-      );
-      final legacyExtDesc = await secureStorage.read(
-        key: WalletStorageKeys.legacyExternalDescriptor,
-      );
-      if ((legacyMnemonic != null && legacyMnemonic.trim().isNotEmpty) ||
-          (legacyExtDesc != null && legacyExtDesc.trim().isNotEmpty)) {
-        walletExists = true;
-      }
-    }
+    final walletExists = registry.hasWallets();
 
     final prefs = await ref.read(sharedPreferencesProvider.future);
     final rawBackupConfirmed = prefs.getBool(_backupConfirmedKey) ?? false;

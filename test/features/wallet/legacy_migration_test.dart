@@ -42,7 +42,7 @@ void main() {
 
       final registry = WalletRegistry(prefs);
       expect(registry.hasWallets(), isFalse);
-      expect(prefs.getBool(WalletStorageKeys.legacyMigrationCompleted), isTrue);
+      expect(prefs.getBool(WalletStorageKeys.legacyMigrationCompleted), isNull);
     });
 
     test('migrates legacy signing wallet accurately and completely', () async {

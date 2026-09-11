@@ -17,16 +17,16 @@ void main() {
     });
 
     test('verifies wallet-scoped secure storage keys namespace separation', () {
-      const walletA = 'w_alpha_1111';
-      const walletB = 'w_beta_2222';
+      const walletA = 'w_11111111-1111-1111-1111-111111111111';
+      const walletB = 'w_22222222-2222-2222-2222-222222222222';
 
       expect(
         WalletStorageKeys.mnemonicFor(walletA),
-        equals('wallet.w_alpha_1111.mnemonic'),
+        equals('wallet.w_11111111-1111-1111-1111-111111111111.mnemonic'),
       );
       expect(
         WalletStorageKeys.mnemonicFor(walletB),
-        equals('wallet.w_beta_2222.mnemonic'),
+        equals('wallet.w_22222222-2222-2222-2222-222222222222.mnemonic'),
       );
       expect(
         WalletStorageKeys.mnemonicFor(walletA),
@@ -35,29 +35,29 @@ void main() {
 
       expect(
         WalletStorageKeys.externalDescriptorFor(walletA),
-        equals('wallet.w_alpha_1111.external_descriptor'),
+        equals('wallet.w_11111111-1111-1111-1111-111111111111.external_descriptor'),
       );
       expect(
         WalletStorageKeys.internalDescriptorFor(walletA),
-        equals('wallet.w_alpha_1111.internal_descriptor'),
+        equals('wallet.w_11111111-1111-1111-1111-111111111111.internal_descriptor'),
       );
       expect(
         WalletStorageKeys.scriptTypeFor(walletA),
-        equals('wallet.w_alpha_1111.script_type'),
+        equals('wallet.w_11111111-1111-1111-1111-111111111111.script_type'),
       );
       expect(
         WalletStorageKeys.capabilityFor(walletA),
-        equals('wallet.w_alpha_1111.capability'),
+        equals('wallet.w_11111111-1111-1111-1111-111111111111.capability'),
       );
       expect(
         WalletStorageKeys.metadataFor(walletA),
-        equals('wallet.w_alpha_1111.metadata'),
+        equals('wallet.w_11111111-1111-1111-1111-111111111111.metadata'),
       );
     });
 
     test('isolates BIP-329 labels strictly per wallet ID', () async {
-      const walletA = 'w_alpha_1111';
-      const walletB = 'w_beta_2222';
+      const walletA = 'w_11111111-1111-1111-1111-111111111111';
+      const walletB = 'w_22222222-2222-2222-2222-222222222222';
 
       final storeA = WalletLabelStore(prefs, scope: walletA);
       final storeB = WalletLabelStore(prefs, scope: walletB);
@@ -77,8 +77,8 @@ void main() {
     });
 
     test('isolates wallet snapshot cache strictly per wallet ID', () async {
-      const walletA = 'w_alpha_1111';
-      const walletB = 'w_beta_2222';
+      const walletA = 'w_11111111-1111-1111-1111-111111111111';
+      const walletB = 'w_22222222-2222-2222-2222-222222222222';
 
       final cacheA = WalletSnapshotCache(prefs, walletId: walletA);
       final cacheB = WalletSnapshotCache(prefs, walletId: walletB);
@@ -117,8 +117,8 @@ void main() {
     });
 
     test('isolates locked UTXOs storage per wallet ID', () async {
-      const walletA = 'w_alpha_1111';
-      const walletB = 'w_beta_2222';
+      const walletA = 'w_11111111-1111-1111-1111-111111111111';
+      const walletB = 'w_22222222-2222-2222-2222-222222222222';
 
       final keyA = 'wallet.$walletA.locked_utxos';
       final keyB = 'wallet.$walletB.locked_utxos';

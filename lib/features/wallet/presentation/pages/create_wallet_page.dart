@@ -37,56 +37,44 @@ class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
     final hasExisting = registry.getWallets().isNotEmpty;
     final isAdding = widget.isAddWallet || hasExisting;
 
-    if (isAdding) {
-      setState(() {
-        _isBusy = true;
-        _errorMessage = null;
-      });
-      try {
-        final addWalletService = await ref.read(addWalletServiceProvider.future);
-        final result = await addWalletService.createWallet(scriptType: _scriptType);
-        await ref
-            .read(activeWalletIdProvider.notifier)
-            .setActiveWallet(result.walletRecord!.id);
-        ref.invalidate(walletCapabilityProvider);
-        ref.invalidate(walletHomeControllerProvider);
-        await ref.read(walletsListProvider.notifier).refresh();
-
-        if (!mounted) return;
-        Navigator.of(context).pushReplacementNamed(
-          AppRoutes.backupSeed,
-          arguments: BackupSeedPageArgs(
-            requireReauth: false,
-            isOnboardingFlow: false,
-            recoveryPhrase: result.recoveryPhrase,
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        setState(() {
-          _isBusy = false;
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
-        });
-      }
-    } else {
-      final controller = ref.read(onboardingControllerProvider.notifier);
-      final created = await controller.createWallet(
+    setState(() {
+      _isBusy = true;
+      _errorMessage = null;
+    });
+    try {
+      final addWalletService = await ref.read(addWalletServiceProvider.future);
+      final result = await addWalletService.createWallet(
         scriptType: _scriptType,
+        walletName: isAdding ? null : 'Main Wallet',
       );
-      if (!mounted) return;
-      if (!created) return;
+      await ref
+          .read(activeWalletIdProvider.notifier)
+          .setActiveWallet(result.walletRecord!.id);
+      ref.invalidate(walletCapabilityProvider);
+      ref.invalidate(walletHomeControllerProvider);
+      await ref.read(walletsListProvider.notifier).refresh();
 
-      final recoveryPhrase = ref
-          .read(onboardingControllerProvider)
-          .recoveryPhrase;
+      if (!isAdding) {
+        ref
+            .read(onboardingControllerProvider.notifier)
+            .setRecoveryPhrase(result.recoveryPhrase);
+      }
+
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed(
         AppRoutes.backupSeed,
         arguments: BackupSeedPageArgs(
           requireReauth: false,
-          isOnboardingFlow: true,
-          recoveryPhrase: recoveryPhrase,
+          isOnboardingFlow: !isAdding,
+          recoveryPhrase: result.recoveryPhrase,
         ),
       );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isBusy = false;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
     }
   }
 

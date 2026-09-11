@@ -115,6 +115,35 @@ class WalletRecord {
   }
 
   static final RegExp _fingerprintRegex = RegExp(r'^[0-9A-Fa-f]{8}$');
+  static final RegExp _canonicalIdRegex = RegExp(
+    r'^w_[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
+
+  /// Canonical identifier for migrated single-wallet installations.
+  static const String migratedWalletId = 'w_primary_migrated';
+
+  /// Validates whether [id] matches the canonical wallet ID format.
+  ///
+  /// Allowed formats:
+  /// - `w_<uuid>` (e.g. `w_12345678-1234-4234-8234-123456789abc`)
+  /// - `w_primary_migrated` (for legacy migrated installations)
+  ///
+  /// Rejects path traversal sequences, slashes, control characters, and arbitrary strings.
+  static bool isValidWalletId(String id) {
+    if (id == migratedWalletId) return true;
+    return _canonicalIdRegex.hasMatch(id);
+  }
+
+  /// Throws [FormatException] if [id] is not a valid canonical wallet identifier.
+  static void validateWalletId(String id) {
+    if (!isValidWalletId(id)) {
+      throw FormatException(
+        'Invalid wallet ID format "$id". Wallet IDs must be canonical identifiers '
+        'matching "w_<uuid>" or "$migratedWalletId" and cannot contain path separators '
+        'or traversal characters.',
+      );
+    }
+  }
 
   /// Strict factory for parsing persistent [WalletRegistry] entries.
   ///
@@ -125,6 +154,7 @@ class WalletRecord {
     if (id is! String || id.trim().isEmpty) {
       throw const FormatException('Missing or empty wallet "id".');
     }
+    validateWalletId(id);
 
     final name = json['name'];
     if (name is! String || name.trim().isEmpty) {

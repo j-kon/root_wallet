@@ -11,9 +11,9 @@ import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/data/services/add_wallet_service.dart';
-import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page_args.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/script_type_option.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
@@ -43,63 +43,42 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
     final hasExisting = registry.getWallets().isNotEmpty;
     final isAdding = widget.isAddWallet || hasExisting;
 
-    if (isAdding) {
-      setState(() {
-        _isBusy = true;
-        _errorMessage = null;
-      });
-      try {
-        final addWalletService =
-            await ref.read(addWalletServiceProvider.future);
-        final record = await addWalletService.restoreWallet(
-          mnemonic: phrase,
-          scriptType: _scriptType,
-        );
-        await ref
-            .read(activeWalletIdProvider.notifier)
-            .setActiveWallet(record.id);
-        ref.invalidate(walletCapabilityProvider);
-        ref.invalidate(walletHomeControllerProvider);
-        await ref.read(walletsListProvider.notifier).refresh();
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wallet restored successfully.')),
-        );
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.walletHome,
-          (route) => false,
-        );
-      } catch (e) {
-        if (!mounted) return;
-        setState(() {
-          _isBusy = false;
-          _errorMessage = e is AddWalletDuplicateException
-              ? e.message
-              : e.toString().replaceFirst('Exception: ', '');
-        });
-      }
-    } else {
-      final controller = ref.read(onboardingControllerProvider.notifier);
-      final restored = await controller.restoreWallet(
-        phrase,
+    setState(() {
+      _isBusy = true;
+      _errorMessage = null;
+    });
+    try {
+      final addWalletService =
+          await ref.read(addWalletServiceProvider.future);
+      final record = await addWalletService.restoreWallet(
+        mnemonic: phrase,
         scriptType: _scriptType,
+        walletName: isAdding ? null : 'Main Wallet',
       );
+      await ref
+          .read(activeWalletIdProvider.notifier)
+          .setActiveWallet(record.id);
+      ref.invalidate(walletCapabilityProvider);
+      ref.invalidate(walletHomeControllerProvider);
+      await ref.read(walletsListProvider.notifier).refresh();
+      await ref.read(backupReminderProvider.notifier).confirmBackup();
+
       if (!mounted) return;
-      if (!restored) return;
-
-      final recoveryPhrase = ref
-          .read(onboardingControllerProvider)
-          .recoveryPhrase;
-
-      Navigator.of(context).pushReplacementNamed(
-        AppRoutes.backupSeed,
-        arguments: BackupSeedPageArgs(
-          requireReauth: false,
-          isOnboardingFlow: true,
-          recoveryPhrase: recoveryPhrase,
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wallet restored successfully.')),
       );
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.walletHome,
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isBusy = false;
+        _errorMessage = e is AddWalletDuplicateException
+            ? e.message
+            : e.toString().replaceFirst('Exception: ', '');
+      });
     }
   }
 

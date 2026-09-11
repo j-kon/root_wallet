@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WalletStorageCleanupException implements Exception {
@@ -34,11 +35,14 @@ class WalletStorageCleaner {
   /// Deletes all data, databases, labels, and secrets associated with [walletId].
   ///
   /// Guarantees:
+  /// - Validates [walletId] against canonical format and path traversal.
+  /// - Enforces strict containment beneath `<base>/wallets/`.
   /// - Leaves all other wallet keys and databases completely untouched.
   /// - Decoy storage is preserved.
   /// - Idempotent multi-step cleanup: can be safely retried if interrupted.
   /// - Throws [WalletStorageCleanupException] if any stage of cleanup fails.
   Future<void> deleteWalletData(String walletId) async {
+    WalletRecord.validateWalletId(walletId);
     final failures = <String>[];
 
     // 1. Delete all wallet-scoped keys from SecureStorage
@@ -66,10 +70,21 @@ class WalletStorageCleaner {
     // 3. Purge isolated SQLite directory
     try {
       final basePath = await _walletStoragePathLoader();
-      final isolatedDir = Directory('$basePath/wallets/$walletId');
+      final walletsRoot = Directory('$basePath/wallets');
+      final isolatedDir = Directory('${walletsRoot.path}/$walletId');
+
+      if (!isolatedDir.path.startsWith('${walletsRoot.path}/') ||
+          isolatedDir.path.contains('..')) {
+        throw WalletStorageCleanupException(
+          'Security invariant violation: wallet path escaped storage root: "${isolatedDir.path}".',
+        );
+      }
+
       if (await isolatedDir.exists()) {
         await isolatedDir.delete(recursive: true);
       }
+    } on WalletStorageCleanupException {
+      rethrow;
     } catch (e) {
       failures.add('Isolated directory for "$walletId": $e');
     }

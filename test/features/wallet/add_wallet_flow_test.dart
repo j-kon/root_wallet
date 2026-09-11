@@ -57,7 +57,7 @@ void main() {
     }
 
     Future<String> setupWalletA(ProviderContainer container) async {
-      const walletAId = 'w_wallet_a';
+      const walletAId = 'w_11111111-1111-1111-1111-111111111111';
       await storage.write(
         key: WalletStorageKeys.mnemonicFor(walletAId),
         value: phraseA,
@@ -275,7 +275,7 @@ void main() {
           isA<AddWalletDuplicateException>().having(
             (e) => e.message,
             'message',
-            contains('already imported'),
+            contains('already exists'),
           ),
         ),
       );

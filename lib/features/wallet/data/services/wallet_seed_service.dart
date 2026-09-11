@@ -10,6 +10,14 @@ import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_resu
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 
+/// Legacy service for single-wallet seed persistence.
+///
+/// RESTRICTED: Retained strictly for legacy backwards compatibility and legacy tests.
+/// Modern and fresh-install flows route through [AddWalletService] to ensure
+/// scoped keys (`wallet.<id>.*`), isolated directories (`wallets/<id>/`),
+/// real BIP32 master fingerprints, and [WalletRegistry] integration.
+///
+/// The synthetic SHA256 fingerprints generated here are NEVER persisted into the modern [WalletRegistry].
 class WalletSeedService {
   const WalletSeedService({
     required SecureStorage secureStorage,

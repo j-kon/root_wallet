@@ -91,6 +91,7 @@ class WalletRegistry {
 
   /// Sets the active wallet ID.
   Future<void> setActiveWalletId(String walletId) async {
+    WalletRecord.validateWalletId(walletId);
     final wallets = getWallets();
     if (!wallets.any((w) => w.id == walletId)) {
       throw WalletRegistryException(
@@ -141,6 +142,7 @@ class WalletRegistry {
     WalletRecord record, {
     bool makeActive = false,
   }) async {
+    WalletRecord.validateWalletId(record.id);
     final wallets = getWallets().toList();
     if (wallets.any((w) => w.id == record.id)) {
       throw WalletRegistryException(
@@ -159,6 +161,7 @@ class WalletRegistry {
 
   /// Updates an existing wallet's metadata.
   Future<void> updateWallet(WalletRecord record) async {
+    WalletRecord.validateWalletId(record.id);
     final wallets = getWallets().toList();
     final index = wallets.indexWhere((w) => w.id == record.id);
     if (index == -1) {
@@ -173,6 +176,7 @@ class WalletRegistry {
 
   /// Renames a wallet with local display validation.
   Future<void> renameWallet(String walletId, String newName) async {
+    WalletRecord.validateWalletId(walletId);
     final validatedName = validateWalletName(newName);
     final wallets = getWallets().toList();
     final index = wallets.indexWhere((w) => w.id == walletId);
@@ -208,6 +212,7 @@ class WalletRegistry {
   /// the only remaining wallet.
   /// If deleting the active wallet, deterministically selects the first remaining wallet.
   Future<void> deleteWallet(String walletId) async {
+    WalletRecord.validateWalletId(walletId);
     final wallets = getWallets().toList();
     if (wallets.length <= 1 && wallets.any((w) => w.id == walletId)) {
       throw StateError(

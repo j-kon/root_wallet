@@ -25,6 +25,22 @@ class AddWalletDuplicateException extends AddWalletException {
   const AddWalletDuplicateException(super.message, [super.cause]);
 }
 
+class AddWalletRollbackException extends AddWalletException {
+  AddWalletRollbackException({
+    required this.walletId,
+    required this.originalError,
+    required this.rollbackFailures,
+  }) : super(
+         'Wallet creation failed and cleanup was incomplete for "$walletId". '
+         'Original error: $originalError. Cleanup failures: ${rollbackFailures.join("; ")}',
+         originalError,
+       );
+
+  final String walletId;
+  final Object originalError;
+  final List<String> rollbackFailures;
+}
+
 /// Service executing "Add Wallet" flows (create, restore, import watch-only)
 /// with strict isolation, transactionality, and zero interference with existing wallets or decoy storage.
 class AddWalletService {
@@ -61,21 +77,25 @@ class AddWalletService {
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
     String? walletName,
   }) async {
-    final phrase = bdk.Mnemonic(wordCount: bdk.WordCount.words12).toString();
-    final id = WalletRecord.generateId();
+    final mnemonicObj = bdk.Mnemonic(wordCount: bdk.WordCount.words12);
+    final String phrase;
+    final String fingerprint;
+    try {
+      phrase = mnemonicObj.toString();
+      final secKey = bdk.DescriptorSecretKey(
+        networkKind: _networkKind,
+        mnemonic: mnemonicObj,
+        password: null,
+      );
+      final pubKey = secKey.asPublic();
+      fingerprint = pubKey.masterFingerprint().toUpperCase();
+      secKey.dispose();
+      pubKey.dispose();
+    } finally {
+      mnemonicObj.dispose();
+    }
 
-    // Derive BIP32 master fingerprint
-    final parsed = bdk.Mnemonic.fromString(mnemonic: phrase);
-    final secKey = bdk.DescriptorSecretKey(
-      networkKind: _networkKind,
-      mnemonic: parsed,
-      password: null,
-    );
-    final pubKey = secKey.asPublic();
-    final fingerprint = pubKey.masterFingerprint().toUpperCase();
-    secKey.dispose();
-    pubKey.dispose();
-    parsed.dispose();
+    final id = WalletRecord.generateId();
 
     try {
       // 1. Scoped storage writes
@@ -140,7 +160,7 @@ class AddWalletService {
         walletRecord: record,
       );
     } catch (e) {
-      await _rollbackPartialWallet(id);
+      await _rollbackPartialWallet(id, e);
       if (e is AddWalletException) rethrow;
       throw AddWalletException('Failed to create wallet "$id": $e', e);
     }
@@ -171,16 +191,20 @@ class AddWalletService {
       throw const FormatException('Invalid recovery phrase checksum.');
     }
 
-    final secKey = bdk.DescriptorSecretKey(
-      networkKind: _networkKind,
-      mnemonic: parsed,
-      password: null,
-    );
-    final pubKey = secKey.asPublic();
-    final fingerprint = pubKey.masterFingerprint().toUpperCase();
-    secKey.dispose();
-    pubKey.dispose();
-    parsed.dispose();
+    final String fingerprint;
+    try {
+      final secKey = bdk.DescriptorSecretKey(
+        networkKind: _networkKind,
+        mnemonic: parsed,
+        password: null,
+      );
+      final pubKey = secKey.asPublic();
+      fingerprint = pubKey.masterFingerprint().toUpperCase();
+      secKey.dispose();
+      pubKey.dispose();
+    } finally {
+      parsed.dispose();
+    }
 
     // Duplicate detection: check if same signing wallet + script type already exists
     final registry = _registryInstance;
@@ -248,7 +272,7 @@ class AddWalletService {
       await registry.registerWallet(record, makeActive: false);
       return record;
     } catch (e) {
-      await _rollbackPartialWallet(id);
+      await _rollbackPartialWallet(id, e);
       if (e is AddWalletException) rethrow;
       throw AddWalletException('Failed to restore wallet "$id": $e', e);
     }
@@ -273,7 +297,7 @@ class AddWalletService {
       internalInput: internalDescriptor,
     );
 
-    // Duplicate detection: check if identical external descriptor is already imported
+    // Duplicate detection: check if same external descriptor already exists
     final registry = _registryInstance;
     final existingWallets = registry.getWallets();
     for (final w in existingWallets) {
@@ -282,9 +306,9 @@ class AddWalletService {
           key: WalletStorageKeys.externalDescriptorFor(w.id),
         );
         if (existingExt != null &&
-            existingExt.trim() == validated.externalDescriptor.trim()) {
+            existingExt.trim() == validated.externalDescriptor) {
           throw AddWalletDuplicateException(
-            'A watch-only wallet with this descriptor is already imported ("${w.name}").',
+            'A watch-only wallet with this descriptor already exists ("${w.name}").',
           );
         }
       }
@@ -295,15 +319,10 @@ class AddWalletService {
     try {
       // 1. Scoped storage writes
       await _secureStorage.write(
-        key: WalletStorageKeys.capabilityFor(id),
-        value: WalletCapability.watchOnly.storageValue,
-      );
-      await _secureStorage.write(
         key: WalletStorageKeys.externalDescriptorFor(id),
         value: validated.externalDescriptor,
       );
-      if (validated.internalDescriptor != null &&
-          validated.internalDescriptor!.isNotEmpty) {
+      if (validated.internalDescriptor != null) {
         await _secureStorage.write(
           key: WalletStorageKeys.internalDescriptorFor(id),
           value: validated.internalDescriptor!,
@@ -317,7 +336,13 @@ class AddWalletService {
         key: WalletStorageKeys.scriptTypeFor(id),
         value: validated.scriptType.storageValue,
       );
-      await _secureStorage.delete(key: WalletStorageKeys.mnemonicFor(id));
+      await _secureStorage.write(
+        key: WalletStorageKeys.capabilityFor(id),
+        value: WalletCapability.watchOnly.storageValue,
+      );
+      await _secureStorage.delete(
+        key: WalletStorageKeys.mnemonicFor(id),
+      );
 
       // 2. Verify scoped storage write
       final readBack = await _secureStorage.read(
@@ -348,21 +373,30 @@ class AddWalletService {
       await registry.registerWallet(record, makeActive: false);
       return record;
     } catch (e) {
-      await _rollbackPartialWallet(id);
+      await _rollbackPartialWallet(id, e);
       if (e is AddWalletException) rethrow;
       throw AddWalletException('Failed to import watch-only wallet "$id": $e', e);
     }
   }
 
   Future<void> _createIsolatedDir(String walletId) async {
+    WalletRecord.validateWalletId(walletId);
     try {
       final basePath = await _walletStoragePathLoader();
-      final isolatedDir = Directory('$basePath/wallets/$walletId');
+      final walletsRoot = Directory('$basePath/wallets');
+      final isolatedDir = Directory('${walletsRoot.path}/$walletId');
+      if (!isolatedDir.path.startsWith('${walletsRoot.path}/') ||
+          isolatedDir.path.contains('..')) {
+        throw AddWalletException(
+          'Security invariant violation: wallet directory escaped storage root: "${isolatedDir.path}".',
+        );
+      }
       if (await isolatedDir.exists()) {
         await isolatedDir.delete(recursive: true);
       }
       await isolatedDir.create(recursive: true);
     } catch (e) {
+      if (e is AddWalletException) rethrow;
       throw AddWalletException(
         'Failed to create isolated storage directory for wallet "$walletId": $e',
         e,
@@ -370,22 +404,35 @@ class AddWalletService {
     }
   }
 
-  Future<void> _rollbackPartialWallet(String walletId) async {
+  Future<void> _rollbackPartialWallet(String walletId, Object originalError) async {
+    final rollbackFailures = <String>[];
+
     // 1. Delete scoped secure storage keys
     for (final key in WalletStorageKeys.allKeysFor(walletId)) {
       try {
         await _secureStorage.delete(key: key);
-      } catch (_) {}
+      } catch (e) {
+        rollbackFailures.add('SecureStorage key "$key": $e');
+      }
     }
 
     // 2. Delete isolated directory if created
     try {
+      WalletRecord.validateWalletId(walletId);
       final basePath = await _walletStoragePathLoader();
-      final dir = Directory('$basePath/wallets/$walletId');
-      if (await dir.exists()) {
+      final walletsRoot = Directory('$basePath/wallets');
+      final dir = Directory('${walletsRoot.path}/$walletId');
+      if (!dir.path.startsWith('${walletsRoot.path}/') ||
+          dir.path.contains('..')) {
+        rollbackFailures.add(
+          'Containment violation: path escaped storage root: "${dir.path}".',
+        );
+      } else if (await dir.exists()) {
         await dir.delete(recursive: true);
       }
-    } catch (_) {}
+    } catch (e) {
+      rollbackFailures.add('Isolated directory for "$walletId": $e');
+    }
 
     // 3. Remove from registry if registered
     try {
@@ -393,7 +440,17 @@ class AddWalletService {
       if (registry.getWallets().any((w) => w.id == walletId)) {
         await registry.deleteWallet(walletId);
       }
-    } catch (_) {}
+    } catch (e) {
+      rollbackFailures.add('Registry removal for "$walletId": $e');
+    }
+
+    if (rollbackFailures.isNotEmpty) {
+      throw AddWalletRollbackException(
+        walletId: walletId,
+        originalError: originalError,
+        rollbackFailures: rollbackFailures,
+      );
+    }
   }
 
   String _normalizeMnemonic(String mnemonic) {

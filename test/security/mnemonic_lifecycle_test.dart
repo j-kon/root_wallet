@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -90,10 +92,12 @@ void main() {
 
     test('OnboardingController wipes recoveryPhrase upon backup confirmation', () async {
       SharedPreferences.setMockInitialValues({});
+      final tempDir = Directory.systemTemp.createTempSync('mnemonic_test');
+      addTearDown(() => tempDir.deleteSync(recursive: true));
       final container = ProviderContainer(
         overrides: [
           secureStorageProvider.overrideWithValue(secureStorage),
-          onboardingWalletSeedServiceProvider.overrideWithValue(seedService),
+          walletStoragePathProvider.overrideWith((ref) async => tempDir.path),
         ],
       );
 

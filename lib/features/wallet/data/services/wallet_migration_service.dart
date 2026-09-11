@@ -51,23 +51,18 @@ class WalletMigrationService {
   Future<WalletRecord?> migrateIfNeeded() async {
     final registry = WalletRegistry(_prefs);
 
-    // 1. Check completion marker policy
+    // 1. If registry already has wallets, modern multi-wallet is in use -> return null.
+    if (registry.hasWallets()) {
+      return null;
+    }
+
+    // 2. Check completion marker policy: if marker says completed, but registry has no wallets, fail closed.
     final isCompleted =
         _prefs.getBool(WalletStorageKeys.legacyMigrationCompleted) ?? false;
     if (isCompleted) {
-      if (registry.hasWallets()) {
-        return null; // Already migrated and valid
-      }
-      // Marker is completed, but registry has no wallets! Fail closed.
       throw const WalletMigrationException(
         'Migration was previously marked complete, but registry contains no wallets.',
       );
-    }
-
-    // 2. Idempotency check: if registry already has wallets, mark completed and return null.
-    if (registry.hasWallets()) {
-      await _prefs.setBool(WalletStorageKeys.legacyMigrationCompleted, true);
-      return null;
     }
 
     // ==========================================
@@ -86,8 +81,7 @@ class WalletMigrationService {
         legacyExtDesc != null && legacyExtDesc.trim().isNotEmpty;
 
     if (!hasLegacySigning && !hasLegacyWatchOnly) {
-      // Fresh install - mark migration complete so we don't re-check.
-      await _prefs.setBool(WalletStorageKeys.legacyMigrationCompleted, true);
+      // Fresh install / no legacy wallet data - no migration required.
       return null;
     }
 
@@ -208,7 +202,15 @@ class WalletMigrationService {
         );
       }
 
-      final targetDir = Directory('$basePath/wallets/$walletId');
+      WalletRecord.validateWalletId(walletId);
+      final walletsRoot = Directory('$basePath/wallets');
+      final targetDir = Directory('${walletsRoot.path}/$walletId');
+      if (!targetDir.path.startsWith('${walletsRoot.path}/') ||
+          targetDir.path.contains('..')) {
+        throw const WalletMigrationException(
+          'Security invariant violation: migration target directory escaped storage root.',
+        );
+      }
       try {
         if (!await targetDir.exists()) {
           await targetDir.create(recursive: true);

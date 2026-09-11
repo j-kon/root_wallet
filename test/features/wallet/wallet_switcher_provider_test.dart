@@ -15,8 +15,11 @@ void main() {
     late SharedPreferences prefs;
     late ProviderContainer container;
 
+    const wallet1Id = 'w_11111111-1111-1111-1111-111111111111';
+    const wallet2Id = 'w_22222222-2222-2222-2222-222222222222';
+
     final wallet1 = WalletRecord(
-      id: 'w_alpha_1',
+      id: wallet1Id,
       name: 'Alpha Wallet',
       type: WalletType.signing,
       scriptType: WalletScriptType.nativeSegwit,
@@ -26,7 +29,7 @@ void main() {
     );
 
     final wallet2 = WalletRecord(
-      id: 'w_beta_2',
+      id: wallet2Id,
       name: 'Beta Watch-Only',
       type: WalletType.watchOnly,
       scriptType: WalletScriptType.taproot,
@@ -56,10 +59,10 @@ void main() {
     test('activeWalletIdProvider loads initial active wallet from registry', () async {
       await container.read(walletsListProvider.future);
       final activeId = await container.read(activeWalletIdProvider.future);
-      expect(activeId, equals('w_alpha_1'));
+      expect(activeId, equals(wallet1Id));
 
       final activeRecord = container.read(activeWalletRecordProvider);
-      expect(activeRecord?.id, equals('w_alpha_1'));
+      expect(activeRecord?.id, equals(wallet1Id));
       expect(activeRecord?.name, equals('Alpha Wallet'));
       expect(activeRecord?.type, equals(WalletType.signing));
     });
@@ -69,8 +72,8 @@ void main() {
       final wallets = await container.read(walletsListProvider.future);
       expect(wallets.length, equals(2));
 
-      final first = wallets.firstWhere((w) => w.id == 'w_alpha_1');
-      final second = wallets.firstWhere((w) => w.id == 'w_beta_2');
+      final first = wallets.firstWhere((w) => w.id == wallet1Id);
+      final second = wallets.firstWhere((w) => w.id == wallet2Id);
 
       expect(first.isActive, isTrue);
       expect(second.isActive, isFalse);
@@ -82,17 +85,17 @@ void main() {
 
       await container
           .read(activeWalletIdProvider.notifier)
-          .setActiveWallet('w_beta_2');
+          .setActiveWallet(wallet2Id);
 
       final activeId = await container.read(activeWalletIdProvider.future);
-      expect(activeId, equals('w_beta_2'));
+      expect(activeId, equals(wallet2Id));
 
       final wallets = await container.read(walletsListProvider.future);
-      expect(wallets.firstWhere((w) => w.id == 'w_beta_2').isActive, isTrue);
-      expect(wallets.firstWhere((w) => w.id == 'w_alpha_1').isActive, isFalse);
+      expect(wallets.firstWhere((w) => w.id == wallet2Id).isActive, isTrue);
+      expect(wallets.firstWhere((w) => w.id == wallet1Id).isActive, isFalse);
 
       final activeRecord = container.read(activeWalletRecordProvider);
-      expect(activeRecord?.id, equals('w_beta_2'));
+      expect(activeRecord?.id, equals(wallet2Id));
       expect(activeRecord?.name, equals('Beta Watch-Only'));
       expect(activeRecord?.isWatchOnly, isTrue);
     });
@@ -117,7 +120,7 @@ void main() {
       // Switch active wallet
       await container
           .read(activeWalletIdProvider.notifier)
-          .setActiveWallet('w_beta_2');
+          .setActiveWallet(wallet2Id);
 
       // Send state must be reset to prevent cross-wallet transfer leaks
       final sendStateAfter = container.read(sendControllerProvider);

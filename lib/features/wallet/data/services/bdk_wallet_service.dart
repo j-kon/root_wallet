@@ -38,7 +38,11 @@ class BdkWalletService {
        _walletStoragePathLoader = walletStoragePathLoader,
        _preferencesLoader = preferencesLoader,
        _allowCustomEsploraEndpoint = allowCustomEsploraEndpoint,
-       _walletId = walletId;
+       _walletId = walletId {
+    if (walletId != null) {
+      WalletRecord.validateWalletId(walletId);
+    }
+  }
 
   static const _customEsploraEndpointKey = 'settings.custom_esplora_endpoint';
   static const _network = bdk.Network.testnet;
@@ -172,7 +176,15 @@ class BdkWalletService {
       await _resetSession();
 
       final walletDirectory = await _walletStoragePathLoader();
-      final isolatedDir = Directory('$walletDirectory/wallets/$id');
+      WalletRecord.validateWalletId(id);
+      final walletsRoot = Directory('$walletDirectory/wallets');
+      final isolatedDir = Directory('${walletsRoot.path}/$id');
+      if (!isolatedDir.path.startsWith('${walletsRoot.path}/') ||
+          isolatedDir.path.contains('..')) {
+        throw StateError(
+          'Security invariant violation: wallet directory escaped storage root: "${isolatedDir.path}".',
+        );
+      }
       if (await isolatedDir.exists()) {
         await isolatedDir.delete(recursive: true);
       }
@@ -345,7 +357,15 @@ class BdkWalletService {
       await _resetSession();
 
       final walletDirectory = await _walletStoragePathLoader();
-      final isolatedDir = Directory('$walletDirectory/wallets/$id');
+      WalletRecord.validateWalletId(id);
+      final walletsRoot = Directory('$walletDirectory/wallets');
+      final isolatedDir = Directory('${walletsRoot.path}/$id');
+      if (!isolatedDir.path.startsWith('${walletsRoot.path}/') ||
+          isolatedDir.path.contains('..')) {
+        throw StateError(
+          'Security invariant violation: wallet directory escaped storage root: "${isolatedDir.path}".',
+        );
+      }
       if (await isolatedDir.exists()) {
         await isolatedDir.delete(recursive: true);
       }
@@ -441,7 +461,15 @@ class BdkWalletService {
       await _resetSession();
 
       final walletDirectory = await _walletStoragePathLoader();
-      final isolatedDir = Directory('$walletDirectory/wallets/$id');
+      WalletRecord.validateWalletId(id);
+      final walletsRoot = Directory('$walletDirectory/wallets');
+      final isolatedDir = Directory('${walletsRoot.path}/$id');
+      if (!isolatedDir.path.startsWith('${walletsRoot.path}/') ||
+          isolatedDir.path.contains('..')) {
+        throw StateError(
+          'Security invariant violation: wallet directory escaped storage root: "${isolatedDir.path}".',
+        );
+      }
       if (await isolatedDir.exists()) {
         await isolatedDir.delete(recursive: true);
       }
@@ -995,7 +1023,15 @@ class BdkWalletService {
     }
 
     if (_walletId != null) {
-      final walletDir = Directory('$walletDirectory/wallets/$_walletId');
+      WalletRecord.validateWalletId(_walletId);
+      final walletsRoot = Directory('$walletDirectory/wallets');
+      final walletDir = Directory('${walletsRoot.path}/$_walletId');
+      if (!walletDir.path.startsWith('${walletsRoot.path}/') ||
+          walletDir.path.contains('..')) {
+        throw StateError(
+          'Security invariant violation: wallet directory escaped storage root: "${walletDir.path}".',
+        );
+      }
       if (!await walletDir.exists()) {
         await walletDir.create(recursive: true);
       }
