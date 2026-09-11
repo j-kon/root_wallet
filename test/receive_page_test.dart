@@ -5,6 +5,7 @@ import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/app/theme/app_theme.dart';
 import 'package:root_wallet/core/platform/share_service.dart';
 import 'package:root_wallet/core/platform/url_launcher_service.dart';
+import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/receive/presentation/pages/receive_page.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
@@ -169,6 +170,7 @@ Future<void> _pumpReceivePage(
         ),
         shareServiceProvider.overrideWithValue(shareService),
         urlLauncherServiceProvider.overrideWithValue(urlLauncherService),
+        secureStorageProvider.overrideWithValue(InMemorySecureStorage()),
       ],
       child: MaterialApp(
         theme: buildAppTheme(),

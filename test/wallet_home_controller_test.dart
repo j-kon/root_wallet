@@ -4,6 +4,7 @@ import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
@@ -249,6 +250,18 @@ class _StaticWalletRepository implements WalletRepository {
 
   @override
   Future<void> setCustomBackend(String? endpoint) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<WalletCapability> getCapability() async => WalletCapability.signing;
+
+  @override
+  Future<WalletIdentity> importWatchOnlyWallet({
+    required String externalDescriptor,
+    String? internalDescriptor,
+    WalletScriptType? scriptType,
+  }) {
     throw UnimplementedError();
   }
 }

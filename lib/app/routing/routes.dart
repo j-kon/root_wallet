@@ -5,6 +5,7 @@ abstract final class AppRoutes {
   static const backupSeed = '/wallet/backup';
   static const confirmSeed = '/wallet/backup/confirm';
   static const restoreWallet = '/wallet/restore';
+  static const importWatchOnly = '/wallet/import-watch-only';
   static const transactionDetails = '/wallet/transaction';
   static const transactions = '/transactions';
 
@@ -14,10 +15,15 @@ abstract final class AppRoutes {
   static const sendSuccess = '/send/success';
   static const receive = '/receive';
 
+  static const psbtImport = '/psbt/import';
+  static const psbtInspect = '/psbt/inspect';
+  static const psbtExport = '/psbt/export';
+
   static const settings = '/settings';
   static const security = '/settings/security';
   static const diagnostics = '/settings/diagnostics';
   static const coinControl = '/settings/coin_control';
+  static const bip329Labels = '/settings/labels';
   static const backupMetadata = '/settings/backup';
   static const about = '/settings/about';
 }

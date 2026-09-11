@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/routing/routes.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
+import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
 import 'package:root_wallet/app/theme/colors.dart';
 import 'package:root_wallet/app/theme/layout.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
@@ -11,7 +14,11 @@ import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
 import 'package:root_wallet/core/widgets/glass_surface.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
+import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
+import 'package:root_wallet/features/psbt/presentation/pages/psbt_export_page.dart';
+import 'package:root_wallet/features/psbt/presentation/providers/psbt_providers.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
+import 'package:root_wallet/features/send/domain/entities/send_request.dart';
 import 'package:root_wallet/features/send/presentation/pages/send_success_page.dart';
 import 'package:root_wallet/features/send/presentation/providers/send_providers.dart';
 import 'package:root_wallet/features/send/presentation/widgets/swipe_to_confirm_slider.dart';
@@ -28,6 +35,8 @@ class ReviewTransferPage extends ConsumerWidget {
     final controller = ref.read(sendControllerProvider.notifier);
     final btcNgnRate = ref.watch(btcNgnRateProvider);
     final walletState = ref.watch(walletControllerProvider);
+    final capabilityAsync = ref.watch(walletCapabilityProvider);
+    final isWatchOnly = capabilityAsync.valueOrNull?.isWatchOnly ?? false;
 
     if (!state.canReview || state.amountSats == null) {
       return const AppScaffold(
@@ -238,49 +247,127 @@ class ReviewTransferPage extends ConsumerWidget {
                       message: state.errorMessage!,
                     ),
                   ],
+                  if (isWatchOnly) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    const InfoBanner(
+                      type: InfoBannerType.info,
+                      message:
+                          'Watch-only mode: Transactions cannot be signed on this device. Create an unsigned PSBT to export for signing.',
+                      icon: Icons.visibility_outlined,
+                    ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            SwipeToConfirmSlider(
-              label: state.isSending ? 'Broadcasting...' : 'Swipe to broadcast',
-              enabled: !state.isSending,
-              onConfirm: () async {
-                final amountSatsToSend = amountSats;
-                final estimatedFeeSats = state.estimatedFeeSats;
-                final sentAt = DateTime.now();
-                final txId = await controller.send();
-                if (txId == null || !context.mounted) {
-                  return;
-                }
+            if (isWatchOnly)
+              MagneticPressable(
+                onTap: () async {
+                  HapticFeedback.lightImpact();
+                  final psbtService = ref.read(psbtServiceProvider);
+                  final selectedUtxos = ref.read(selectedUtxosProvider);
+                  try {
+                    final psbtBase64 = await psbtService.createPsbt(
+                      SendRequest(
+                        address: state.draft.address,
+                        amountSats: amountSats,
+                        feeRate: state.draft.feeRate,
+                        selectedUtxos: selectedUtxos.isNotEmpty
+                            ? selectedUtxos.toList()
+                            : null,
+                      ),
+                    );
+                    if (context.mounted) {
+                      Navigator.of(context).pushNamed(
+                        AppRoutes.psbtExport,
+                        arguments: PsbtExportArgs(
+                          psbtBase64: psbtBase64,
+                          isSigned: false,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to create PSBT: $e'),
+                          backgroundColor: RootBrandColors.error,
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: RootSpacing.md,
+                    horizontal: RootSpacing.lg,
+                  ),
+                  decoration: BoxDecoration(
+                    color: RootBrandColors.pineGreen,
+                    borderRadius: BorderRadius.circular(RootRadius.md),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.file_upload_outlined,
+                        color: RootBrandColors.warmIvory,
+                        size: 20,
+                      ),
+                      SizedBox(width: RootSpacing.sm),
+                      Text(
+                        'Create Unsigned PSBT',
+                        style: TextStyle(
+                          color: RootBrandColors.warmIvory,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              SwipeToConfirmSlider(
+                label: state.isSending ? 'Broadcasting...' : 'Swipe to broadcast',
+                enabled: !state.isSending,
+                onConfirm: () async {
+                  final amountSatsToSend = amountSats;
+                  final estimatedFeeSats = state.estimatedFeeSats;
+                  final sentAt = DateTime.now();
+                  final txId = await controller.send();
+                  if (txId == null || !context.mounted) {
+                    return;
+                  }
 
-                await ref
-                    .read(walletHomeControllerProvider.notifier)
-                    .recordPendingSend(
+                  await ref
+                      .read(walletHomeControllerProvider.notifier)
+                      .recordPendingSend(
+                        txId: txId,
+                        amountSats: amountSatsToSend,
+                        feeSats: estimatedFeeSats,
+                        timestamp: sentAt,
+                      );
+                  controller.resetAfterSuccess();
+
+                  await HapticsService.successPulse();
+
+                  if (!context.mounted) {
+                    return;
+                  }
+
+                  Navigator.of(context).pushReplacementNamed(
+                    AppRoutes.sendSuccess,
+                    arguments: SendSuccessPageArgs(
                       txId: txId,
                       amountSats: amountSatsToSend,
                       feeSats: estimatedFeeSats,
-                      timestamp: sentAt,
-                    );
-                controller.resetAfterSuccess();
-
-                await HapticsService.successPulse();
-
-                if (!context.mounted) {
-                  return;
-                }
-
-                Navigator.of(context).pushReplacementNamed(
-                  AppRoutes.sendSuccess,
-                  arguments: SendSuccessPageArgs(
-                    txId: txId,
-                    amountSats: amountSatsToSend,
-                    feeSats: estimatedFeeSats,
-                    sentAt: sentAt,
-                  ),
-                );
-              },
-            ),
+                      sentAt: sentAt,
+                    ),
+                  );
+                },
+              ),
             const SizedBox(height: AppSpacing.sm),
             OutlinedButton(
               onPressed: state.isSending

@@ -4,15 +4,20 @@ import 'package:root_wallet/app/routing/main_shell.dart';
 import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/features/onboarding/presentation/pages/confirm_seed_page.dart';
 import 'package:root_wallet/features/onboarding/presentation/pages/welcome_page.dart';
+import 'package:root_wallet/features/psbt/presentation/pages/psbt_export_page.dart';
+import 'package:root_wallet/features/psbt/presentation/pages/psbt_import_page.dart';
+import 'package:root_wallet/features/psbt/presentation/pages/psbt_inspection_page.dart';
 import 'package:root_wallet/features/send/presentation/pages/review_transfer_page.dart';
 import 'package:root_wallet/features/send/presentation/pages/send_success_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/about_page.dart';
+import 'package:root_wallet/features/settings/presentation/pages/bip329_labels_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/security_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/wallet_diagnostics_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/coin_control_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/backup_settings_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/create_wallet_page.dart';
+import 'package:root_wallet/features/wallet/presentation/pages/import_watch_only_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/restore_wallet_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/transaction_details_page.dart';
 
@@ -42,6 +47,8 @@ abstract final class AppRouter {
         return _page(settings, const ConfirmSeedPage());
       case AppRoutes.restoreWallet:
         return _page(settings, const RestoreWalletPage());
+      case AppRoutes.importWatchOnly:
+        return _page(settings, const ImportWatchOnlyPage());
       case AppRoutes.transactionDetails:
         return _page(settings, const TransactionDetailsPage());
       case AppRoutes.send:
@@ -55,6 +62,16 @@ abstract final class AppRouter {
         return _page(settings, const MainShell(initialIndex: 1));
       case AppRoutes.transactions:
         return _page(settings, const MainShell(initialIndex: 3));
+      case AppRoutes.psbtImport:
+        return _page(settings, const PsbtImportPage());
+      case AppRoutes.psbtInspect:
+        final psbt = settings.arguments is String ? settings.arguments as String : '';
+        return _page(settings, PsbtInspectionPage(psbtBase64: psbt));
+      case AppRoutes.psbtExport:
+        final args = settings.arguments is PsbtExportArgs
+            ? settings.arguments as PsbtExportArgs
+            : const PsbtExportArgs(psbtBase64: '', isSigned: false);
+        return _page(settings, PsbtExportPage(args: args));
       case AppRoutes.settings:
         return _page(settings, const MainShell(initialIndex: 4));
       case AppRoutes.security:
@@ -63,6 +80,8 @@ abstract final class AppRouter {
         return _page(settings, const WalletDiagnosticsPage());
       case AppRoutes.coinControl:
         return _page(settings, const CoinControlPage());
+      case AppRoutes.bip329Labels:
+        return _page(settings, const Bip329LabelsPage());
       case AppRoutes.backupMetadata:
         return _page(settings, const BackupSettingsPage());
       case AppRoutes.about:

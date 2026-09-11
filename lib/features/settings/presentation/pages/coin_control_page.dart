@@ -21,6 +21,7 @@ class CoinControlPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final utxosAsync = ref.watch(walletUtxosProvider);
     final lockedUtxosAsync = ref.watch(lockedUtxosProvider);
+    final labelsSnapshot = ref.watch(walletLabelsControllerProvider).valueOrNull;
     final isDark = AppColors.isDark(context);
 
     return AppScaffold(
@@ -337,6 +338,60 @@ class CoinControlPage extends ConsumerWidget {
                           },
                         ),
                         const SizedBox(height: 6),
+                        Builder(
+                          builder: (context) {
+                            final utxoLabel = labelsSnapshot?.outputLabel(outpointStr) ?? '';
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Label',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? RootBrandColors.mutedSage
+                                        : const Color(0xFF5E6F68),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _editUtxoLabel(
+                                    context,
+                                    ref,
+                                    outpointStr,
+                                    utxoLabel,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        utxoLabel.isNotEmpty ? utxoLabel : 'Add label',
+                                        style: TextStyle(
+                                          color: utxoLabel.isNotEmpty
+                                              ? (isDark
+                                                  ? RootBrandColors.warmIvory
+                                                  : RootBrandColors.charcoalPine)
+                                              : RootBrandColors.pineGreen,
+                                          fontSize: 12,
+                                          fontStyle: utxoLabel.isNotEmpty
+                                              ? FontStyle.normal
+                                              : FontStyle.italic,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.edit_outlined,
+                                        size: 13,
+                                        color: RootBrandColors.pineGreen,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 6),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -394,6 +449,60 @@ class CoinControlPage extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> _editUtxoLabel(
+    BuildContext context,
+    WidgetRef ref,
+    String outpoint,
+    String currentLabel,
+  ) async {
+    final controller = TextEditingController(text: currentLabel);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final isDark = AppColors.isDark(dialogContext);
+        return AlertDialog(
+          backgroundColor:
+              isDark ? RootBrandColors.charcoalPine : RootBrandColors.warmIvory,
+          title: Text(
+            'Edit UTXO Label',
+            style: TextStyle(
+              color: isDark ? RootBrandColors.warmIvory : RootBrandColors.charcoalPine,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'e.g. Cold storage deposit',
+              labelText: 'Label',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: RootBrandColors.pineGreen,
+                foregroundColor: RootBrandColors.warmIvory,
+              ),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null) {
+      await ref
+          .read(walletLabelsControllerProvider.notifier)
+          .setOutputLabel(outpoint, result);
+    }
   }
 }
 

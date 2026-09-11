@@ -301,6 +301,60 @@ class LockController extends AsyncNotifier<AppLockState> {
     return false;
   }
 
+  /// Requires explicit authorization for sensitive actions (such as PSBT signing).
+  ///
+  /// Fails closed:
+  /// - Sensitive actions fail closed when no approved authentication
+  ///   credential is configured.
+  /// - If biometrics are configured and available: attempts biometric re-auth.
+  /// - If biometrics are unavailable, disabled, cancelled, or fail:
+  ///   falls back to PIN verification via [promptPin] and [verifyPin].
+  /// - If no PIN is configured, returns `false` without invoking [promptPin].
+  /// - If neither approved authentication method succeeds: returns `false`.
+  Future<bool> requireSensitiveActionAuthentication({
+    required Future<String?> Function() promptPin,
+    String biometricReason = 'Authorize sensitive action',
+    void Function()? onNoPinConfigured,
+  }) async {
+    final current = state.valueOrNull;
+    if (current == null) {
+      return false;
+    }
+
+    if (current.isInCooldown) {
+      return false;
+    }
+
+    // A. Attempt biometrics if configured & available
+    if (current.isBiometricsEnabled && current.isBiometricAvailable) {
+      try {
+        final bioOk = await authenticateWithBiometrics(reason: biometricReason);
+        if (bioOk) {
+          return true;
+        }
+      } catch (_) {
+        // Biometric error, fallback to secure PIN path below
+      }
+    }
+
+    // B. If no PIN is configured, fail closed immediately without prompting PIN
+    if (!current.hasPin) {
+      onNoPinConfigured?.call();
+      return false;
+    }
+
+    // C. Provide existing secure PIN verification path
+    try {
+      final pin = await promptPin();
+      if (pin == null || pin.isEmpty) {
+        return false;
+      }
+      return await verifyPin(pin);
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> setAutoLockOption(AutoLockOption option) async {
     final prefs = await ref.read(sharedPreferencesProvider.future);
     await prefs.setString(_autoLockOptionKey, option.prefsValue);

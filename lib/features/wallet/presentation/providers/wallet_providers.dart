@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_sync_datasource.dart';
+import 'package:root_wallet/features/wallet/data/services/bip329_service.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
 import 'package:root_wallet/features/wallet/data/mappers/tx_mapper.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/data/repositories/wallet_repository_impl.dart';
 import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
@@ -57,6 +61,12 @@ final walletScriptTypeProvider = FutureProvider<WalletScriptType>((ref) async {
   final value = await secureStorage.read(key: WalletStorageKeys.scriptType);
   return WalletScriptType.fromStorageValue(value);
 });
+
+final walletCapabilityProvider = FutureProvider<WalletCapability>((ref) async {
+  final repository = ref.watch(walletRepositoryProvider);
+  return repository.getCapability();
+});
+
 
 final createWalletUsecaseProvider = Provider<CreateWallet>(
   (ref) => CreateWallet(ref.watch(walletRepositoryProvider)),
@@ -120,9 +130,38 @@ final walletSnapshotCacheProvider = FutureProvider<WalletSnapshotCache>((
   );
 });
 
+final bip329ServiceProvider = Provider<Bip329Service>((ref) => const Bip329Service());
+
+final walletLabelScopeProvider = FutureProvider<String>((ref) async {
+  try {
+    final bdkService = ref.watch(bdkWalletServiceProvider);
+    if (bdkService.isDecoyActive) {
+      return 'decoy';
+    }
+    final capability = await bdkService.getCapability();
+    if (capability.isWatchOnly) {
+      final desc = await ref
+          .watch(secureStorageProvider)
+          .read(key: WalletStorageKeys.externalDescriptor);
+      if (desc != null && desc.isNotEmpty) {
+        final fp = sha256
+            .convert(utf8.encode(desc))
+            .toString()
+            .substring(0, 8);
+        return 'watch_only_$fp';
+      }
+      return 'watch_only';
+    }
+    return WalletLabelStore.defaultScope;
+  } catch (_) {
+    return WalletLabelStore.defaultScope;
+  }
+});
+
 final walletLabelStoreProvider = FutureProvider<WalletLabelStore>((ref) async {
   final prefs = await ref.watch(sharedPreferencesProvider.future);
-  return WalletLabelStore(prefs);
+  final scope = await ref.watch(walletLabelScopeProvider.future);
+  return WalletLabelStore(prefs, scope: scope);
 });
 
 class WalletLabelsController extends AsyncNotifier<WalletLabelsSnapshot> {
@@ -146,6 +185,18 @@ class WalletLabelsController extends AsyncNotifier<WalletLabelsSnapshot> {
     final store = await ref.read(walletLabelStoreProvider.future);
     await store.setTransactionMetadata(txId: txId, label: label, note: note);
     state = AsyncData(store.read());
+  }
+
+  Future<void> setOutputLabel(String outpoint, String label) async {
+    final store = await ref.read(walletLabelStoreProvider.future);
+    await store.setOutputLabel(outpoint, label);
+    state = AsyncData(store.read());
+  }
+
+  Future<void> importSnapshot(WalletLabelsSnapshot snapshot) async {
+    final store = await ref.read(walletLabelStoreProvider.future);
+    await store.write(snapshot);
+    state = AsyncData(snapshot);
   }
 
   Future<void> clear() async {

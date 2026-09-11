@@ -443,6 +443,25 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
                       },
               ),
             ),
+            const SizedBox(height: RootSpacing.xs),
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  Navigator.of(context).pushReplacementNamed(
+                    AppRoutes.importWatchOnly,
+                  );
+                },
+                child: Text(
+                  'Import watch-only wallet instead',
+                  style: TextStyle(
+                    color: isDark
+                        ? RootBrandColors.mutedSage
+                        : const Color(0xFF5E6F68),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
             SizedBox(height: context.navBarBottomSpacing),
           ],
         ),
