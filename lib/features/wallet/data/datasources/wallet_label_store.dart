@@ -26,11 +26,13 @@ class WalletLabelsSnapshot {
   const WalletLabelsSnapshot({
     this.addressLabels = const <String, String>{},
     this.transactionMetadata = const <String, WalletTransactionMetadata>{},
+    this.outputLabels = const <String, String>{},
   });
 
   factory WalletLabelsSnapshot.fromJson(Map<String, Object?> json) {
     final addresses = json['addresses'];
     final transactions = json['transactions'];
+    final outputs = json['outputs'];
 
     return WalletLabelsSnapshot(
       addressLabels: addresses is Map
@@ -48,13 +50,21 @@ class WalletLabelsSnapshot {
               return MapEntry(key.toString(), metadata);
             })
           : const <String, WalletTransactionMetadata>{},
+      outputLabels: outputs is Map
+          ? outputs.map(
+              (key, value) => MapEntry(key.toString(), value.toString()),
+            )
+          : const <String, String>{},
     );
   }
 
   final Map<String, String> addressLabels;
   final Map<String, WalletTransactionMetadata> transactionMetadata;
+  final Map<String, String> outputLabels;
 
   String addressLabel(String address) => addressLabels[address] ?? '';
+
+  String outputLabel(String outpoint) => outputLabels[outpoint] ?? '';
 
   WalletTransactionMetadata transactionMeta(String txId) {
     return transactionMetadata[txId] ?? const WalletTransactionMetadata();
@@ -66,16 +76,19 @@ class WalletLabelsSnapshot {
       'transactions': transactionMetadata.map(
         (key, value) => MapEntry(key, value.toJson()),
       ),
+      'outputs': outputLabels,
     };
   }
 
   WalletLabelsSnapshot copyWith({
     Map<String, String>? addressLabels,
     Map<String, WalletTransactionMetadata>? transactionMetadata,
+    Map<String, String>? outputLabels,
   }) {
     return WalletLabelsSnapshot(
       addressLabels: addressLabels ?? this.addressLabels,
       transactionMetadata: transactionMetadata ?? this.transactionMetadata,
+      outputLabels: outputLabels ?? this.outputLabels,
     );
   }
 }
@@ -135,6 +148,18 @@ class WalletLabelStore {
       nextTransactions[txId] = metadata;
     }
     await write(snapshot.copyWith(transactionMetadata: nextTransactions));
+  }
+
+  Future<void> setOutputLabel(String outpoint, String label) async {
+    final snapshot = read();
+    final nextOutputs = Map<String, String>.from(snapshot.outputLabels);
+    final normalized = _normalize(label, maxLength: 80);
+    if (normalized.isEmpty) {
+      nextOutputs.remove(outpoint);
+    } else {
+      nextOutputs[outpoint] = normalized;
+    }
+    await write(snapshot.copyWith(outputLabels: nextOutputs));
   }
 
   Future<void> clear() {
