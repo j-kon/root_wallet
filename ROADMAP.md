@@ -34,6 +34,15 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
   - Authoritative change output classification (no heuristic guessing).
   - Finalization verification rejecting unfinalized PSBT broadcast.
   - Wallet-scoped BIP-329 label storage (`wallet.local_labels.v2.<scope>`) with deterministic v1 migration.
+- [x] **Multi-Wallet Foundation & Wallet Switcher (Milestone 2A):**
+  - Multiple signing and watch-only wallets with seamless active wallet switching.
+  - Immediate BDK session recreation and Riverpod state isolation on switch.
+  - Cryptographically isolated namespaces for BDK SQLite databases (`wallets/<wallet-id>/bdk_wallet.sqlite`), secure storage keys (`wallet.<wallet-id>.*`), BIP-329 labels (`wallet.local_labels.v3.<wallet-id>`), locked UTXOs (`wallet.<wallet-id>.locked_utxos`), and snapshot caches (`wallet.snapshot.<wallet-id>.v3`).
+  - Deterministic idempotent single-wallet legacy migration to `w_primary_migrated`.
+  - Interactive wallet switcher bottom sheet accessible from home screen header.
+  - Wallets management center in Settings with wallet details, renaming, and authenticated deletion.
+  - Last-wallet deletion protection and deterministic fallback switching.
+  - Fail-closed sensitive action re-authentication required prior to signing wallet deletion.
 - [x] Dedicated automated CI security test suite (`test/security/`).
 
 ---
