@@ -7,11 +7,13 @@ import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
+import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cache.dart';
+import 'package:root_wallet/features/wallet/data/services/add_wallet_service.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
-import 'package:root_wallet/features/wallet/data/services/wallet_seed_service.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,23 +27,34 @@ void main() {
       });
       final prefs = await SharedPreferences.getInstance();
       final cacheCompleter = Completer<WalletSnapshotCache>();
-      final seedService = _FakeWalletSeedService(
-        createdResult: const WalletCreationResult(
-          walletIdentity: WalletIdentity(
-            id: 'created',
+      final addService = _FakeAddWalletService(
+        prefs: prefs,
+        createdResult: WalletCreationResult(
+          walletIdentity: const WalletIdentity(
+            id: 'w_00000000-0000-0000-0000-000000000001',
             fingerprint: 'ABC12345',
             network: 'testnet',
+          ),
+          walletRecord: WalletRecord(
+            id: 'w_00000000-0000-0000-0000-000000000001',
+            name: 'Main Wallet',
+            type: WalletType.signing,
+            scriptType: WalletScriptType.nativeSegwit,
+            network: 'testnet',
+            createdAt: DateTime.now(),
+            fingerprint: 'ABC12345',
           ),
           recoveryPhrase: 'abandon abandon abandon abandon abandon abandon',
         ),
       );
       final container = ProviderContainer(
         overrides: [
+          sharedPreferencesProvider.overrideWith((ref) async => prefs),
           secureStorageProvider.overrideWithValue(InMemorySecureStorage()),
           walletStoragePathProvider.overrideWith(
             (ref) async => '/tmp/wallet_test',
           ),
-          onboardingWalletSeedServiceProvider.overrideWithValue(seedService),
+          addWalletServiceProvider.overrideWith((ref) async => addService),
           walletSnapshotCacheProvider.overrideWith((ref) {
             return cacheCompleter.future;
           }),
@@ -57,7 +70,7 @@ void main() {
         completion(isTrue),
       );
 
-      expect(seedService.createCalls, 1);
+      expect(addService.createCalls, 1);
       expect(
         container.read(onboardingControllerProvider).recoveryPhrase,
         'abandon abandon abandon abandon abandon abandon',
@@ -67,9 +80,9 @@ void main() {
     },
   );
 
-  test('restore clears stale wallet cache, labels, and backup flag', () async {
+  test('restore clears stale wallet cache and labels, and marks backup confirmed', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{
-      'settings.backup_confirmed': true,
+      'settings.backup_confirmed': false,
     });
     final prefs = await SharedPreferences.getInstance();
     await WalletSnapshotCache(prefs).write(
@@ -84,20 +97,26 @@ void main() {
     );
     await WalletLabelStore(prefs).setAddressLabel('tb1qold', 'Old wallet');
 
-    final seedService = _FakeWalletSeedService(
-      restoredIdentity: const WalletIdentity(
-        id: 'restored',
-        fingerprint: 'ABC12345',
+    final addService = _FakeAddWalletService(
+      prefs: prefs,
+      restoredRecord: WalletRecord(
+        id: 'w_00000000-0000-0000-0000-000000000002',
+        name: 'Main Wallet',
+        type: WalletType.signing,
+        scriptType: WalletScriptType.taproot,
         network: 'testnet',
+        createdAt: DateTime.now(),
+        fingerprint: 'ABC12345',
       ),
     );
     final container = ProviderContainer(
       overrides: [
+        sharedPreferencesProvider.overrideWith((ref) async => prefs),
         secureStorageProvider.overrideWithValue(InMemorySecureStorage()),
         walletStoragePathProvider.overrideWith(
           (ref) async => '/tmp/wallet_test',
         ),
-        onboardingWalletSeedServiceProvider.overrideWithValue(seedService),
+        addWalletServiceProvider.overrideWith((ref) async => addService),
       ],
     );
     addTearDown(container.dispose);
@@ -110,11 +129,11 @@ void main() {
         );
 
     expect(restored, isTrue);
-    expect(seedService.lastScriptType, WalletScriptType.taproot);
+    expect(addService.lastScriptType, WalletScriptType.taproot);
     await _waitForCleanup(container, prefs);
     expect(await WalletSnapshotCache(prefs).read(), isNull);
     expect(WalletLabelStore(prefs).read().addressLabel('tb1qold'), isEmpty);
-    expect(container.read(backupReminderProvider).valueOrNull, isFalse);
+    expect(container.read(backupReminderProvider).valueOrNull, isTrue);
   });
 }
 
@@ -128,38 +147,50 @@ Future<void> _waitForCleanup(
     final labelsCleared = WalletLabelStore(
       prefs,
     ).read().addressLabel('tb1qold').isEmpty;
-    final backupCleared =
-        container.read(backupReminderProvider).valueOrNull == false;
-    if (cacheCleared && labelsCleared && backupCleared) {
+    final backupSet =
+        container.read(backupReminderProvider).valueOrNull == true;
+    if (cacheCleared && labelsCleared && backupSet) {
       return;
     }
     await Future<void>.delayed(const Duration(milliseconds: 10));
   }
 }
 
-class _FakeWalletSeedService implements WalletSeedService {
-  _FakeWalletSeedService({this.createdResult, this.restoredIdentity});
+class _FakeAddWalletService implements AddWalletService {
+  _FakeAddWalletService({this.createdResult, this.restoredRecord, this.prefs});
 
   final WalletCreationResult? createdResult;
-  final WalletIdentity? restoredIdentity;
+  final WalletRecord? restoredRecord;
+  final SharedPreferences? prefs;
   WalletScriptType? lastScriptType;
   int createCalls = 0;
 
   @override
   Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletName,
   }) async {
     createCalls++;
     lastScriptType = scriptType;
+    if (prefs != null && createdResult?.walletRecord != null) {
+      await WalletRegistry(prefs!).registerWallet(createdResult!.walletRecord!);
+    }
     return createdResult!;
   }
 
   @override
-  Future<WalletIdentity> restoreWallet({
+  Future<WalletRecord> restoreWallet({
     required String mnemonic,
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletName,
   }) async {
     lastScriptType = scriptType;
-    return restoredIdentity!;
+    if (prefs != null && restoredRecord != null) {
+      await WalletRegistry(prefs!).registerWallet(restoredRecord!);
+    }
+    return restoredRecord!;
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

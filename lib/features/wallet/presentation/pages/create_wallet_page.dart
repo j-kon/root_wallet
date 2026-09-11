@@ -13,11 +13,14 @@ import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page_args.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/script_type_option.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class CreateWalletPage extends ConsumerStatefulWidget {
-  const CreateWalletPage({super.key});
+  const CreateWalletPage({super.key, this.isAddWallet = false});
+
+  final bool isAddWallet;
 
   @override
   ConsumerState<CreateWalletPage> createState() => _CreateWalletPageState();
@@ -25,12 +28,63 @@ class CreateWalletPage extends ConsumerStatefulWidget {
 
 class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
   WalletScriptType _scriptType = WalletScriptType.nativeSegwit;
+  bool _isBusy = false;
+  String? _errorMessage;
+
+  Future<void> _handleCreateWallet() async {
+    HapticFeedback.mediumImpact();
+    final registry = await ref.read(walletRegistryProvider.future);
+    final hasExisting = registry.getWallets().isNotEmpty;
+    final isAdding = widget.isAddWallet || hasExisting;
+
+    setState(() {
+      _isBusy = true;
+      _errorMessage = null;
+    });
+    try {
+      final addWalletService = await ref.read(addWalletServiceProvider.future);
+      final result = await addWalletService.createWallet(
+        scriptType: _scriptType,
+        walletName: isAdding ? null : 'Main Wallet',
+      );
+      await ref
+          .read(activeWalletIdProvider.notifier)
+          .setActiveWallet(result.walletRecord!.id);
+      ref.invalidate(walletCapabilityProvider);
+      ref.invalidate(walletHomeControllerProvider);
+      await ref.read(walletsListProvider.notifier).refresh();
+
+      if (!isAdding) {
+        ref
+            .read(onboardingControllerProvider.notifier)
+            .setRecoveryPhrase(result.recoveryPhrase);
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed(
+        AppRoutes.backupSeed,
+        arguments: BackupSeedPageArgs(
+          walletId: result.walletRecord!.id,
+          requireReauth: false,
+          isOnboardingFlow: !isAdding,
+          recoveryPhrase: result.recoveryPhrase,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isBusy = false;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(onboardingControllerProvider);
-    final controller = ref.read(onboardingControllerProvider.notifier);
     final isDark = AppColors.isDark(context);
+    final isBusy = state.isBusy || _isBusy;
+    final errorMessage = _errorMessage ?? state.errorMessage;
 
     return AppScaffold(
       title: 'Create wallet',
@@ -191,11 +245,11 @@ class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
                     ),
                   ),
 
-                  if (state.errorMessage != null) ...[
+                  if (errorMessage != null) ...[
                     const SizedBox(height: RootSpacing.md),
                     InfoBanner(
                       type: InfoBannerType.error,
-                      message: state.errorMessage!,
+                      message: errorMessage,
                     ),
                   ],
                 ],
@@ -205,52 +259,10 @@ class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
             const SizedBox(height: RootSpacing.md),
 
             MagneticPressable(
-              onTap: state.isBusy
-                  ? null
-                  : () async {
-                      HapticFeedback.mediumImpact();
-                      final created = await controller.createWallet(
-                        scriptType: _scriptType,
-                      );
-                      if (!context.mounted) return;
-                      if (!created) return;
-
-                      final recoveryPhrase = ref
-                          .read(onboardingControllerProvider)
-                          .recoveryPhrase;
-                      Navigator.of(context).pushReplacementNamed(
-                        AppRoutes.backupSeed,
-                        arguments: BackupSeedPageArgs(
-                          requireReauth: false,
-                          isOnboardingFlow: true,
-                          recoveryPhrase: recoveryPhrase,
-                        ),
-                      );
-                    },
+              onTap: isBusy ? null : _handleCreateWallet,
               child: PrimaryButton(
-                label: state.isBusy ? 'Creating...' : 'Create wallet',
-                onPressed: state.isBusy
-                    ? null
-                    : () async {
-                        HapticFeedback.mediumImpact();
-                        final created = await controller.createWallet(
-                          scriptType: _scriptType,
-                        );
-                        if (!context.mounted) return;
-                        if (!created) return;
-
-                        final recoveryPhrase = ref
-                            .read(onboardingControllerProvider)
-                            .recoveryPhrase;
-                        Navigator.of(context).pushReplacementNamed(
-                          AppRoutes.backupSeed,
-                          arguments: BackupSeedPageArgs(
-                            requireReauth: false,
-                            isOnboardingFlow: true,
-                            recoveryPhrase: recoveryPhrase,
-                          ),
-                        );
-                      },
+                label: isBusy ? 'Creating...' : 'Create wallet',
+                onPressed: isBusy ? null : _handleCreateWallet,
               ),
             ),
             SizedBox(height: context.navBarBottomSpacing),

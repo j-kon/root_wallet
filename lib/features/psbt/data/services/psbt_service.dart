@@ -263,7 +263,14 @@ class PsbtService {
           .manuallySelectedOnly();
     } else {
       final prefs = await SharedPreferences.getInstance();
-      final lockedList = prefs.getStringList('settings.locked_utxos') ?? [];
+      final lockedKey = _walletService.isDecoyActive
+          ? 'settings.decoy_locked_utxos'
+          : (_walletService.walletId != null
+              ? 'wallet.${_walletService.walletId}.locked_utxos'
+              : 'settings.locked_utxos');
+      final lockedList = prefs.getStringList(lockedKey) ??
+          prefs.getStringList('settings.locked_utxos') ??
+          [];
       for (final lockedStr in lockedList) {
         final parts = lockedStr.split(':');
         if (parts.length == 2) {

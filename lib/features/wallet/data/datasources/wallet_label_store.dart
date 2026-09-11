@@ -98,8 +98,9 @@ class WalletLabelStore {
       : scope = _sanitizeScope(scope);
 
   static const defaultScope = 'primary';
-  static const legacyKey = 'wallet.local_labels.v1';
-  static const _baseKeyPrefix = 'wallet.local_labels.v2.';
+  static const legacyKeyV1 = 'wallet.local_labels.v1';
+  static const legacyKeyPrefixV2 = 'wallet.local_labels.v2.';
+  static const _baseKeyPrefix = 'wallet.local_labels.v3.';
 
   final SharedPreferences _prefs;
   final String scope;
@@ -107,7 +108,7 @@ class WalletLabelStore {
   String get storageKey => '$_baseKeyPrefix$scope';
 
   static String _sanitizeScope(String raw) {
-    final cleaned = raw.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+    final cleaned = raw.trim().replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
     return cleaned.isEmpty ? defaultScope : cleaned;
   }
 
@@ -127,17 +128,42 @@ class WalletLabelStore {
     return WalletLabelsSnapshot.fromJson(decoded.cast<String, Object?>());
   }
 
-  /// Migrates legacy v1 labels into v2.primary deterministically.
+  /// Migrates legacy v1/v2 labels into v3.<wallet-id> deterministically.
   ///
-  /// Strictly prevents leaking legacy labels into decoy or watch-only wallets.
+  /// Strictly prevents leaking legacy labels into decoy or unassociated wallets.
   void _performMigrationIfNeeded() {
-    if (scope == defaultScope) {
-      final existingV2 = _prefs.getString(storageKey);
-      if (existingV2 == null || existingV2.trim().isEmpty) {
-        final legacyRaw = _prefs.getString(legacyKey);
-        if (legacyRaw != null && legacyRaw.trim().isNotEmpty) {
-          _prefs.setString(storageKey, legacyRaw);
-        }
+    final current = _prefs.getString(storageKey);
+    if (current != null && current.trim().isNotEmpty) {
+      return;
+    }
+
+    // 1. Check direct v2 scope match
+    final v2Direct = _prefs.getString('$legacyKeyPrefixV2$scope');
+    if (v2Direct != null && v2Direct.trim().isNotEmpty) {
+      _prefs.setString(storageKey, v2Direct);
+      return;
+    }
+
+    // 2. If primary or default migrated wallet, check v2.primary and v1
+    if (scope == defaultScope || scope == 'w_primary_migrated') {
+      final v2Primary = _prefs.getString('${legacyKeyPrefixV2}primary');
+      if (v2Primary != null && v2Primary.trim().isNotEmpty) {
+        _prefs.setString(storageKey, v2Primary);
+        return;
+      }
+      final legacyV1 = _prefs.getString(legacyKeyV1);
+      if (legacyV1 != null && legacyV1.trim().isNotEmpty) {
+        _prefs.setString(storageKey, legacyV1);
+        return;
+      }
+    }
+
+    // 3. If decoy scope, check v2.decoy
+    if (scope == 'decoy') {
+      final v2Decoy = _prefs.getString('${legacyKeyPrefixV2}decoy');
+      if (v2Decoy != null && v2Decoy.trim().isNotEmpty) {
+        _prefs.setString(storageKey, v2Decoy);
+        return;
       }
     }
   }
@@ -193,8 +219,9 @@ class WalletLabelStore {
 
   Future<void> clear() async {
     await _prefs.remove(storageKey);
-    if (scope == defaultScope) {
-      await _prefs.remove(legacyKey);
+    if (scope == defaultScope || scope == 'w_primary_migrated') {
+      await _prefs.remove(legacyKeyV1);
+      await _prefs.remove('${legacyKeyPrefixV2}primary');
     }
   }
 

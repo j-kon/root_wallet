@@ -2,27 +2,73 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
+import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 
 class BackupReminderController extends AsyncNotifier<bool> {
-  static const _backupConfirmedKey = 'settings.backup_confirmed';
-
   @override
   Future<bool> build() async {
-    final prefs = await ref.read(sharedPreferencesProvider.future);
-    return prefs.getBool(_backupConfirmedKey) ?? false;
+    final activeId = await ref.watch(activeWalletIdProvider.future);
+    if (activeId == null) return true;
+
+    // Resolve active wallet record from registry
+    final registry = await ref.watch(walletRegistryProvider.future);
+    final wallet = registry.getWallet(activeId);
+    if (wallet == null) return false;
+
+    // Watch-only wallets do not have a seed phrase to back up
+    if (wallet.isWatchOnly) {
+      return true;
+    }
+
+    final prefs = await ref.watch(sharedPreferencesProvider.future);
+    final scopedKey = WalletStorageKeys.backupConfirmedFor(activeId);
+    final scopedVal = prefs.getBool(scopedKey);
+    if (scopedVal != null) {
+      return scopedVal;
+    }
+
+    // Compatibility check for existing modern users from PR #19 feature branch (Req 13)
+    final signingWallets =
+        registry.getWallets().where((w) => !w.isWatchOnly).toList();
+    if (signingWallets.length == 1 && signingWallets.first.id == activeId) {
+      final legacyVal = prefs.getBool('settings.backup_confirmed');
+      if (legacyVal != null) {
+        await prefs.setBool(scopedKey, legacyVal);
+        return legacyVal;
+      }
+    }
+
+    return false; // Unknown signing wallet backup state fails safe to false
   }
 
-  Future<void> confirmBackup() async {
+  Future<void> confirmBackup([String? targetWalletId]) async {
+    final activeId = ref.read(activeWalletIdProvider).valueOrNull;
+    final walletId = targetWalletId ?? activeId;
+    if (walletId == null) return;
+    WalletRecord.validateWalletId(walletId);
+
     final prefs = await ref.read(sharedPreferencesProvider.future);
-    await prefs.setBool(_backupConfirmedKey, true);
-    state = const AsyncData(true);
+    await prefs.setBool(WalletStorageKeys.backupConfirmedFor(walletId), true);
+
+    if (activeId == walletId) {
+      state = const AsyncData(true);
+    }
   }
 
-  Future<void> clearBackupConfirmation() async {
+  Future<void> clearBackupConfirmation([String? targetWalletId]) async {
+    final activeId = ref.read(activeWalletIdProvider).valueOrNull;
+    final walletId = targetWalletId ?? activeId;
+    if (walletId == null) return;
+    WalletRecord.validateWalletId(walletId);
+
     final prefs = await ref.read(sharedPreferencesProvider.future);
-    await prefs.setBool(_backupConfirmedKey, false);
-    state = const AsyncData(false);
+    await prefs.setBool(WalletStorageKeys.backupConfirmedFor(walletId), false);
+
+    if (activeId == walletId) {
+      state = const AsyncData(false);
+    }
   }
 }
 

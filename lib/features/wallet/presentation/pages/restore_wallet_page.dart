@@ -11,13 +11,17 @@ import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
-import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page_args.dart';
+import 'package:root_wallet/features/wallet/data/services/add_wallet_service.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/script_type_option.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
 class RestoreWalletPage extends ConsumerStatefulWidget {
-  const RestoreWalletPage({super.key});
+  const RestoreWalletPage({super.key, this.isAddWallet = false});
+
+  final bool isAddWallet;
 
   @override
   ConsumerState<RestoreWalletPage> createState() => _RestoreWalletPageState();
@@ -27,6 +31,56 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
   final _controller = TextEditingController();
   WalletScriptType _scriptType = WalletScriptType.nativeSegwit;
   int _wordCount = 0;
+  bool _isBusy = false;
+  String? _errorMessage;
+
+  Future<void> _handleRestoreWallet() async {
+    HapticFeedback.mediumImpact();
+    final phrase = _controller.text.trim();
+    if (phrase.isEmpty) return;
+
+    final registry = await ref.read(walletRegistryProvider.future);
+    final hasExisting = registry.getWallets().isNotEmpty;
+    final isAdding = widget.isAddWallet || hasExisting;
+
+    setState(() {
+      _isBusy = true;
+      _errorMessage = null;
+    });
+    try {
+      final addWalletService =
+          await ref.read(addWalletServiceProvider.future);
+      final record = await addWalletService.restoreWallet(
+        mnemonic: phrase,
+        scriptType: _scriptType,
+        walletName: isAdding ? null : 'Main Wallet',
+      );
+      await ref
+          .read(activeWalletIdProvider.notifier)
+          .setActiveWallet(record.id);
+      ref.invalidate(walletCapabilityProvider);
+      ref.invalidate(walletHomeControllerProvider);
+      await ref.read(walletsListProvider.notifier).refresh();
+      await ref.read(backupReminderProvider.notifier).confirmBackup(record.id);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wallet restored successfully.')),
+      );
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.walletHome,
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isBusy = false;
+        _errorMessage = e is AddWalletDuplicateException
+            ? e.message
+            : e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -74,8 +128,9 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
     });
 
     final state = ref.watch(onboardingControllerProvider);
-    final controller = ref.read(onboardingControllerProvider.notifier);
     final isDark = AppColors.isDark(context);
+    final isBusy = state.isBusy || _isBusy;
+    final errorMessage = _errorMessage ?? state.errorMessage;
 
     return AppScaffold(
       title: 'Restore wallet',
@@ -371,11 +426,11 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
                     icon: Icons.info_outline_rounded,
                   ),
 
-                  if (state.errorMessage != null) ...[
+                  if (errorMessage != null) ...[
                     const SizedBox(height: RootSpacing.md),
                     InfoBanner(
                       type: InfoBannerType.error,
-                      message: state.errorMessage!,
+                      message: errorMessage,
                     ),
                   ],
                 ],
@@ -385,62 +440,10 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
             const SizedBox(height: RootSpacing.md),
 
             MagneticPressable(
-              onTap: state.isBusy
-                  ? null
-                  : () async {
-                      HapticFeedback.mediumImpact();
-                      final phrase = _controller.text.trim();
-                      if (phrase.isEmpty) return;
-
-                      final restored = await controller.restoreWallet(
-                        phrase,
-                        scriptType: _scriptType,
-                      );
-                      if (!context.mounted) return;
-                      if (!restored) return;
-
-                      final recoveryPhrase = ref
-                          .read(onboardingControllerProvider)
-                          .recoveryPhrase;
-
-                      Navigator.of(context).pushReplacementNamed(
-                        AppRoutes.backupSeed,
-                        arguments: BackupSeedPageArgs(
-                          requireReauth: false,
-                          isOnboardingFlow: true,
-                          recoveryPhrase: recoveryPhrase,
-                        ),
-                      );
-                    },
+              onTap: isBusy ? null : _handleRestoreWallet,
               child: PrimaryButton(
-                label: state.isBusy ? 'Restoring...' : 'Restore wallet',
-                onPressed: state.isBusy
-                    ? null
-                    : () async {
-                        HapticFeedback.mediumImpact();
-                        final phrase = _controller.text.trim();
-                        if (phrase.isEmpty) return;
-
-                        final restored = await controller.restoreWallet(
-                          phrase,
-                          scriptType: _scriptType,
-                        );
-                        if (!context.mounted) return;
-                        if (!restored) return;
-
-                        final recoveryPhrase = ref
-                            .read(onboardingControllerProvider)
-                            .recoveryPhrase;
-
-                        Navigator.of(context).pushReplacementNamed(
-                          AppRoutes.backupSeed,
-                          arguments: BackupSeedPageArgs(
-                            requireReauth: false,
-                            isOnboardingFlow: true,
-                            recoveryPhrase: recoveryPhrase,
-                          ),
-                        );
-                      },
+                label: isBusy ? 'Restoring...' : 'Restore wallet',
+                onPressed: isBusy ? null : _handleRestoreWallet,
               ),
             ),
             const SizedBox(height: RootSpacing.xs),

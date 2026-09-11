@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:root_wallet/app/di/providers.dart';
@@ -7,10 +9,24 @@ import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('AppStartController', () {
+    late Directory tempDir;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('app_start_test_');
+    });
+
+    tearDown(() {
+      try {
+        tempDir.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
     test('routes new users to onboarding', () async {
       SharedPreferences.setMockInitialValues(<String, Object>{});
-      final container = _buildContainer();
+      final container = _buildContainer(tempDir: tempDir);
       addTearDown(container.dispose);
 
       final state = await container.read(appStartControllerProvider.future);
@@ -29,7 +45,10 @@ void main() {
           key: WalletStorageKeys.mnemonic,
           value: 'abandon abandon abandon abandon abandon abandon',
         );
-        final container = _buildContainer(secureStorage: secureStorage);
+        final container = _buildContainer(
+          secureStorage: secureStorage,
+          tempDir: tempDir,
+        );
         addTearDown(container.dispose);
 
         final state = await container.read(appStartControllerProvider.future);
@@ -49,7 +68,10 @@ void main() {
         key: WalletStorageKeys.mnemonic,
         value: 'abandon abandon abandon abandon abandon abandon',
       );
-      final container = _buildContainer(secureStorage: secureStorage);
+      final container = _buildContainer(
+        secureStorage: secureStorage,
+        tempDir: tempDir,
+      );
       addTearDown(container.dispose);
 
       final state = await container.read(appStartControllerProvider.future);
@@ -61,12 +83,16 @@ void main() {
   });
 }
 
-ProviderContainer _buildContainer({SecureStorage? secureStorage}) {
+ProviderContainer _buildContainer({
+  SecureStorage? secureStorage,
+  required Directory tempDir,
+}) {
   return ProviderContainer(
     overrides: [
       secureStorageProvider.overrideWithValue(
         secureStorage ?? InMemorySecureStorage(),
       ),
+      walletStoragePathProvider.overrideWith((ref) async => tempDir.path),
     ],
   );
 }

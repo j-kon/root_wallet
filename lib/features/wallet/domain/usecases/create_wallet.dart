@@ -9,7 +9,13 @@ class CreateWallet {
 
   Future<WalletCreationResult> call({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletId,
+    String? walletName,
   }) {
-    return _repository.createWallet(scriptType: scriptType);
+    return _repository.createWallet(
+      scriptType: scriptType,
+      walletId: walletId,
+      walletName: walletName,
+    );
   }
 }

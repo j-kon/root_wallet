@@ -28,7 +28,7 @@ void main() {
       expect(result.externalDescriptor, equals(validExternalWpkh));
       expect(result.internalDescriptor, equals(validInternalWpkh));
       expect(result.scriptType, equals(WalletScriptType.nativeSegwit));
-      expect(result.fingerprint, equals('73c5da0a'));
+      expect(result.fingerprint, equals('73C5DA0A'));
     });
 
     test('validates and accepts supported script types (tr, sh(wpkh), pkh)', () {
@@ -112,7 +112,7 @@ void main() {
 
       expect(result.externalDescriptor, equals(validExternalWpkh));
       expect(result.internalDescriptor, equals(validInternalWpkh));
-      expect(result.fingerprint, equals('73c5da0a'));
+      expect(result.fingerprint, equals('73C5DA0A'));
     });
 
     test('auto-wraps raw tpub into wpkh descriptors', () {

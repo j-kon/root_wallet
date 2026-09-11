@@ -11,6 +11,7 @@ import 'package:root_wallet/features/wallet/data/datasources/wallet_snapshot_cac
 import 'package:root_wallet/features/wallet/data/services/wallet_seed_service.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 
 final onboardingWalletSeedServiceProvider = Provider<WalletSeedService>(
   (ref) => WalletSeedService(
@@ -61,14 +62,31 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   final Ref _ref;
   final Random _random = Random.secure();
 
+  void setRecoveryPhrase(String phrase) {
+    state = state.copyWith(
+      challengeIndices: const [],
+      recoveryPhrase: phrase.trim(),
+      clearError: true,
+    );
+  }
+
   Future<bool> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
   }) async {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
-      final result = await _ref
-          .read(onboardingWalletSeedServiceProvider)
-          .createWallet(scriptType: scriptType);
+      final addWalletService = await _ref.read(addWalletServiceProvider.future);
+      final result = await addWalletService.createWallet(
+        scriptType: scriptType,
+        walletName: 'Main Wallet',
+      );
+      final record = result.walletRecord!;
+      await _ref
+          .read(activeWalletIdProvider.notifier)
+          .setActiveWallet(record.id);
+      await _ref.read(walletsListProvider.notifier).refresh();
+      _ref.invalidate(walletCapabilityProvider);
+      _ref.invalidate(walletHomeControllerProvider);
       _resetLocalWalletSessionState();
       state = state.copyWith(
         isBusy: false,
@@ -96,9 +114,19 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   }) async {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
+      final addWalletService = await _ref.read(addWalletServiceProvider.future);
+      final record = await addWalletService.restoreWallet(
+        mnemonic: mnemonic,
+        scriptType: scriptType,
+        walletName: 'Main Wallet',
+      );
       await _ref
-          .read(onboardingWalletSeedServiceProvider)
-          .restoreWallet(mnemonic: mnemonic, scriptType: scriptType);
+          .read(activeWalletIdProvider.notifier)
+          .setActiveWallet(record.id);
+      await _ref.read(walletsListProvider.notifier).refresh();
+      _ref.invalidate(walletCapabilityProvider);
+      _ref.invalidate(walletHomeControllerProvider);
+      await _ref.read(backupReminderProvider.notifier).confirmBackup(record.id);
       _resetLocalWalletSessionState();
       state = state.copyWith(
         isBusy: false,
@@ -141,14 +169,30 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     }
   }
 
+  Future<String?> _getRecoveryPhrase() async {
+    if (state.recoveryPhrase != null &&
+        state.recoveryPhrase!.trim().isNotEmpty) {
+      return state.recoveryPhrase!.trim();
+    }
+    final activeId = _ref.read(activeWalletIdProvider).valueOrNull ??
+        _ref.read(walletRegistryProvider).valueOrNull?.getActiveWalletId();
+    if (activeId != null) {
+      final scoped = await _ref
+          .read(secureStorageProvider)
+          .read(key: WalletStorageKeys.mnemonicFor(activeId));
+      if (scoped != null && scoped.trim().isNotEmpty) {
+        return scoped.trim();
+      }
+    }
+    return _ref
+        .read(secureStorageProvider)
+        .read(key: WalletStorageKeys.mnemonic);
+  }
+
   Future<bool> confirmBackup(Map<int, String> answers) async {
     state = state.copyWith(isBusy: true, clearError: true);
     try {
-      final phrase =
-          state.recoveryPhrase ??
-          await _ref
-              .read(secureStorageProvider)
-              .read(key: WalletStorageKeys.mnemonic);
+      final phrase = await _getRecoveryPhrase();
       if (phrase == null || phrase.trim().isEmpty) {
         throw StateError('Recovery phrase is not available.');
       }
@@ -169,7 +213,9 @@ class OnboardingController extends StateNotifier<OnboardingState> {
         }
       }
 
-      await _ref.read(backupReminderProvider.notifier).confirmBackup();
+      final activeId = _ref.read(activeWalletIdProvider).valueOrNull ??
+          _ref.read(walletRegistryProvider).valueOrNull?.getActiveWalletId();
+      await _ref.read(backupReminderProvider.notifier).confirmBackup(activeId);
       _ref.invalidate(appStartControllerProvider);
       state = state.copyWith(
         isBusy: false,
@@ -200,18 +246,13 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   }
 
   Future<void> _clearLocalWalletSessionState() async {
-    await _ref.read(backupReminderProvider.notifier).clearBackupConfirmation();
     final prefs = await _ref.read(sharedPreferencesProvider.future);
     await WalletSnapshotCache(prefs).clear();
     await WalletLabelStore(prefs).clear();
   }
 
   Future<void> _prepareChallenge() async {
-    final phrase =
-        state.recoveryPhrase ??
-        await _ref
-            .read(secureStorageProvider)
-            .read(key: WalletStorageKeys.mnemonic);
+    final phrase = await _getRecoveryPhrase();
     if (phrase == null || phrase.trim().isEmpty) {
       throw StateError('Recovery phrase is not available.');
     }

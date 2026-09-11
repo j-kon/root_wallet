@@ -29,18 +29,33 @@ class WalletRepositoryImpl implements WalletRepository {
   Future<WalletIdentity> importWatchOnlyWallet({
     required String externalDescriptor,
     String? internalDescriptor,
+    String? walletId,
+    String? walletName,
   }) {
     return _walletService.importWatchOnlyWallet(
       externalDescriptor: externalDescriptor,
       internalDescriptor: internalDescriptor,
+      walletId: walletId,
+      walletName: walletName,
     );
   }
 
   @override
   Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletId,
+    String? walletName,
   }) {
-    return _walletService.createWallet(scriptType: scriptType);
+    return _walletService.createWallet(
+      scriptType: scriptType,
+      walletId: walletId,
+      walletName: walletName,
+    );
+  }
+
+  @override
+  Future<void> deleteWalletData(String walletId) {
+    return _walletService.deleteWalletData(walletId);
   }
 
   @override
@@ -147,10 +162,14 @@ class WalletRepositoryImpl implements WalletRepository {
   Future<WalletIdentity> restoreWallet({
     required String mnemonic,
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletId,
+    String? walletName,
   }) {
     return _walletService.restoreWallet(
       mnemonic: mnemonic,
       scriptType: scriptType,
+      walletId: walletId,
+      walletName: walletName,
     );
   }
 }

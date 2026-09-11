@@ -10,10 +10,14 @@ class RestoreWallet {
   Future<WalletIdentity> call(
     String mnemonic, {
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletId,
+    String? walletName,
   }) {
     return _repository.restoreWallet(
       mnemonic: mnemonic,
       scriptType: scriptType,
+      walletId: walletId,
+      walletName: walletName,
     );
   }
 }

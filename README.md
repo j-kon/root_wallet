@@ -57,10 +57,11 @@ Root Wallet returns to the original promise of Bitcoin:
 - **Transaction History:** Confirmation tracking during wallet synchronization, transaction detail inspector, and block explorer shortcuts.
 
 ### Advanced Bitcoin Capabilities
+- **Multi-Wallet Support:** Create, restore, and import multiple signing and watch-only wallets. Switch seamlessly with immediate session recreation and state isolation directly from the home header or the Wallets management section in Settings.
 - **Script Type Flexibility:** Native SegWit (P2WPKH, `tb1q...`) and Taproot (P2TR, `tb1p...`) support.
 - **Watch-Only Wallets:** Import public descriptors (`wpkh`, `tr`, `sh(wpkh)`, `pkh`) or Testnet `tpub` for balance monitoring and unsigned transaction proposal without storing private keys on the device.
 - **PSBT Operations (BIP-174):** Construct, inspect, sign, export (QR & Base64), and broadcast Partially Signed Bitcoin Transactions with decoded binary size limits (<=500 KB), real unsigned transaction TxID extraction, authoritative change classification, and fail-closed re-authentication.
-- **BIP-329 Local Labels:** Import and export transaction, address, and UTXO labels in BIP-329 JSONL format, isolated by wallet identity (`wallet.local_labels.v2.<scope>`). Labels remain stored strictly on device and are never sent to remote backends.
+- **BIP-329 Local Labels:** Import and export transaction, address, and UTXO labels in BIP-329 JSONL format, isolated by wallet identity (`wallet.local_labels.v3.<wallet-id>`). Labels remain stored strictly on device and are never sent to remote backends.
 - **Granular Coin Control:** Inspect individual UTXOs, label outputs, freeze/lock specific coins, and avoid address reuse.
 - **Replace-By-Fee (RBF):** Signal RBF on outgoing transactions to bump transaction priority.
 - **Custom Node Overrides:** Support for configuring custom backend endpoints.

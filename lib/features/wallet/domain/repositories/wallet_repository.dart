@@ -12,15 +12,22 @@ abstract class WalletRepository {
   Future<WalletCapability> getCapability();
   Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletId,
+    String? walletName,
   });
   Future<WalletIdentity> restoreWallet({
     required String mnemonic,
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletId,
+    String? walletName,
   });
   Future<WalletIdentity> importWatchOnlyWallet({
     required String externalDescriptor,
     String? internalDescriptor,
+    String? walletId,
+    String? walletName,
   });
+  Future<void> deleteWalletData(String walletId);
   Future<void> resetWallet();
   Future<String> getRecoveryPhrase();
   Future<String> getAddress();

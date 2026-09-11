@@ -31,20 +31,30 @@ void main() {
         expect(watchOnlyStore.read().addressLabel('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'), equals('Watch Only Label'));
 
         // Verify storage keys in SharedPreferences
-        expect(prefs.containsKey('wallet.local_labels.v2.primary'), isTrue);
-        expect(prefs.containsKey('wallet.local_labels.v2.decoy'), isTrue);
-        expect(prefs.containsKey('wallet.local_labels.v2.watch_only_73c5da0a'), isTrue);
+        expect(prefs.containsKey('wallet.local_labels.v3.primary'), isTrue);
+        expect(prefs.containsKey('wallet.local_labels.v3.decoy'), isTrue);
+        expect(prefs.containsKey('wallet.local_labels.v3.watch_only_73c5da0a'), isTrue);
       });
 
-      test('deterministically migrates legacy v1 labels to v2.primary without loss', () async {
+      test('deterministically migrates legacy v1 labels to v3.primary without loss', () async {
         const legacyJson = '{"transactions":{"0000000000000000000000000000000000000000000000000000000000000001":{"label":"Old Tx","note":""}},"addresses":{"tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx":"Old Addr"}}';
         await prefs.setString('wallet.local_labels.v1', legacyJson);
 
-        // Reading primary store migrates v1 into v2.primary
+        // Reading primary store migrates v1 into v3.primary
         final migrated = primaryStore.read();
         expect(migrated.transactionMetadata['0000000000000000000000000000000000000000000000000000000000000001']?.label, equals('Old Tx'));
         expect(migrated.addressLabels['tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'], equals('Old Addr'));
-        expect(prefs.containsKey('wallet.local_labels.v2.primary'), isTrue);
+        expect(prefs.containsKey('wallet.local_labels.v3.primary'), isTrue);
+      });
+
+      test('deterministically migrates legacy v2 labels to v3 without loss', () async {
+        const v2Json = '{"transactions":{"0000000000000000000000000000000000000000000000000000000000000002":{"label":"V2 Tx","note":""}},"addresses":{"tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx":"V2 Addr"}}';
+        await prefs.setString('wallet.local_labels.v2.primary', v2Json);
+
+        final migrated = primaryStore.read();
+        expect(migrated.transactionMetadata['0000000000000000000000000000000000000000000000000000000000000002']?.label, equals('V2 Tx'));
+        expect(migrated.addressLabels['tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'], equals('V2 Addr'));
+        expect(prefs.containsKey('wallet.local_labels.v3.primary'), isTrue);
       });
 
       test('strictly prevents migrating v1 labels into decoy or watch-only wallets', () async {
@@ -56,8 +66,8 @@ void main() {
 
         expect(decoyStore.read().addressLabels, isEmpty);
         expect(watchOnlyStore.read().addressLabels, isEmpty);
-        expect(prefs.containsKey('wallet.local_labels.v2.decoy'), isFalse);
-        expect(prefs.containsKey('wallet.local_labels.v2.watch_only_test'), isFalse);
+        expect(prefs.containsKey('wallet.local_labels.v3.decoy'), isFalse);
+        expect(prefs.containsKey('wallet.local_labels.v3.watch_only_test'), isFalse);
       });
     });
 

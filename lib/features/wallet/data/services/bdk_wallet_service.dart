@@ -1,18 +1,19 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
 import 'package:bdk_dart/bdk_dart.dart' as bdk;
-import 'package:crypto/crypto.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
+import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
 import 'package:root_wallet/features/wallet/data/services/descriptor_validator.dart';
+import 'package:root_wallet/features/wallet/data/services/wallet_storage_cleaner.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -32,10 +33,16 @@ class BdkWalletService {
     required Future<String> Function() walletStoragePathLoader,
     required Future<SharedPreferences> Function() preferencesLoader,
     required bool allowCustomEsploraEndpoint,
+    String? walletId,
   }) : _secureStorage = secureStorage,
        _walletStoragePathLoader = walletStoragePathLoader,
        _preferencesLoader = preferencesLoader,
-       _allowCustomEsploraEndpoint = allowCustomEsploraEndpoint;
+       _allowCustomEsploraEndpoint = allowCustomEsploraEndpoint,
+       _walletId = walletId {
+    if (walletId != null) {
+      WalletRecord.validateWalletId(walletId);
+    }
+  }
 
   static const _customEsploraEndpointKey = 'settings.custom_esplora_endpoint';
   static const _network = bdk.Network.testnet;
@@ -45,6 +52,9 @@ class BdkWalletService {
   final Future<String> Function() _walletStoragePathLoader;
   final Future<SharedPreferences> Function() _preferencesLoader;
   final bool _allowCustomEsploraEndpoint;
+  final String? _walletId;
+
+  String? get walletId => _walletId;
 
   bdk.Mnemonic? _mnemonic;
   bdk.DescriptorSecretKey? _descriptorSecretKey;
@@ -75,6 +85,28 @@ class BdkWalletService {
   );
 
   Future<WalletCapability> getCapability() async {
+    if (_walletId != null) {
+      final stored = await _secureStorage.read(
+        key: WalletStorageKeys.capabilityFor(_walletId),
+      );
+      if (stored != null && stored.trim().isNotEmpty) {
+        return WalletCapability.fromStorageValue(stored);
+      }
+      final mnemonic = await _secureStorage.read(
+        key: WalletStorageKeys.mnemonicFor(_walletId),
+      );
+      if (mnemonic != null && mnemonic.trim().isNotEmpty) {
+        return WalletCapability.signing;
+      }
+      final extDesc = await _secureStorage.read(
+        key: WalletStorageKeys.externalDescriptorFor(_walletId),
+      );
+      if (extDesc != null && extDesc.trim().isNotEmpty) {
+        return WalletCapability.watchOnly;
+      }
+      throw StateError('Wallet "$_walletId" capability and secrets missing.');
+    }
+
     final stored = await _secureStorage.read(
       key: WalletStorageKeys.walletCapability,
     );
@@ -96,33 +128,90 @@ class BdkWalletService {
 
   Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletId,
+    String? walletName,
   }) {
     return _guard('create wallet', () async {
       final phrase = bdk.Mnemonic(wordCount: bdk.WordCount.words12).toString();
+      final id = walletId ?? _walletId ?? WalletRecord.generateId();
 
       // Sensitive seed material must stay in flutter_secure_storage only.
       await _secureStorage.write(
-        key: WalletStorageKeys.mnemonic,
+        key: WalletStorageKeys.mnemonicFor(id),
         value: phrase,
       );
       await _secureStorage.write(
-        key: WalletStorageKeys.scriptType,
+        key: WalletStorageKeys.scriptTypeFor(id),
         value: scriptType.storageValue,
       );
       await _secureStorage.write(
-        key: WalletStorageKeys.walletCapability,
+        key: WalletStorageKeys.capabilityFor(id),
         value: WalletCapability.signing.storageValue,
       );
-      await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
-      await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+      await _secureStorage.delete(
+        key: WalletStorageKeys.externalDescriptorFor(id),
+      );
+      await _secureStorage.delete(
+        key: WalletStorageKeys.internalDescriptorFor(id),
+      );
+
+      // Legacy single-wallet fallback (ONLY when both _walletId and walletId are null)
+      if (_walletId == null && walletId == null) {
+        await _secureStorage.write(
+          key: WalletStorageKeys.mnemonic,
+          value: phrase,
+        );
+        await _secureStorage.write(
+          key: WalletStorageKeys.scriptType,
+          value: scriptType.storageValue,
+        );
+        await _secureStorage.write(
+          key: WalletStorageKeys.walletCapability,
+          value: WalletCapability.signing.storageValue,
+        );
+        await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
+        await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+      }
 
       await _resetSession();
-      await _deleteWalletDatabase();
 
-      final identity = _identityFromMnemonic(phrase, scriptType);
+      final walletDirectory = await _walletStoragePathLoader();
+      WalletRecord.validateWalletId(id);
+      final walletsRoot = Directory('$walletDirectory/wallets');
+      final isolatedDir = Directory('${walletsRoot.path}/$id');
+      if (!isolatedDir.path.startsWith('${walletsRoot.path}/') ||
+          isolatedDir.path.contains('..')) {
+        throw StateError(
+          'Security invariant violation: wallet directory escaped storage root: "${isolatedDir.path}".',
+        );
+      }
+      if (await isolatedDir.exists()) {
+        await isolatedDir.delete(recursive: true);
+      }
+      await isolatedDir.create(recursive: true);
+
+      final identity = _identityFromMnemonic(phrase, scriptType, id: id);
+      final record = WalletRecord(
+        id: id,
+        name: walletName ?? 'Main Wallet',
+        type: WalletType.signing,
+        scriptType: scriptType,
+        network: _network.name,
+        createdAt: DateTime.now(),
+        fingerprint: identity.fingerprint,
+        isActive: true,
+      );
+
+      final prefs = await _preferencesLoader();
+      final registry = WalletRegistry(prefs);
+      if (!registry.getWallets().any((w) => w.id == id)) {
+        await registry.registerWallet(record, makeActive: true);
+      }
+
       return WalletCreationResult(
         walletIdentity: identity,
         recoveryPhrase: phrase,
+        walletRecord: record,
       );
     });
   }
@@ -178,10 +267,27 @@ class BdkWalletService {
     if (capability.isWatchOnly) {
       return null;
     }
+    if (_walletId != null) {
+      return _secureStorage.read(
+        key: WalletStorageKeys.mnemonicFor(_walletId),
+      );
+    }
     return _secureStorage.read(key: WalletStorageKeys.mnemonic);
   }
 
   Future<bool> hasWallet() async {
+    if (_walletId != null) {
+      final mnemonic = await _secureStorage.read(
+        key: WalletStorageKeys.mnemonicFor(_walletId),
+      );
+      if (mnemonic != null && mnemonic.trim().isNotEmpty) {
+        return true;
+      }
+      final extDesc = await _secureStorage.read(
+        key: WalletStorageKeys.externalDescriptorFor(_walletId),
+      );
+      return extDesc != null && extDesc.trim().isNotEmpty;
+    }
     final mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
     if (mnemonic != null && mnemonic.trim().isNotEmpty) {
       return true;
@@ -195,6 +301,8 @@ class BdkWalletService {
   Future<WalletIdentity> restoreWallet({
     required String mnemonic,
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletId,
+    String? walletName,
   }) {
     return _guard('restore wallet', () async {
       final normalized = _normalizeMnemonic(mnemonic);
@@ -206,78 +314,188 @@ class BdkWalletService {
         throw const FormatException('Invalid recovery phrase checksum.');
       }
       final phrase = normalized;
+      final id = walletId ?? _walletId ?? WalletRecord.generateId();
 
-      // Sensitive seed material must stay in flutter_secure_storage only.
+      // Scoped secure storage
       await _secureStorage.write(
-        key: WalletStorageKeys.mnemonic,
+        key: WalletStorageKeys.mnemonicFor(id),
         value: phrase,
       );
       await _secureStorage.write(
-        key: WalletStorageKeys.scriptType,
+        key: WalletStorageKeys.scriptTypeFor(id),
         value: scriptType.storageValue,
       );
       await _secureStorage.write(
-        key: WalletStorageKeys.walletCapability,
+        key: WalletStorageKeys.capabilityFor(id),
         value: WalletCapability.signing.storageValue,
       );
-      await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
-      await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+      await _secureStorage.delete(
+        key: WalletStorageKeys.externalDescriptorFor(id),
+      );
+      await _secureStorage.delete(
+        key: WalletStorageKeys.internalDescriptorFor(id),
+      );
+
+      // Legacy single-wallet fallback (ONLY when both _walletId and walletId are null)
+      if (_walletId == null && walletId == null) {
+        await _secureStorage.write(
+          key: WalletStorageKeys.mnemonic,
+          value: phrase,
+        );
+        await _secureStorage.write(
+          key: WalletStorageKeys.scriptType,
+          value: scriptType.storageValue,
+        );
+        await _secureStorage.write(
+          key: WalletStorageKeys.walletCapability,
+          value: WalletCapability.signing.storageValue,
+        );
+        await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
+        await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+      }
 
       await _resetSession();
-      await _deleteWalletDatabase();
 
-      return _identityFromMnemonic(phrase, scriptType);
+      final walletDirectory = await _walletStoragePathLoader();
+      WalletRecord.validateWalletId(id);
+      final walletsRoot = Directory('$walletDirectory/wallets');
+      final isolatedDir = Directory('${walletsRoot.path}/$id');
+      if (!isolatedDir.path.startsWith('${walletsRoot.path}/') ||
+          isolatedDir.path.contains('..')) {
+        throw StateError(
+          'Security invariant violation: wallet directory escaped storage root: "${isolatedDir.path}".',
+        );
+      }
+      if (await isolatedDir.exists()) {
+        await isolatedDir.delete(recursive: true);
+      }
+      await isolatedDir.create(recursive: true);
+
+      final identity = _identityFromMnemonic(phrase, scriptType, id: id);
+      final record = WalletRecord(
+        id: id,
+        name: walletName ?? 'Restored Wallet',
+        type: WalletType.signing,
+        scriptType: scriptType,
+        network: _network.name,
+        createdAt: DateTime.now(),
+        fingerprint: identity.fingerprint,
+        isActive: true,
+      );
+
+      final prefs = await _preferencesLoader();
+      final registry = WalletRegistry(prefs);
+      if (!registry.getWallets().any((w) => w.id == id)) {
+        await registry.registerWallet(record, makeActive: true);
+      }
+
+      return identity;
     });
   }
 
   Future<WalletIdentity> importWatchOnlyWallet({
     required String externalDescriptor,
     String? internalDescriptor,
+    String? walletId,
+    String? walletName,
   }) {
     return _guard('import watch-only wallet', () async {
       final validated = DescriptorValidator.validate(
         externalInput: externalDescriptor,
         internalInput: internalDescriptor,
       );
+      final id = walletId ?? _walletId ?? WalletRecord.generateId();
 
       await _secureStorage.write(
-        key: WalletStorageKeys.walletCapability,
+        key: WalletStorageKeys.capabilityFor(id),
         value: WalletCapability.watchOnly.storageValue,
       );
       await _secureStorage.write(
-        key: WalletStorageKeys.externalDescriptor,
+        key: WalletStorageKeys.externalDescriptorFor(id),
         value: validated.externalDescriptor,
       );
       if (validated.internalDescriptor != null &&
           validated.internalDescriptor!.isNotEmpty) {
         await _secureStorage.write(
-          key: WalletStorageKeys.internalDescriptor,
+          key: WalletStorageKeys.internalDescriptorFor(id),
           value: validated.internalDescriptor!,
         );
       } else {
-        await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+        await _secureStorage.delete(
+          key: WalletStorageKeys.internalDescriptorFor(id),
+        );
       }
       await _secureStorage.write(
-        key: WalletStorageKeys.scriptType,
+        key: WalletStorageKeys.scriptTypeFor(id),
         value: validated.scriptType.storageValue,
       );
+      await _secureStorage.delete(key: WalletStorageKeys.mnemonicFor(id));
 
-      // Strictly purge any mnemonic or seed material from storage
-      await _secureStorage.delete(key: WalletStorageKeys.mnemonic);
-      await _secureStorage.delete(key: WalletStorageKeys.decoyMnemonic);
+      // Legacy single-wallet fallback (ONLY when both _walletId and walletId are null)
+      if (_walletId == null && walletId == null) {
+        await _secureStorage.write(
+          key: WalletStorageKeys.walletCapability,
+          value: WalletCapability.watchOnly.storageValue,
+        );
+        await _secureStorage.write(
+          key: WalletStorageKeys.externalDescriptor,
+          value: validated.externalDescriptor,
+        );
+        if (validated.internalDescriptor != null &&
+            validated.internalDescriptor!.isNotEmpty) {
+          await _secureStorage.write(
+            key: WalletStorageKeys.internalDescriptor,
+            value: validated.internalDescriptor!,
+          );
+        } else {
+          await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+        }
+        await _secureStorage.write(
+          key: WalletStorageKeys.scriptType,
+          value: validated.scriptType.storageValue,
+        );
+        await _secureStorage.delete(key: WalletStorageKeys.mnemonic);
+        // Note: NEVER delete decoyMnemonic
+      }
 
       await _resetSession();
-      await _deleteWalletDatabase();
 
-      final fingerprint = validated.fingerprint ??
-          sha256
-              .convert(utf8.encode(validated.externalDescriptor))
-              .toString()
-              .substring(0, 8)
-              .toUpperCase();
+      final walletDirectory = await _walletStoragePathLoader();
+      WalletRecord.validateWalletId(id);
+      final walletsRoot = Directory('$walletDirectory/wallets');
+      final isolatedDir = Directory('${walletsRoot.path}/$id');
+      if (!isolatedDir.path.startsWith('${walletsRoot.path}/') ||
+          isolatedDir.path.contains('..')) {
+        throw StateError(
+          'Security invariant violation: wallet directory escaped storage root: "${isolatedDir.path}".',
+        );
+      }
+      if (await isolatedDir.exists()) {
+        await isolatedDir.delete(recursive: true);
+      }
+      await isolatedDir.create(recursive: true);
+
+      final fingerprint = validated.fingerprint;
+
+      final record = WalletRecord(
+        id: id,
+        name: walletName ?? 'Watch-Only Wallet',
+        type: WalletType.watchOnly,
+        scriptType: validated.scriptType,
+        network: _network.name,
+        createdAt: DateTime.now(),
+        fingerprint: fingerprint,
+        isActive: true,
+      );
+
+      final prefs = await _preferencesLoader();
+      final registry = WalletRegistry(prefs);
+      if (!registry.getWallets().any((w) => w.id == id)) {
+        await registry.registerWallet(record, makeActive: true);
+      }
 
       return WalletIdentity(
-        id: 'wallet_${_network.name}_watch_only_${validated.scriptType.storageValue}',
+        id: id,
         fingerprint: fingerprint,
         network: _network.name,
         capability: WalletCapability.watchOnly,
@@ -473,16 +691,29 @@ class BdkWalletService {
 
   WalletIdentity _identityFromMnemonic(
     String mnemonic,
-    WalletScriptType scriptType,
-  ) {
-    final fingerprint = sha256
-        .convert(utf8.encode(mnemonic))
-        .toString()
-        .substring(0, 8)
-        .toUpperCase();
+    WalletScriptType scriptType, {
+    String? id,
+  }) {
+    final normalized = _normalizeMnemonic(mnemonic);
+    String? fingerprint;
+    try {
+      final parsed = bdk.Mnemonic.fromString(mnemonic: normalized);
+      final secKey = bdk.DescriptorSecretKey(
+        networkKind: _networkKind,
+        mnemonic: parsed,
+        password: null,
+      );
+      final pubKey = secKey.asPublic();
+      fingerprint = pubKey.masterFingerprint().toUpperCase();
+      secKey.dispose();
+      pubKey.dispose();
+      parsed.dispose();
+    } catch (_) {
+      fingerprint = null;
+    }
 
     return WalletIdentity(
-      id: 'wallet_${_network.name}_${scriptType.storageValue}',
+      id: id ?? _walletId ?? 'wallet_${_network.name}_${scriptType.storageValue}',
       fingerprint: fingerprint,
       network: _network.name,
     );
@@ -619,17 +850,25 @@ class BdkWalletService {
   Future<bdk.Wallet> _createWalletFromStorage() async {
     final capability = await getCapability();
     if (capability.isWatchOnly) {
-      final extDescStr = await _secureStorage.read(
-        key: WalletStorageKeys.externalDescriptor,
-      );
+      final extDescStr = _walletId != null
+          ? await _secureStorage.read(
+              key: WalletStorageKeys.externalDescriptorFor(_walletId),
+            )
+          : await _secureStorage.read(
+              key: WalletStorageKeys.externalDescriptor,
+            );
       if (extDescStr == null || extDescStr.trim().isEmpty) {
         throw StateError(
-          'Watch-only wallet not initialized. Import descriptor first.',
+          'Watch-only wallet ${_walletId ?? ""} not initialized. Import descriptor first.',
         );
       }
-      final intDescStr = await _secureStorage.read(
-        key: WalletStorageKeys.internalDescriptor,
-      );
+      final intDescStr = _walletId != null
+          ? await _secureStorage.read(
+              key: WalletStorageKeys.internalDescriptorFor(_walletId),
+            )
+          : await _secureStorage.read(
+              key: WalletStorageKeys.internalDescriptor,
+            );
 
       final externalDescriptor = bdk.Descriptor(
         descriptor: extDescStr,
@@ -700,6 +939,10 @@ class BdkWalletService {
           value: mnemonic,
         );
       }
+    } else if (_walletId != null) {
+      mnemonic = await _secureStorage.read(
+        key: WalletStorageKeys.mnemonicFor(_walletId),
+      );
     } else {
       mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
     }
@@ -770,9 +1013,33 @@ class BdkWalletService {
   }
 
   Future<String> _databasePath() async {
+    final walletDirectory = await _walletStoragePathLoader();
+    if (_isDecoyActive) {
+      final decoyDir = Directory('$walletDirectory/decoy');
+      if (!await decoyDir.exists()) {
+        await decoyDir.create(recursive: true);
+      }
+      return '${decoyDir.path}/bdk_wallet.sqlite';
+    }
+
+    if (_walletId != null) {
+      WalletRecord.validateWalletId(_walletId);
+      final walletsRoot = Directory('$walletDirectory/wallets');
+      final walletDir = Directory('${walletsRoot.path}/$_walletId');
+      if (!walletDir.path.startsWith('${walletsRoot.path}/') ||
+          walletDir.path.contains('..')) {
+        throw StateError(
+          'Security invariant violation: wallet directory escaped storage root: "${walletDir.path}".',
+        );
+      }
+      if (!await walletDir.exists()) {
+        await walletDir.create(recursive: true);
+      }
+      return '${walletDir.path}/bdk_wallet.sqlite';
+    }
+
     final scriptType = await _readWalletScriptType();
     final capability = await getCapability();
-    final walletDirectory = await _walletStoragePathLoader();
     final prefix = _isDecoyActive ? 'decoy_' : '';
     final watchOnlyPrefix = capability.isWatchOnly ? 'watch_only_' : '';
     final versionedPath =
@@ -848,6 +1115,23 @@ class BdkWalletService {
     }
   }
 
+  /// Deletes all isolated database files and secure secrets for [targetWalletId].
+  ///
+  /// Leaves all other wallets completely untouched.
+  Future<void> deleteWalletData(String targetWalletId) async {
+    final cleaner = WalletStorageCleaner(
+      secureStorage: _secureStorage,
+      preferences: await _preferencesLoader(),
+      walletStoragePathLoader: _walletStoragePathLoader,
+    );
+    await cleaner.deleteWalletData(targetWalletId);
+  }
+
+  /// Cleans up active BDK native pointers and session resources.
+  void dispose() {
+    _resetSession();
+  }
+
   String _normalizeMnemonic(String mnemonic) {
     return mnemonic
         .toLowerCase()
@@ -873,6 +1157,15 @@ class BdkWalletService {
   }
 
   Future<WalletScriptType> _readWalletScriptType() async {
+    if (_walletId != null) {
+      final value = await _secureStorage.read(
+        key: WalletStorageKeys.scriptTypeFor(_walletId),
+      );
+      if (value != null && value.trim().isNotEmpty) {
+        return WalletScriptType.fromStorageValue(value);
+      }
+      throw StateError('Missing script type for wallet "$_walletId".');
+    }
     final value = await _secureStorage.read(key: WalletStorageKeys.scriptType);
     return WalletScriptType.fromStorageValue(value);
   }
