@@ -23,6 +23,7 @@ import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.
 import 'package:root_wallet/features/wallet/presentation/pages/create_wallet_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/import_watch_only_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/restore_wallet_page.dart';
+import 'package:root_wallet/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/transaction_details_page.dart';
 
 abstract final class AppRouter {
@@ -107,6 +108,8 @@ abstract final class AppRouter {
         return _page(settings, const BackupSettingsPage());
       case AppRoutes.about:
         return _page(settings, const AboutPage());
+      case AppRoutes.notifications:
+        return _page(settings, const NotificationsPage());
       default:
         return _page(settings, const AppStartGate());
     }

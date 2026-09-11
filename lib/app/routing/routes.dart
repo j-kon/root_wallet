@@ -30,4 +30,5 @@ abstract final class AppRoutes {
   static const bip329Labels = '/settings/labels';
   static const backupMetadata = '/settings/backup';
   static const about = '/settings/about';
+  static const notifications = '/notifications';
 }
