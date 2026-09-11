@@ -735,7 +735,7 @@ class BdkWalletService {
     );
   }
 
-  Future<double> estimateFeeSatPerVbyte({int targetBlocks = 6}) {
+  Future<double> estimateFeeSatPerVbyte({int targetBlocks = 3}) {
     return _guard(
       'estimate fee rate',
       () async {

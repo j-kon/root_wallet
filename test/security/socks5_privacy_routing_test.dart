@@ -982,5 +982,36 @@ void main() {
         expect(bdkServiceBuildCount, equals(2));
       });
     });
+
+    group('Fee Policy Default Verification', () {
+      test('estimateFeeSatPerVbyte preserves pre-PR default of 3 target blocks', () async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(NetworkStorageKeys.transportMode, 'socks5');
+        await prefs.setString(NetworkStorageKeys.proxyHost, '127.0.0.1');
+        await prefs.setInt(NetworkStorageKeys.proxyPort, 9050);
+        const customUrl = 'tcp://private-node.example.org:50001';
+        await prefs.setString(NetworkStorageKeys.customElectrumUrl, customUrl);
+
+        final tracker = MockClientTracker();
+        final bdkService = BdkWalletService(
+          secureStorage: secureStorage,
+          walletStoragePathLoader: () async => tempDir.path,
+          preferencesLoader: () async => prefs,
+          allowCustomEsploraEndpoint: false,
+          electrumClientFactory: tracker.createElectrumFactory(shouldFail: true),
+          esploraClientFactory: tracker.createEsploraFactory(),
+        );
+
+        // Calling without explicit targetBlocks uses default of 3 blocks
+        await expectLater(
+          bdkService.estimateFeeSatPerVbyte(),
+          throwsA(isA<BdkWalletServiceException>()),
+        );
+
+        // Verifying tracker recorded SOCKS attempt for the single custom backend
+        expect(tracker.socksElectrumAttempts, equals(1));
+        expect(tracker.directElectrumAttempts, equals(0));
+      });
+    });
   });
 }
