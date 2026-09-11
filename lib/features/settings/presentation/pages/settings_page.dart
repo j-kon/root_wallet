@@ -229,6 +229,30 @@ class SettingsPage extends ConsumerWidget {
               ),
               _SettingsRow(
                 icon: useCupertino
+                    ? CupertinoIcons.doc_text_search
+                    : Icons.description_outlined,
+                title: 'PSBT Operations',
+                subtitle:
+                    'Import, inspect, sign, or broadcast partially signed transactions',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.of(context).pushNamed(AppRoutes.psbtImport);
+                },
+              ),
+              _SettingsRow(
+                icon: useCupertino
+                    ? CupertinoIcons.tag
+                    : Icons.label_outline_rounded,
+                title: 'Wallet Labels (BIP-329)',
+                subtitle:
+                    'Import or export local labels for addresses, txs, and coins',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.of(context).pushNamed(AppRoutes.bip329Labels);
+                },
+              ),
+              _SettingsRow(
+                icon: useCupertino
                     ? CupertinoIcons.waveform_path_ecg
                     : Icons.health_and_safety_outlined,
                 title: 'Wallet Diagnostics',
@@ -282,6 +306,17 @@ class SettingsPage extends ConsumerWidget {
                 onTap: () {
                   HapticFeedback.selectionClick();
                   Navigator.of(context).pushNamed(AppRoutes.restoreWallet);
+                },
+              ),
+              _SettingsRow(
+                icon: useCupertino
+                    ? CupertinoIcons.eye_fill
+                    : Icons.visibility_outlined,
+                title: 'Import Watch-Only Wallet',
+                subtitle: 'Monitor addresses and construct unsigned transactions',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.of(context).pushNamed(AppRoutes.importWatchOnly);
                 },
               ),
               _SettingsRow(
