@@ -345,9 +345,9 @@ class WalletHomePage extends ConsumerWidget {
                       ),
                     ],
                   ),
-                const SizedBox(height: RootSpacing.md),
                 // Security / Backup status card or Watch-only explanation card
-                if (isWatchOnly)
+                if (isWatchOnly) ...[
+                  const SizedBox(height: RootSpacing.md),
                   _WalletAttentionCard(
                     icon: Icons.visibility_outlined,
                     title: 'Watch-only wallet',
@@ -357,21 +357,15 @@ class WalletHomePage extends ConsumerWidget {
                     action: () =>
                         Navigator.of(context).pushNamed(AppRoutes.psbtImport),
                     tone: RootBrandColors.pineGreen,
-                  )
-                else
+                  ),
+                ] else if (!isBackupConfirmed) ...[
+                  const SizedBox(height: RootSpacing.md),
                   _WalletAttentionCard(
-                    icon: isBackupConfirmed
-                        ? Icons.verified_user_outlined
-                        : Icons.shield_outlined,
-                    title: isBackupConfirmed
-                        ? 'Recovery phrase secured'
-                        : 'Secure your recovery phrase',
-                    message: isBackupConfirmed
-                        ? 'Your backup reminder is complete. Keep your phrase stored offline and private.'
-                        : 'A backup is still outstanding. Completing it now protects your sovereignty.',
-                    actionLabel: isBackupConfirmed
-                        ? 'Review phrase'
-                        : 'Back up now',
+                    icon: Icons.shield_outlined,
+                    title: 'Secure your recovery phrase',
+                    message:
+                        'A backup is still outstanding. Completing it now protects your sovereignty.',
+                    actionLabel: 'Back up now',
                     action: () => Navigator.of(context).pushNamed(
                       AppRoutes.backupSeed,
                       arguments: BackupSeedPageArgs(
@@ -380,10 +374,9 @@ class WalletHomePage extends ConsumerWidget {
                         isOnboardingFlow: false,
                       ),
                     ),
-                    tone: isBackupConfirmed
-                        ? RootBrandColors.pineGreen
-                        : RootBrandColors.amberAccent,
+                    tone: RootBrandColors.amberAccent,
                   ),
+                ],
                 if (data.isOffline) ...[
                   const SizedBox(height: RootSpacing.md),
                   InfoBanner(

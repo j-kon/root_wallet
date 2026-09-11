@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
+import 'package:root_wallet/core/network/network_transport_config.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
@@ -634,19 +635,7 @@ class CustomNodeController extends AsyncNotifier<String?> {
   }
 
   String _normalizeUrl(String url) {
-    final trimmed = url.trim();
-    final uri = Uri.tryParse(trimmed);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty || uri.port == 0) {
-      throw const FormatException(
-        'Enter a valid Electrum URL (e.g. tcp://host:port).',
-      );
-    }
-    if (uri.scheme != 'tcp' && uri.scheme != 'ssl') {
-      throw const FormatException(
-        'Only tcp:// or ssl:// protocols are supported.',
-      );
-    }
-    return trimmed;
+    return ElectrumEndpointValidator.validateAndNormalize(url);
   }
 }
 

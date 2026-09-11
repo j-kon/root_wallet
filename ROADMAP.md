@@ -43,6 +43,15 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
   - Wallets management center in Settings with wallet details, renaming, and authenticated deletion.
   - Last-wallet deletion protection and deterministic fallback switching.
   - Fail-closed sensitive action re-authentication required prior to signing wallet deletion.
+- [x] **SOCKS5 / Tor-Compatible Privacy Routing (Milestone 2B):**
+  - Route Bitcoin Electrum traffic (blockchain synchronization, transaction broadcasting, fee estimation, and tip height) through user-configured SOCKS5 proxy endpoints.
+  - Native remote DNS resolution (`0x03` domain addressing) and Tor v3 `.onion` support via Rust `electrum-client 0.25.0`.
+  - Fail-closed privacy guarantee: immediate graceful failure upon proxy unreachable, with strict avoidance of silent clearnet fallback.
+  - Upstream capability gating: Esplora bypassed during SOCKS5 mode due to `bdk_esplora` `minreq` HTTP CONNECT-only limitation.
+  - Custom Electrum backend isolation: configured custom nodes never fall back to public servers on failure.
+  - Domain validation policy: TLS certificate verification enforced on `ssl://` endpoints (`tcp://` is plaintext application transport).
+  - Address-only unauthenticated SOCKS5: removed unsupported credential storage to strictly match BDK FFI capabilities.
+  - Dedicated Connection Routing settings interface with real-time FFI connectivity probing and honest technical disclosures.
 - [x] Dedicated automated CI security test suite (`test/security/`).
 
 ---
@@ -65,8 +74,8 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
 ## Phase 4: Privacy Tooling & Network Sovereignty  
 **Status: PLANNED 🔒**
 
-- [ ] **Custom Node Configuration:** Allow users to connect directly to their personal home node (custom Esplora or Electrum endpoints).
-- [ ] **Native Tor / SOCKS5 Proxy Support:** Route all wallet network queries and transaction broadcasts through the Tor anonymity network to conceal client IP addresses.
+- [ ] **Custom Esplora Endpoint Support:** Extend custom node connections beyond Electrum to include personal self-hosted Esplora HTTP backends with full proxy parity.
+- [ ] **Bundled / Native Tor Daemon Support:** Embed or manage an internal Tor daemon directly within Root Wallet. (Note: External SOCKS5 / Tor-compatible proxy routing is completed in Phase 2 Milestone 2B).
 - [ ] **Coin Control Enhancements:** Granular UTXO label management, output tagging, and coin freezing to prevent accidental address clustering.
 - [ ] **Mempool Privacy Enhancements:** Dandelion++ transaction propagation exploration and custom fee estimation sources.
 

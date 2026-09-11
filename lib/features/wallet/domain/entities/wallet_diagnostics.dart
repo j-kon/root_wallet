@@ -13,6 +13,9 @@ class WalletDiagnostics {
     required this.walletDatabasePath,
     required this.walletExists,
     required this.scriptType,
+    this.transportMode = 'direct',
+    this.proxyAddress,
+    this.backendType = 'Electrum / Esplora (Direct)',
   });
 
   final String networkLabel;
@@ -26,8 +29,14 @@ class WalletDiagnostics {
   final String walletDatabasePath;
   final bool walletExists;
   final String scriptType;
+  final String transportMode;
+  final String? proxyAddress;
+  final String backendType;
 
   String get backendFailoverState {
+    if (transportMode == 'socks5') {
+      return 'SOCKS5 proxy routing active ($backendType)';
+    }
     if (configuredEsploraEndpoints.length <= 1) {
       return 'Single verified backend configured';
     }
@@ -38,6 +47,9 @@ class WalletDiagnostics {
     return <String, Object?>{
       'appNetworkLabel': networkLabel,
       'bdkNetwork': bdkNetwork,
+      'transportMode': transportMode,
+      'proxyAddress': proxyAddress,
+      'backendType': backendType,
       'activeEsploraEndpoint': activeEsploraEndpoint,
       'configuredEsploraEndpoints': configuredEsploraEndpoints,
       'activeEsploraIndex': activeEsploraIndex,
@@ -53,3 +65,4 @@ class WalletDiagnostics {
     };
   }
 }
+
