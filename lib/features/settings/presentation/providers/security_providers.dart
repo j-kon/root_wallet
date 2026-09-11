@@ -301,6 +301,59 @@ class LockController extends AsyncNotifier<AppLockState> {
     return false;
   }
 
+  /// Requires explicit authorization for sensitive actions (such as PSBT signing).
+  ///
+  /// Fails closed:
+  /// - If no lock or PIN is configured: returns `true`.
+  /// - If biometrics are configured and available: attempts biometric re-auth.
+  /// - If biometrics are unavailable, disabled, cancelled, or fails:
+  ///   falls back to PIN verification via [promptPin] and [verifyPin].
+  /// - If neither approved authentication method succeeds: returns `false`.
+  Future<bool> requireSensitiveActionAuthentication({
+    required Future<String?> Function() promptPin,
+    String biometricReason = 'Authorize sensitive action',
+  }) async {
+    final current = state.valueOrNull;
+    if (current == null) {
+      return false;
+    }
+
+    if (!current.isLockEnabled && !current.hasPin) {
+      return true;
+    }
+
+    if (current.isInCooldown) {
+      return false;
+    }
+
+    // A. Attempt biometrics if configured & available
+    if (current.isBiometricsEnabled && current.isBiometricAvailable) {
+      try {
+        final bioOk = await authenticateWithBiometrics(reason: biometricReason);
+        if (bioOk) {
+          return true;
+        }
+      } catch (_) {
+        // Biometric error, fallback to secure PIN path below
+      }
+    }
+
+    // B. Provide existing secure PIN verification path
+    if (current.hasPin) {
+      try {
+        final pin = await promptPin();
+        if (pin == null || pin.isEmpty) {
+          return false;
+        }
+        return await verifyPin(pin);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    return false;
+  }
+
   Future<void> setAutoLockOption(AutoLockOption option) async {
     final prefs = await ref.read(sharedPreferencesProvider.future);
     await prefs.setString(_autoLockOptionKey, option.prefsValue);

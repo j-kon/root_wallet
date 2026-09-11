@@ -10,6 +10,7 @@ import 'package:root_wallet/core/utils/formatters.dart';
 import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/loading.dart';
 import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
+import 'package:root_wallet/core/widgets/pin_entry_dialog.dart';
 import 'package:root_wallet/features/psbt/domain/entities/psbt_details.dart';
 import 'package:root_wallet/features/psbt/presentation/pages/psbt_export_page.dart';
 import 'package:root_wallet/features/psbt/presentation/providers/psbt_providers.dart';
@@ -40,16 +41,82 @@ class _PsbtInspectionPageState extends ConsumerState<PsbtInspectionPage> {
   Future<void> _signPsbt(BuildContext context, PsbtDetails details) async {
     HapticFeedback.lightImpact();
 
-    // Security Gate / Re-auth check
+    // 1. Guard against watch-only wallets attempting to sign
+    if (!details.canSign) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Watch-only wallets cannot sign transactions.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    // 2. Require explicit acknowledgement if external inputs are present
+    if (details.hasUnownedInputs) {
+      final isDark = AppColors.isDark(context);
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          backgroundColor:
+              isDark ? RootBrandColors.charcoalPine : RootBrandColors.warmIvory,
+          title: Text(
+            'External Inputs Detected',
+            style: TextStyle(
+              color: isDark
+                  ? RootBrandColors.warmIvory
+                  : RootBrandColors.charcoalPine,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'This transaction includes inputs that do not belong to your wallet. '
+            'Root Wallet will only sign inputs belonging to your active wallet.\n\n'
+            'Do you wish to proceed?',
+            style: TextStyle(
+              color: isDark
+                  ? RootBrandColors.mutedSage
+                  : RootBrandColors.charcoalPine,
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: RootBrandColors.pineGreen,
+                foregroundColor: RootBrandColors.warmIvory,
+              ),
+              child: const Text('Proceed'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) {
+        return;
+      }
+    }
+
+    // 3. Security Gate / Fail-closed Re-auth check
     try {
       final lockController = ref.read(lockControllerProvider.notifier);
-      final reauthOk = await lockController.requireReauth();
-      // If biometrics/PIN enabled but reauth failed, cancel
-      final lockState = ref.read(lockControllerProvider).valueOrNull;
-      if (lockState != null &&
-          lockState.isBiometricsEnabled &&
-          lockState.isBiometricAvailable &&
-          !reauthOk) {
+      final authOk = await lockController.requireSensitiveActionAuthentication(
+        biometricReason: 'Authorize PSBT signing',
+        promptPin: () => showPinEntryDialog(
+          context,
+          title: 'Authorize signing',
+          subtitle: 'Enter your PIN to authorize signing this transaction.',
+          confirmLabel: 'Sign',
+        ),
+      );
+
+      if (!authOk) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -59,7 +126,16 @@ class _PsbtInspectionPageState extends ConsumerState<PsbtInspectionPage> {
         }
         return;
       }
-    } catch (_) {}
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Authentication error: ${e.toString()}'),
+          ),
+        );
+      }
+      return;
+    }
 
     final result = await ref
         .read(psbtActionControllerProvider.notifier)
@@ -290,6 +366,14 @@ class _PsbtInspectionPageState extends ConsumerState<PsbtInspectionPage> {
                       details.feeSats != null
                           ? '${AppFormatters.sats(details.feeSats!)} (${AppFormatters.btcFromSats(details.feeSats!)})'
                           : 'Unknown',
+                      isDark: isDark,
+                    ),
+                    const Divider(),
+                    _buildSummaryRow(
+                      'Transaction ID',
+                      (details.txid != null && details.txid!.isNotEmpty)
+                          ? AppFormatters.maskAddress(details.txid!)
+                          : 'Unavailable until finalization',
                       isDark: isDark,
                     ),
                   ],
