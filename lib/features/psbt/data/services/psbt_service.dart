@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:bdk_dart/bdk_dart.dart' as bdk;
-import 'package:crypto/crypto.dart';
 import 'package:root_wallet/features/psbt/domain/entities/psbt_details.dart';
 import 'package:root_wallet/features/send/domain/entities/send_request.dart';
 import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
@@ -27,21 +26,64 @@ class PsbtService {
 
   final BdkWalletService _walletService;
 
-  static const int maxPsbtSizeBytes = 500 * 1024; // 500 KB limit
+  /// Maximum allowed decoded PSBT binary size (500 KB limit).
+  static const int maxPsbtSizeBytes = 500 * 1024;
 
-  /// Parses and inspects a PSBT Base64 string against the active wallet.
-  Future<PsbtDetails> inspectPsbt(String rawInput) async {
-    final psbtBase64 = _cleanPsbtString(rawInput);
-    if (psbtBase64.length > maxPsbtSizeBytes) {
-      throw ArgumentError('PSBT exceeds maximum allowed size of 500 KB.');
+  /// Centralized validation and parsing path for all incoming PSBT strings.
+  ///
+  /// Enforces:
+  /// - Trim and whitespace normalization
+  /// - Strict Base64 decoding
+  /// - Binary payload size limit (<= 500 KB decoded bytes)
+  /// - BIP-174 magic bytes check ("psbt\xff" / 0x70 0x73 0x62 0x74 0xff)
+  /// - BDK Psbt instantiation
+  (bdk.Psbt psbt, Uint8List rawBytes, String cleanedBase64) _parseValidatedPsbt(
+    String rawInput,
+  ) {
+    final cleaned = _cleanPsbtString(rawInput);
+    if (cleaned.isEmpty) {
+      throw const FormatException('PSBT input cannot be empty.');
+    }
+
+    final Uint8List rawBytes;
+    try {
+      rawBytes = Uint8List.fromList(base64.decode(cleaned));
+    } catch (e) {
+      throw FormatException('Malformed Base64 PSBT payload: $e');
+    }
+
+    if (rawBytes.length > maxPsbtSizeBytes) {
+      throw ArgumentError(
+        'Decoded PSBT binary size (${rawBytes.length} bytes) exceeds '
+        'maximum allowed limit of $maxPsbtSizeBytes bytes (500 KB).',
+      );
+    }
+
+    // Verify BIP-174 magic bytes: "psbt\xff"
+    if (rawBytes.length < 5 ||
+        rawBytes[0] != 0x70 ||
+        rawBytes[1] != 0x73 ||
+        rawBytes[2] != 0x62 ||
+        rawBytes[3] != 0x74 ||
+        rawBytes[4] != 0xff) {
+      throw const FormatException(
+        'Invalid PSBT magic header. Expected "psbt\\xff".',
+      );
     }
 
     final bdk.Psbt psbt;
     try {
-      psbt = bdk.Psbt(psbtBase64: psbtBase64);
+      psbt = bdk.Psbt(psbtBase64: cleaned);
     } catch (e) {
       throw FormatException('Invalid PSBT format: $e');
     }
+
+    return (psbt, rawBytes, cleaned);
+  }
+
+  /// Parses and inspects a PSBT Base64 string against the active wallet.
+  Future<PsbtDetails> inspectPsbt(String rawInput) async {
+    final (psbt, rawBytes, psbtBase64) = _parseValidatedPsbt(rawInput);
 
     final wallet = await _walletService.resolveWallet();
     final network = wallet.network();
@@ -132,25 +174,14 @@ class PsbtService {
       }
 
       if (isMine) {
+        // Authoritative change classification:
+        // ONLY mark CHANGE when proven from wallet keychain derivation metadata
         if (i < psbtOutputs.length && psbtOutputs[i] is Map) {
           final psbtOut = psbtOutputs[i] as Map<String, dynamic>;
           final bip32 = psbtOut['bip32_derivation'];
-          if (bip32 != null && bip32.toString().contains('/1/')) {
-            isChange = true;
-          }
-        }
-        // If not explicitly marked via bip32, but isMine and there's another non-mine output
-        if (!isChange && rawOutputs.length > 1) {
-          final hasOtherNonMine = rawOutputs.asMap().entries.any((entry) {
-            if (entry.key == i) return false;
-            final otherHex = (entry.value as Map)['script_pubkey']?.toString() ?? '';
-            try {
-              return !wallet.isMine(script: _scriptFromHex(otherHex));
-            } catch (_) {
-              return true;
-            }
-          });
-          if (hasOtherNonMine) {
+          final tapOrigins = psbtOut['tap_key_origins'];
+          if ((bip32 != null && bip32.toString().contains('/1/')) ||
+              (tapOrigins != null && tapOrigins.toString().contains('/1/'))) {
             isChange = true;
           }
         }
@@ -177,26 +208,15 @@ class PsbtService {
     }
 
     var hasUnownedInputs = inputs.any((input) => !input.isMine);
-    // If inputs had no witness_utxo script, we couldn't determine ownership directly,
-    // so don't flag as unowned unless we know for sure or have none owned
     if (!hasOwnedInput && inputs.isNotEmpty) {
       hasUnownedInputs = true;
     }
 
-    String txid = '';
-    try {
-      final tx = psbt.extractTx();
-      txid = tx.computeTxid().toString();
-    } catch (_) {
-      final rawTx = data['unsigned_tx'];
-      if (rawTx != null) {
-        txid = sha256.convert(utf8.encode(jsonEncode(rawTx))).toString();
-      }
-    }
+    final realTxid = _deriveRealTxid(psbt, rawBytes);
 
     return PsbtDetails(
       rawPsbtBase64: psbtBase64,
-      txid: txid,
+      txid: realTxid,
       inputs: inputs,
       outputs: outputs,
       totalOutputSats: totalOutputSats,
@@ -265,16 +285,48 @@ class PsbtService {
   }
 
   /// Signs an inspected PSBT with the active wallet.
-  /// Throws [StateError] if the wallet is watch-only or has no signing inputs.
+  ///
+  /// Throws [StateError] if:
+  /// - The wallet is watch-only
+  /// - None of the inputs belong to the active wallet
   Future<PsbtSigningResult> signPsbt(String rawInput) async {
     final capability = await _walletService.getCapability();
     if (!capability.canSignTransactions) {
       throw StateError('Watch-only wallets cannot sign transactions.');
     }
 
-    final psbtBase64 = _cleanPsbtString(rawInput);
-    final psbt = bdk.Psbt(psbtBase64: psbtBase64);
+    final (psbt, _, _) = _parseValidatedPsbt(rawInput);
     final wallet = await _walletService.resolveWallet();
+
+    // Verify at least one input belongs to active wallet before signing
+    final jsonStr = psbt.jsonSerialize();
+    final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+    final psbtInputs = (data['inputs'] as List?) ?? [];
+
+    var hasOwnedInput = false;
+    for (final inp in psbtInputs) {
+      if (inp is Map<String, dynamic>) {
+        final witnessUtxo = inp['witness_utxo'] as Map<String, dynamic>?;
+        if (witnessUtxo != null) {
+          final scriptHex = witnessUtxo['script_pubkey']?.toString();
+          if (scriptHex != null && scriptHex.isNotEmpty) {
+            try {
+              final script = _scriptFromHex(scriptHex);
+              if (wallet.isMine(script: script)) {
+                hasOwnedInput = true;
+                break;
+              }
+            } catch (_) {}
+          }
+        }
+      }
+    }
+
+    if (!hasOwnedInput && psbtInputs.isNotEmpty) {
+      throw StateError(
+        'Cannot sign PSBT: None of the transaction inputs belong to this wallet.',
+      );
+    }
 
     final isFinalized = wallet.sign(psbt: psbt, signOptions: null);
 
@@ -294,19 +346,128 @@ class PsbtService {
   }
 
   /// Broadcasts a finalized PSBT to the Bitcoin network.
+  ///
+  /// Rejects unfinalized PSBTs fail-closed.
   Future<String> broadcastPsbt(String rawInput) async {
-    final psbtBase64 = _cleanPsbtString(rawInput);
-    final psbt = bdk.Psbt(psbtBase64: psbtBase64);
+    final (psbt, _, _) = _parseValidatedPsbt(rawInput);
+    if (!_checkFinalized(psbt)) {
+      throw StateError(
+        'Cannot broadcast unfinalized PSBT. Transaction must be fully signed and finalized.',
+      );
+    }
     final tx = psbt.extractTx();
     return _walletService.broadcastTransaction(tx);
   }
 
+  /// Verifies whether all inputs in [psbt] are genuinely finalized.
   bool _checkFinalized(bdk.Psbt psbt) {
     try {
+      final jsonStr = psbt.jsonSerialize();
+      final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+      final inputs = (data['inputs'] as List?) ?? [];
+      if (inputs.isEmpty) {
+        return false;
+      }
+
+      for (final inp in inputs) {
+        if (inp is! Map<String, dynamic>) return false;
+        final hasScriptSig = inp['final_script_sig'] != null;
+        final hasWitness = inp['final_script_witness'] != null;
+        if (!hasScriptSig && !hasWitness) {
+          return false;
+        }
+      }
+
       psbt.extractTx();
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Derives the real Bitcoin unsigned transaction txid from the PSBT global map,
+  /// or from the finalized transaction if available. Never fabricates a hash.
+  String? _deriveRealTxid(bdk.Psbt psbt, Uint8List rawBytes) {
+    // 1. Try deriving from consensus unsigned transaction in PSBT global map
+    try {
+      final unsignedTxBytes = _extractUnsignedTxBytesFromPsbt(rawBytes);
+      if (unsignedTxBytes != null && unsignedTxBytes.isNotEmpty) {
+        final tx = bdk.Transaction(transactionBytes: unsignedTxBytes);
+        return tx.computeTxid().toString();
+      }
+    } catch (_) {}
+
+    // 2. Try extracting from finalized transaction
+    try {
+      final tx = psbt.extractTx();
+      return tx.computeTxid().toString();
+    } catch (_) {}
+
+    return null;
+  }
+
+  /// Extracts the BIP-174 consensus unsigned transaction bytes from the global map.
+  static Uint8List? _extractUnsignedTxBytesFromPsbt(Uint8List psbtBytes) {
+    if (psbtBytes.length < 5 ||
+        psbtBytes[0] != 0x70 ||
+        psbtBytes[1] != 0x73 ||
+        psbtBytes[2] != 0x62 ||
+        psbtBytes[3] != 0x74 ||
+        psbtBytes[4] != 0xff) {
+      return null;
+    }
+
+    var offset = 5;
+    while (offset < psbtBytes.length) {
+      final (keyLen, keyLenBytes) = _readVarInt(psbtBytes, offset);
+      offset += keyLenBytes;
+      if (keyLen == 0) {
+        break; // End of global map
+      }
+
+      if (offset + keyLen > psbtBytes.length) break;
+      final keyBytes = psbtBytes.sublist(offset, offset + keyLen);
+      offset += keyLen;
+
+      final (valLen, valLenBytes) = _readVarInt(psbtBytes, offset);
+      offset += valLenBytes;
+
+      if (offset + valLen > psbtBytes.length) break;
+      final valBytes = psbtBytes.sublist(offset, offset + valLen);
+      offset += valLen;
+
+      // PSBT_GLOBAL_UNSIGNED_TX = 0x00 with 1-byte key length
+      if (keyLen == 1 && keyBytes[0] == 0x00) {
+        return valBytes;
+      }
+    }
+
+    return null;
+  }
+
+  static (int, int) _readVarInt(Uint8List bytes, int offset) {
+    if (offset >= bytes.length) return (0, 0);
+    final first = bytes[offset];
+    if (first < 0xfd) {
+      return (first, 1);
+    } else if (first == 0xfd) {
+      if (offset + 2 >= bytes.length) return (0, 0);
+      final val = bytes[offset + 1] | (bytes[offset + 2] << 8);
+      return (val, 3);
+    } else if (first == 0xfe) {
+      if (offset + 4 >= bytes.length) return (0, 0);
+      final val = bytes[offset + 1] |
+          (bytes[offset + 2] << 8) |
+          (bytes[offset + 3] << 16) |
+          (bytes[offset + 4] << 24);
+      return (val, 5);
+    } else {
+      if (offset + 8 >= bytes.length) return (0, 0);
+      var val = 0;
+      for (var i = 0; i < 8; i++) {
+        val |= (bytes[offset + 1 + i] << (8 * i));
+      }
+      return (val, 9);
     }
   }
 

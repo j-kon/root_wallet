@@ -35,7 +35,7 @@ class PsbtOutputItem {
 class PsbtDetails {
   const PsbtDetails({
     required this.rawPsbtBase64,
-    required this.txid,
+    this.txid,
     required this.inputs,
     required this.outputs,
     required this.totalOutputSats,
@@ -49,7 +49,7 @@ class PsbtDetails {
   });
 
   final String rawPsbtBase64;
-  final String txid;
+  final String? txid;
   final List<PsbtInputItem> inputs;
   final List<PsbtOutputItem> outputs;
   final int totalOutputSats;
