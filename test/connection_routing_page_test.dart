@@ -53,7 +53,7 @@ void main() {
       expect(find.text('Direct connection'), findsOneWidget);
     });
 
-    testWidgets('switching to SOCKS5 displays proxy form and honest disclosures', (
+    testWidgets('switching to SOCKS5 displays proxy form without unsupported credentials', (
       WidgetTester tester,
     ) async {
       tester.view.physicalSize = const Size(800, 1400);
@@ -70,28 +70,28 @@ void main() {
       // Proxy form fields appear
       expect(find.text('Proxy Host or IP'), findsOneWidget);
       expect(find.text('Proxy Port'), findsOneWidget);
-      expect(find.text('Username (Optional)'), findsOneWidget);
-      expect(find.text('Password (Optional)'), findsOneWidget);
+      expect(find.text('Username (Optional)'), findsNothing);
+      expect(find.text('Password (Optional)'), findsNothing);
       expect(find.text('Test Proxy'), findsOneWidget);
       expect(find.text('Save (Unverified)'), findsOneWidget);
 
       // Honest disclosures are visible
       expect(find.text('Privacy & Network Model'), findsOneWidget);
       expect(
-        find.textContaining('unauthenticated SOCKS5 proxies'),
+        find.textContaining('SOCKS5 routing applies to Electrum backends only'),
         findsOneWidget,
       );
       expect(
         find.byWidgetPredicate(
           (w) =>
               w is RichText &&
-              w.text.toPlainText().contains('Fail-closed routing guarantee'),
+              w.text.toPlainText().contains('Fail-closed routing guarantee:'),
         ),
         findsOneWidget,
       );
     });
 
-    testWidgets('validates port and host inputs', (
+    testWidgets('validates port, empty host, and rejects .onion in proxy host', (
       WidgetTester tester,
     ) async {
       tester.view.physicalSize = const Size(800, 1400);
@@ -104,8 +104,10 @@ void main() {
       await tester.tap(find.text('SOCKS5 Proxy (Tor-Compatible)'));
       await tester.pumpAndSettle();
 
+      final hostField = find.byType(TextField).at(0);
+      final portField = find.byType(TextField).at(1);
+
       // Enter invalid port
-      final portField = find.widgetWithText(TextField, '9050');
       await tester.enterText(portField, '999999');
       await tester.tap(find.text('Save (Unverified)'));
       await tester.pumpAndSettle();
@@ -115,13 +117,23 @@ void main() {
         findsOneWidget,
       );
 
-      // Enter empty host
-      final hostField = find.widgetWithText(TextField, '127.0.0.1');
+      // Reset valid port, enter empty host
+      await tester.enterText(portField, '9050');
       await tester.enterText(hostField, '');
       await tester.tap(find.text('Save (Unverified)'));
       await tester.pumpAndSettle();
 
       expect(find.text('Proxy host cannot be empty.'), findsOneWidget);
+
+      // Enter .onion in host
+      await tester.enterText(hostField, 'myonionservice.onion');
+      await tester.tap(find.text('Save (Unverified)'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Proxy host cannot be a .onion address'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('testing proxy displays test results banner and activates Save & Activate', (
@@ -156,6 +168,85 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Save & Activate'), findsOneWidget);
+    });
+
+    testWidgets('editing host or port after successful test invalidates verified status and reverts to Save (Unverified)', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final mockTester = ({
+        required String electrumUrl,
+        required String socks5Address,
+        int timeoutSeconds = 5,
+      }) async {
+        return true;
+      };
+
+      await tester.pumpWidget(buildTestWidget(customTester: mockTester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('SOCKS5 Proxy (Tor-Compatible)'));
+      await tester.pumpAndSettle();
+
+      // Test passes
+      await tester.tap(find.text('Test Proxy'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Save & Activate'), findsOneWidget);
+      expect(
+        find.textContaining('Connected to Electrum node via SOCKS5'),
+        findsOneWidget,
+      );
+
+      // Now edit port
+      final portField = find.byType(TextField).at(1);
+      await tester.enterText(portField, '9051');
+      await tester.pumpAndSettle();
+
+      // Verified badge and Save & Activate must be invalidated
+      expect(find.text('Save (Unverified)'), findsOneWidget);
+      expect(find.text('Save & Activate'), findsNothing);
+      expect(
+        find.textContaining('Connected to Electrum node via SOCKS5'),
+        findsNothing,
+      );
+    });
+
+    testWidgets('testing proxy probes custom Electrum endpoint when configured in preferences', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await prefs.setString(
+        NetworkStorageKeys.customElectrumUrl,
+        'ssl://testcustom.onion:50002',
+      );
+
+      String? probedElectrumUrl;
+      final mockTester = ({
+        required String electrumUrl,
+        required String socks5Address,
+        int timeoutSeconds = 5,
+      }) async {
+        probedElectrumUrl = electrumUrl;
+        return true;
+      };
+
+      await tester.pumpWidget(buildTestWidget(customTester: mockTester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('SOCKS5 Proxy (Tor-Compatible)'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Test Proxy'));
+      await tester.pumpAndSettle();
+
+      expect(probedElectrumUrl, equals('ssl://testcustom.onion:50002'));
     });
 
     testWidgets('testing proxy displays error banner on failure', (
