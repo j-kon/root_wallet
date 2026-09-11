@@ -15,6 +15,9 @@ import 'package:root_wallet/features/settings/presentation/pages/security_page.d
 import 'package:root_wallet/features/settings/presentation/pages/wallet_diagnostics_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/coin_control_page.dart';
 import 'package:root_wallet/features/settings/presentation/pages/backup_settings_page.dart';
+import 'package:root_wallet/features/settings/presentation/pages/wallet_details_page.dart';
+import 'package:root_wallet/features/settings/presentation/pages/wallets_page.dart';
+import 'package:root_wallet/features/wallet/presentation/pages/add_wallet_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/create_wallet_page.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/import_watch_only_page.dart';
@@ -74,6 +77,18 @@ abstract final class AppRouter {
         return _page(settings, PsbtExportPage(args: args));
       case AppRoutes.settings:
         return _page(settings, const MainShell(initialIndex: 4));
+      case AppRoutes.wallets:
+        return _page(settings, const WalletsPage());
+      case AppRoutes.walletDetails:
+        final args = settings.arguments;
+        final walletId = args is WalletDetailsArgs
+            ? args.wallet.id
+            : args is String
+                ? args
+                : '';
+        return _page(settings, WalletDetailsPage(walletId: walletId));
+      case AppRoutes.addWallet:
+        return _page(settings, const AddWalletPage());
       case AppRoutes.security:
         return _page(settings, const SecurityPage());
       case AppRoutes.diagnostics:

@@ -52,6 +52,8 @@ class SettingsPage extends ConsumerWidget {
     final healthReady = backupConfirmed && isLockActive;
 
     final customNode = ref.watch(customNodeProvider).valueOrNull;
+    final wallets = ref.watch(walletsListProvider).valueOrNull ?? const [];
+    final activeWallet = ref.watch(activeWalletRecordProvider);
 
     return AppScaffold(
       title: 'Settings',
@@ -84,7 +86,33 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: RootSpacing.lg),
 
-          // 2. Appearance Section
+          // 2. Wallets Section
+          const _SectionHeader(title: 'Wallets'),
+          const SizedBox(height: RootSpacing.xs),
+          _SettingsSectionCard(
+            children: [
+              _SettingsRow(
+                key: const ValueKey('settings_wallets_row'),
+                icon: useCupertino
+                    ? CupertinoIcons.rectangle_stack_fill
+                    : Icons.account_balance_wallet_outlined,
+                title: 'Manage Wallets',
+                subtitle: activeWallet != null
+                    ? '${activeWallet.name} (${activeWallet.isWatchOnly ? 'Watch-Only' : 'Signing'})'
+                    : 'Switch, add or remove wallets',
+                badgeText:
+                    '${wallets.length} ${wallets.length == 1 ? 'Wallet' : 'Wallets'}',
+                badgeTone: RootBrandColors.pineGreen,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.of(context).pushNamed(AppRoutes.wallets);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: RootSpacing.lg),
+
+          // 3. Appearance Section
           const _SectionHeader(title: 'Appearance'),
           const SizedBox(height: RootSpacing.xs),
           _SettingsSectionCard(
@@ -1016,6 +1044,7 @@ class _SettingsSectionCard extends StatelessWidget {
 /// optional status badge, and trailing action/chevron.
 class _SettingsRow extends StatelessWidget {
   const _SettingsRow({
+    super.key,
     required this.icon,
     required this.title,
     required this.subtitle,

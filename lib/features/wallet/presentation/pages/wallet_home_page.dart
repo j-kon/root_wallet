@@ -20,6 +20,7 @@ import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/balance_card.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/tx_list.dart';
+import 'package:root_wallet/features/wallet/presentation/widgets/wallet_switcher_modal.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 import 'package:root_wallet/shared/widgets/primary_action_button.dart';
 import 'package:root_wallet/shared/widgets/section_header.dart';
@@ -59,25 +60,43 @@ class WalletHomePage extends ConsumerWidget {
     final capabilityAsync = ref.watch(walletCapabilityProvider);
     final isWatchOnly = capabilityAsync.valueOrNull?.isWatchOnly ?? false;
     final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
+    final activeWallet = ref.watch(activeWalletRecordProvider);
     const networkLabel = AppConstants.networkDisplayName;
 
     return AppScaffold(
-      titleWidget: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              isDark
-                  ? 'assets/branding/logo/root-mark-warm-ivory-64.png'
-                  : 'assets/branding/logo/root-mark-pine-green-64.png',
-              width: 22,
-              height: 22,
-            ),
-            const SizedBox(width: RootSpacing.sm),
-            Text('Wallet', style: Theme.of(context).appBarTheme.titleTextStyle),
-          ],
+      titleWidget: InkWell(
+        key: const ValueKey('wallet_switcher_trigger'),
+        borderRadius: BorderRadius.circular(RootRadius.pill),
+        onTap: () => WalletSwitcherModal.show(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                isDark
+                    ? 'assets/branding/logo/root-mark-warm-ivory-64.png'
+                    : 'assets/branding/logo/root-mark-pine-green-64.png',
+                width: 22,
+                height: 22,
+              ),
+              const SizedBox(width: RootSpacing.sm),
+              Flexible(
+                child: Text(
+                  activeWallet?.name ?? 'Wallet',
+                  style: Theme.of(context).appBarTheme.titleTextStyle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 20,
+                color: textSecondary,
+              ),
+            ],
+          ),
         ),
       ),
       actions: [

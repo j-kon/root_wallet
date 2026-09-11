@@ -20,6 +20,9 @@ abstract final class AppRoutes {
   static const psbtExport = '/psbt/export';
 
   static const settings = '/settings';
+  static const wallets = '/settings/wallets';
+  static const walletDetails = '/settings/wallets/details';
+  static const addWallet = '/wallet/add';
   static const security = '/settings/security';
   static const diagnostics = '/settings/diagnostics';
   static const coinControl = '/settings/coin_control';
