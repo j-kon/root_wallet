@@ -85,36 +85,9 @@ class Socks5ProxyConfig {
 
   /// Validates an Electrum target endpoint URL (e.g. tcp://host:port or ssl://host:port).
   ///
-  /// Enforces Tor v3 semantics if target points to a .onion address.
+  /// Delegates to the canonical [ElectrumEndpointValidator].
   static void validateElectrumEndpoint(String url) {
-    final trimmed = url.trim();
-    if (trimmed.isEmpty) {
-      throw const FormatException('Electrum endpoint cannot be empty.');
-    }
-    final uri = Uri.tryParse(trimmed);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-      throw const FormatException(
-        'Enter a valid Electrum URL (e.g. tcp://host:port or ssl://host:port).',
-      );
-    }
-    final scheme = uri.scheme.toLowerCase();
-    if (scheme != 'tcp' && scheme != 'ssl' && scheme != 'tls') {
-      throw FormatException(
-        'Unsupported Electrum scheme "$scheme". Use tcp://, ssl://, or tls://.',
-      );
-    }
-    if (!uri.hasPort || uri.port < 1 || uri.port > 65535) {
-      throw const FormatException(
-        'Electrum endpoint must specify a valid port (1-65535).',
-      );
-    }
-    if (uri.host.toLowerCase().endsWith('.onion')) {
-      if (!isValidTorV3Onion(uri.host)) {
-        throw FormatException(
-          'Invalid Tor onion endpoint "${uri.host}". Only Tor v3 onion addresses (56 base32 characters) are supported.',
-        );
-      }
-    }
+    ElectrumEndpointValidator.validate(url);
   }
 
   static String _normalizeHost(String rawHost) {
@@ -309,4 +282,53 @@ class NetworkConfiguration {
         isProxyVerified,
         lastProxyTestError,
       );
+}
+
+/// Canonical validator for Electrum endpoints across Root Wallet.
+///
+/// Enforces:
+/// - Non-empty, valid URI format
+/// - Allowed schemes: strictly `tcp://` and `ssl://` (no `tls://`, `http://`, etc.)
+/// - Valid port between 1 and 65535 (missing port is rejected)
+/// - If target host ends with `.onion`, strictly enforces Tor v3 (56 lowercase base32 characters)
+///   and rejects Tor v2 (16-char) or malformed onion addresses.
+class ElectrumEndpointValidator {
+  const ElectrumEndpointValidator._();
+
+  /// Canonical validation and normalization.
+  /// Returns the trimmed URL if valid, or throws [FormatException].
+  static String validateAndNormalize(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) {
+      throw const FormatException('Electrum endpoint cannot be empty.');
+    }
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      throw const FormatException(
+        'Enter a valid Electrum URL (e.g. tcp://host:port or ssl://host:port).',
+      );
+    }
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'tcp' && scheme != 'ssl') {
+      throw FormatException(
+        'Unsupported Electrum scheme "$scheme". Only tcp:// or ssl:// protocols are supported.',
+      );
+    }
+    if (!uri.hasPort || uri.port < 1 || uri.port > 65535) {
+      throw const FormatException(
+        'Electrum endpoint must specify a valid port (1-65535).',
+      );
+    }
+    if (uri.host.toLowerCase().endsWith('.onion')) {
+      if (!Socks5ProxyConfig.isValidTorV3Onion(uri.host)) {
+        throw FormatException(
+          'Invalid Tor onion endpoint "${uri.host}". Only Tor v3 onion addresses (56 base32 characters) are supported.',
+        );
+      }
+    }
+    return trimmed;
+  }
+
+  /// Convenience validation method.
+  static void validate(String url) => validateAndNormalize(url);
 }

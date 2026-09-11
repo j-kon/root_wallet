@@ -9,6 +9,7 @@ import 'package:root_wallet/core/network/network_storage_keys.dart';
 import 'package:root_wallet/core/network/network_transport_config.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/settings/presentation/providers/network_transport_providers.dart';
+import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
 import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 import 'package:root_wallet/features/wallet/data/services/wallet_seed_service.dart';
@@ -239,9 +240,13 @@ void main() {
           throwsFormatException,
         );
 
-        // Reject missing port or invalid scheme
+        // Reject missing port or invalid schemes (http://, tls://)
         expect(
           () => Socks5ProxyConfig.validateElectrumEndpoint('http://electrum.example.com:50001'),
+          throwsFormatException,
+        );
+        expect(
+          () => Socks5ProxyConfig.validateElectrumEndpoint('tls://electrum.example.com:50002'),
           throwsFormatException,
         );
         expect(
@@ -550,9 +555,8 @@ void main() {
     });
 
     group('TLS Validation Policy', () {
-      test('ssl:// and tls:// Electrum endpoints strictly enforce domain validation', () async {
+      test('ssl:// Electrum endpoints strictly enforce domain validation while tcp:// does not', () async {
         expect(resolveElectrumValidateDomain('ssl://testnet.qtornado.com:51002'), isTrue);
-        expect(resolveElectrumValidateDomain('tls://testnet.qtornado.com:51002'), isTrue);
         expect(resolveElectrumValidateDomain('tcp://testnet.aranguren.org:51001'), isFalse);
 
         // Verify BdkWalletService passes validateDomain policy to factory for ssl://
@@ -769,6 +773,98 @@ void main() {
         final diagnostics = await bdkService.diagnostics();
         expect(diagnostics.transportMode, equals('socks5'));
         expect(diagnostics.proxyAddress, equals('127.0.0.1:9050'));
+      });
+    });
+
+    group('Canonical Electrum Target & CustomNodeController Validation', () {
+      test('CustomNodeController accepts valid and rejects invalid schemes/onions via canonical validator', () async {
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((ref) => prefs),
+          ],
+        );
+        addTearDown(container.dispose);
+        final controller = container.read(customNodeProvider.notifier);
+
+        // tcp://valid.example.com:50001 -> accepted
+        await controller.setNodeUrl('tcp://valid.example.com:50001');
+        expect(container.read(customNodeProvider).value, equals('tcp://valid.example.com:50001'));
+        expect(prefs.getString('settings.custom_electrum_url'), equals('tcp://valid.example.com:50001'));
+
+        // ssl://valid.example.com:50002 -> accepted
+        await controller.setNodeUrl('ssl://valid.example.com:50002');
+        expect(container.read(customNodeProvider).value, equals('ssl://valid.example.com:50002'));
+
+        // tls://valid.example.com:50002 -> rejected
+        await expectLater(
+          controller.setNodeUrl('tls://valid.example.com:50002'),
+          throwsA(
+            isA<FormatException>().having(
+              (e) => e.message,
+              'message',
+              contains('Unsupported Electrum scheme "tls"'),
+            ),
+          ),
+        );
+
+        // tcp://<valid-v3-onion>:50001 -> accepted
+        final validV3Onion = 'tcp://${'a' * 56}.onion:50001';
+        await controller.setNodeUrl(validV3Onion);
+        expect(container.read(customNodeProvider).value, equals(validV3Onion));
+
+        // tcp://abc.onion:50001 -> rejected
+        await expectLater(
+          controller.setNodeUrl('tcp://abc.onion:50001'),
+          throwsA(
+            isA<FormatException>().having(
+              (e) => e.message,
+              'message',
+              contains('Only Tor v3 onion addresses (56 base32 characters) are supported'),
+            ),
+          ),
+        );
+
+        // Tor-v2 16-character onion -> rejected
+        await expectLater(
+          controller.setNodeUrl('tcp://expyuzz5wqqfdgah.onion:50001'),
+          throwsA(
+            isA<FormatException>().having(
+              (e) => e.message,
+              'message',
+              contains('Only Tor v3 onion addresses (56 base32 characters) are supported'),
+            ),
+          ),
+        );
+
+        // missing port -> rejected
+        await expectLater(
+          controller.setNodeUrl('tcp://valid.example.com'),
+          throwsA(
+            isA<FormatException>().having(
+              (e) => e.message,
+              'message',
+              contains('Electrum endpoint must specify a valid port'),
+            ),
+          ),
+        );
+
+        // http:// -> rejected
+        await expectLater(
+          controller.setNodeUrl('http://valid.example.com:50001'),
+          throwsA(
+            isA<FormatException>().having(
+              (e) => e.message,
+              'message',
+              contains('Unsupported Electrum scheme "http"'),
+            ),
+          ),
+        );
+
+        // null or empty resets node URL
+        await controller.setNodeUrl(null);
+        expect(container.read(customNodeProvider).value, isNull);
+        expect(prefs.getString('settings.custom_electrum_url'), isNull);
       });
     });
   });

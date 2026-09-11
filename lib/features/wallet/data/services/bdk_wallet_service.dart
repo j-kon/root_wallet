@@ -44,7 +44,7 @@ typedef EsploraClientFactory = bdk.EsploraClient Function(
 
 bool resolveElectrumValidateDomain(String url) {
   final lower = url.trim().toLowerCase();
-  return lower.startsWith('ssl://') || lower.startsWith('tls://');
+  return lower.startsWith('ssl://');
 }
 
 bdk.ElectrumClient defaultElectrumClientFactory({
@@ -76,6 +76,7 @@ bdk.EsploraClient defaultEsploraClientFactory(
 List<String> resolveElectrumEndpoints({required String? customUrl}) {
   final trimmed = customUrl?.trim();
   if (trimmed != null && trimmed.isNotEmpty) {
+    ElectrumEndpointValidator.validate(trimmed);
     return [trimmed];
   }
   return const [

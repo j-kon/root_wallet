@@ -222,9 +222,10 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
+      final validV3Onion = 'ssl://${'a' * 56}.onion:50002';
       await prefs.setString(
         NetworkStorageKeys.customElectrumUrl,
-        'ssl://testcustom.onion:50002',
+        validV3Onion,
       );
 
       String? probedElectrumUrl;
@@ -246,7 +247,7 @@ void main() {
       await tester.tap(find.text('Test Proxy'));
       await tester.pumpAndSettle();
 
-      expect(probedElectrumUrl, equals('ssl://testcustom.onion:50002'));
+      expect(probedElectrumUrl, equals(validV3Onion));
     });
 
     testWidgets('testing proxy displays error banner on failure', (
