@@ -54,3 +54,35 @@ Secrets are never written to unencrypted SQLite tables, disk caches, or log file
 | **Clipboard Snooping** | Malicious third-party apps or keyboards read copied seed words. | **Auto-Clearing Clipboard:** Copying recovery phrases requires explicit confirmation through a caution modal and triggers automatic clipboard erasure after 60 seconds. |
 | **Wrong Network Transmission** | Sending mainnet funds to a testnet address or vice versa. | **Strict Address & Network Guards:** BDK's address parser strictly validates Bech32/Bech32m checksums and enforces network boundaries. `AppConstants.isMainnetAllowed` blocks mainnet execution during testnet testing. |
 | **Esplora Backend Censorship** | A single public backend node goes down or fails to broadcast. | **Automatic Node Failover:** Configured with multiple fallback Esplora endpoints and support for custom self-hosted nodes. |
+| **Network Surveillance & IP Leaks** | Network observers, ISPs, or node operators correlate Bitcoin addresses and transactions with user IP addresses. | **SOCKS5 Privacy Routing:** Routes Electrum traffic through a user-configured SOCKS5 proxy with remote DNS resolution and strict fail-closed enforcement (no silent clearnet fallback). |
+
+---
+
+## 4. Network Privacy & SOCKS5 Routing Architecture
+
+Root Wallet supports routing Bitcoin backend traffic through a user-configured SOCKS5 proxy (such as a local Tor daemon or Orbot). This architecture is governed by strict privacy-first principles:
+
+### Fail-Closed Guarantee
+- When SOCKS5 transport is enabled, all Bitcoin network operations (wallet synchronization, transaction broadcasting, fee estimation, and tip height inspection) MUST route through the proxy.
+- If the proxy is unavailable, misconfigured, or offline, operations fail immediately and visibly.
+- **Root Wallet NEVER silently falls back to clearnet.** Silent fallbacks defeat user privacy expectations by leaking IP addresses and active descriptors at the moment of failure.
+
+### Remote DNS Resolution (No Local DNS Leaking)
+- Electrum connections over SOCKS5 utilize SOCKS5 domain name addressing (`0x03`), passing hostnames directly to the proxy for remote resolution.
+- Device OS resolvers never perform local DNS queries for Bitcoin endpoints, preventing DNS snooping by local networks or ISPs.
+- Native support for Tor v3 `.onion` hidden service addresses over TCP and TLS.
+
+### Upstream Capability Gating (Electrum vs. Esplora)
+- BDK's Electrum client (`electrum-client 0.25.0`) natively supports SOCKS5 proxying via Rust TCP/TLS stream wrapping.
+- BDK's Esplora client (`bdk_esplora 0.22.2` / `esplora-client 0.12.3`) relies on `minreq 2.14.1`, which only supports HTTP CONNECT proxies and errors on SOCKS5.
+- Therefore, when SOCKS5 mode is active, Root Wallet automatically bypasses Esplora completely and routes all synchronization, broadcasting, fee queries, and chain height calls exclusively through Electrum over SOCKS5.
+
+### Platform-Isolated Credential Security
+- Non-sensitive proxy settings (host, port, username) are stored in standard application preferences.
+- Proxy passwords are treated as sensitive authentication material and stored strictly in platform `SecureStorage` (iOS Keychain / Android KeyStore with hardware-backed encryption).
+- Credentials are NEVER logged, serialized into diagnostic exports, or included in `toString()` output.
+- Note: BDK FFI currently connects unauthenticated; entered credentials are safely retained for forward compatibility without premature transmission.
+
+### External Daemon Boundary
+- Root Wallet deliberately does not bundle a compiled Tor binary or daemon, avoiding binary bloat, supply-chain expansion, and OS background lifecycle complications.
+- Users connect to an external Tor daemon (e.g., Orbot on Android, `brew services start tor` on macOS, or a dedicated LAN proxy).

@@ -64,6 +64,7 @@ Root Wallet returns to the original promise of Bitcoin:
 - **BIP-329 Local Labels:** Import and export transaction, address, and UTXO labels in BIP-329 JSONL format, isolated by wallet identity (`wallet.local_labels.v3.<wallet-id>`). Labels remain stored strictly on device and are never sent to remote backends.
 - **Granular Coin Control:** Inspect individual UTXOs, label outputs, freeze/lock specific coins, and avoid address reuse.
 - **Replace-By-Fee (RBF):** Signal RBF on outgoing transactions to bump transaction priority.
+- **SOCKS5 / Tor-Compatible Privacy Routing:** Route Bitcoin Electrum traffic (sync, broadcast, fee estimation, and tip height) through a user-configured SOCKS5 proxy with remote proxy-side DNS resolution and Tor v3 `.onion` support. Enforces strict fail-closed privacy guarantees without silent clearnet fallback.
 - **Custom Node Overrides:** Support for configuring custom backend endpoints.
 
 ---

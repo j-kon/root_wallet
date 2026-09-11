@@ -43,6 +43,13 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
   - Wallets management center in Settings with wallet details, renaming, and authenticated deletion.
   - Last-wallet deletion protection and deterministic fallback switching.
   - Fail-closed sensitive action re-authentication required prior to signing wallet deletion.
+- [x] **SOCKS5 / Tor-Compatible Privacy Routing (Milestone 2B):**
+  - Route Bitcoin Electrum traffic (blockchain synchronization, transaction broadcasting, fee estimation, and tip height) through user-configured SOCKS5 proxy endpoints.
+  - Native remote DNS resolution (`0x03` domain addressing) and Tor v3 `.onion` support via Rust `electrum-client 0.25.0`.
+  - Fail-closed privacy guarantee: immediate graceful failure upon proxy unreachable, with strict avoidance of silent clearnet fallback.
+  - Upstream capability gating: Esplora bypassed during SOCKS5 mode due to `bdk_esplora` `minreq` HTTP CONNECT-only limitation.
+  - Platform secure credential isolation: proxy password persisted strictly in Keychain/KeyStore, isolated from SharedPreferences and diagnostics exports.
+  - Dedicated Connection Routing settings interface with real-time FFI connectivity probing and honest technical disclosures.
 - [x] Dedicated automated CI security test suite (`test/security/`).
 
 ---
