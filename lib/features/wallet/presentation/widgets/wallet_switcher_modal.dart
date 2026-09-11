@@ -238,13 +238,13 @@ class WalletSwitcherModal extends ConsumerWidget {
                                             color: textSecondary,
                                           ),
                                         ),
-                                        if (wallet.fingerprint.isNotEmpty) ...[
+                                        if (wallet.fingerprint != null && wallet.fingerprint!.isNotEmpty) ...[
                                           Text(
                                             ' • ',
                                             style: TextStyle(color: textSecondary),
                                           ),
                                           Text(
-                                            wallet.fingerprint,
+                                            wallet.fingerprint!,
                                             style: TextStyle(
                                               fontFamily: 'monospace',
                                               fontSize: 11,

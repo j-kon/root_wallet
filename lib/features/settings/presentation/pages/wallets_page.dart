@@ -186,7 +186,7 @@ class WalletsPage extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${wallet.scriptType.displayName} • ${wallet.fingerprint}',
+                              '${wallet.scriptType.displayName}${wallet.fingerprint != null ? ' • ${wallet.fingerprint}' : ''}',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: textSecondary,

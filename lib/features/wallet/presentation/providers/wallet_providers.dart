@@ -38,10 +38,37 @@ import 'package:root_wallet/features/wallet/data/services/wallet_migration_servi
 import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/shared/models/wallet_snapshot.dart';
 
+import 'package:root_wallet/features/wallet/data/services/add_wallet_service.dart';
+import 'package:root_wallet/features/wallet/data/services/wallet_storage_cleaner.dart';
+
 final walletRegistryProvider = FutureProvider<WalletRegistry>((ref) async {
   final prefs = await ref.watch(sharedPreferencesProvider.future);
   return WalletRegistry(prefs);
 });
+
+final walletStorageCleanerProvider =
+    FutureProvider<WalletStorageCleaner>((ref) async {
+      final secureStorage = ref.watch(secureStorageProvider);
+      final prefs = await ref.watch(sharedPreferencesProvider.future);
+      return WalletStorageCleaner(
+        secureStorage: secureStorage,
+        preferences: prefs,
+        walletStoragePathLoader:
+            () => ref.read(walletStoragePathProvider.future),
+      );
+    });
+
+final addWalletServiceProvider =
+    FutureProvider<AddWalletService>((ref) async {
+      final secureStorage = ref.watch(secureStorageProvider);
+      final prefs = await ref.watch(sharedPreferencesProvider.future);
+      return AddWalletService(
+        secureStorage: secureStorage,
+        preferences: prefs,
+        walletStoragePathLoader:
+            () => ref.read(walletStoragePathProvider.future),
+      );
+    });
 
 final walletMigrationServiceProvider =
     FutureProvider<WalletMigrationService>((ref) async {
@@ -59,11 +86,26 @@ class ActiveWalletIdNotifier extends AsyncNotifier<String?> {
   @override
   Future<String?> build() async {
     final registry = await ref.watch(walletRegistryProvider.future);
-    return registry.getActiveWalletId() ?? registry.getWallets().firstOrNull?.id;
+    final wallets = registry.getWallets();
+    if (wallets.isEmpty) return null;
+
+    final persistedId = registry.getActiveWalletId();
+    if (persistedId != null && wallets.any((w) => w.id == persistedId)) {
+      return persistedId;
+    }
+
+    // Repair stale/absent active ID deterministically
+    final fallbackId = wallets.first.id;
+    await registry.setActiveWalletId(fallbackId);
+    return fallbackId;
   }
 
   Future<void> setActiveWallet(String walletId) async {
     final registry = await ref.read(walletRegistryProvider.future);
+    final wallets = registry.getWallets();
+    if (!wallets.any((w) => w.id == walletId)) {
+      throw ArgumentError('Cannot activate unregistered wallet: $walletId');
+    }
     await registry.setActiveWalletId(walletId);
     state = AsyncData(walletId);
 
@@ -115,8 +157,8 @@ class WalletsListNotifier extends AsyncNotifier<List<WalletRecord>> {
   }
 
   Future<void> deleteWallet(String walletId) async {
+    final cleaner = await ref.read(walletStorageCleanerProvider.future);
     final registry = await ref.read(walletRegistryProvider.future);
-    final bdkService = ref.read(bdkWalletServiceProvider);
     final activeId = ref.read(activeWalletIdProvider).valueOrNull;
     final isDeletingActive = activeId == walletId;
 
@@ -132,7 +174,7 @@ class WalletsListNotifier extends AsyncNotifier<List<WalletRecord>> {
       await ref.read(activeWalletIdProvider.notifier).setActiveWallet(remaining.id);
     }
 
-    await bdkService.deleteWalletData(walletId);
+    await cleaner.cleanWalletData(walletId);
     await registry.deleteWallet(walletId);
     await refresh();
   }
@@ -193,6 +235,7 @@ final walletScriptTypeProvider = FutureProvider<WalletScriptType>((ref) async {
     if (value != null && value.trim().isNotEmpty) {
       return WalletScriptType.fromStorageValue(value);
     }
+    throw StateError('Missing scoped script_type for active wallet: $activeId');
   }
   final value = await secureStorage.read(key: WalletStorageKeys.scriptType);
   return WalletScriptType.fromStorageValue(value);

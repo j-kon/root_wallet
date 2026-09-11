@@ -1,7 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
+import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
@@ -12,6 +11,17 @@ import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class WalletMigrationException implements Exception {
+  const WalletMigrationException(this.message, [this.cause]);
+  final String message;
+  final Object? cause;
+
+  @override
+  String toString() => cause != null
+      ? 'WalletMigrationException: $message (Cause: $cause)'
+      : 'WalletMigrationException: $message';
+}
+
 /// Service responsible for migrating single-wallet legacy installations to the
 /// Phase 2 Milestone 2A multi-wallet architecture.
 ///
@@ -19,14 +29,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// 1. Idempotent: multiple runs never produce duplicate wallets.
 /// 2. Non-destructive: legacy secrets and databases are verified and preserved.
 /// 3. Complete: copies secrets, databases, labels, and locked UTXOs into isolated namespaces.
+/// 4. Transactional: phased execution (PREPARE, COPY/VERIFY, REGISTER, MARK COMPLETE).
 class WalletMigrationService {
   WalletMigrationService({
     required SecureStorage secureStorage,
     required SharedPreferences preferences,
     required Future<String> Function() walletStoragePathLoader,
-  }) : _secureStorage = secureStorage,
-       _prefs = preferences,
-       _walletStoragePathLoader = walletStoragePathLoader;
+  })  : _secureStorage = secureStorage,
+        _prefs = preferences,
+        _walletStoragePathLoader = walletStoragePathLoader;
 
   final SecureStorage _secureStorage;
   final SharedPreferences _prefs;
@@ -40,12 +51,28 @@ class WalletMigrationService {
   Future<WalletRecord?> migrateIfNeeded() async {
     final registry = WalletRegistry(_prefs);
 
-    // 1. Idempotency check: if registry already has wallets, migration is already completed.
+    // 1. Check completion marker policy
+    final isCompleted =
+        _prefs.getBool(WalletStorageKeys.legacyMigrationCompleted) ?? false;
+    if (isCompleted) {
+      if (registry.hasWallets()) {
+        return null; // Already migrated and valid
+      }
+      // Marker is completed, but registry has no wallets! Fail closed.
+      throw const WalletMigrationException(
+        'Migration was previously marked complete, but registry contains no wallets.',
+      );
+    }
+
+    // 2. Idempotency check: if registry already has wallets, mark completed and return null.
     if (registry.hasWallets()) {
+      await _prefs.setBool(WalletStorageKeys.legacyMigrationCompleted, true);
       return null;
     }
 
-    // 2. Detect existing single-wallet data in SecureStorage.
+    // ==========================================
+    // PHASE 1: PREPARE
+    // ==========================================
     final legacyMnemonic = await _secureStorage.read(
       key: WalletStorageKeys.legacyMnemonic,
     );
@@ -64,7 +91,6 @@ class WalletMigrationService {
       return null;
     }
 
-    // 3. Determine capability and script type.
     final isWatchOnly = !hasLegacySigning && hasLegacyWatchOnly;
     final capability = isWatchOnly
         ? WalletCapability.watchOnly
@@ -75,42 +101,49 @@ class WalletMigrationService {
     );
     final scriptType = WalletScriptType.fromStorageValue(legacyScriptTypeRaw);
 
-    // 4. Derive fingerprint.
-    String fingerprint;
+    // Derive BIP32 master fingerprint (signing) or descriptor origin fingerprint (watch-only)
+    String? fingerprint;
     if (hasLegacySigning) {
-      fingerprint = sha256
-          .convert(utf8.encode(legacyMnemonic.trim()))
-          .toString()
-          .substring(0, 8)
-          .toUpperCase();
+      try {
+        final parsed = bdk.Mnemonic.fromString(
+          mnemonic: legacyMnemonic.trim().toLowerCase(),
+        );
+        final secKey = bdk.DescriptorSecretKey(
+          networkKind: bdk.NetworkKind.test,
+          mnemonic: parsed,
+          password: null,
+        );
+        final pubKey = secKey.asPublic();
+        fingerprint = pubKey.masterFingerprint().toUpperCase();
+        secKey.dispose();
+        pubKey.dispose();
+        parsed.dispose();
+      } catch (_) {
+        fingerprint = null;
+      }
     } else {
       final extDesc = legacyExtDesc!;
       final legacyIntDesc = await _secureStorage.read(
         key: WalletStorageKeys.legacyInternalDescriptor,
       );
-      final fpMatch = RegExp(r'\[([0-9a-fA-F]{8})').firstMatch(extDesc);
-      final rawFingerprint = fpMatch?.group(1)?.toUpperCase() ??
-          sha256
-              .convert(utf8.encode(extDesc))
-              .toString()
-              .substring(0, 8)
-              .toUpperCase();
-
       try {
         final validated = DescriptorValidator.validate(
           externalInput: extDesc,
           internalInput: legacyIntDesc,
         );
-        fingerprint = validated.fingerprint?.toUpperCase() ?? rawFingerprint;
+        fingerprint = validated.fingerprint?.toUpperCase();
       } catch (_) {
-        fingerprint = rawFingerprint;
+        fingerprint = null;
       }
+      fingerprint ??= DescriptorValidator.extractFingerprint(extDesc);
     }
 
     final walletId = defaultMigratedWalletId;
     final walletName = isWatchOnly ? 'Watch-Only Wallet' : 'Main Wallet';
 
-    // 5. Copy secrets into wallet-scoped namespace.
+    // ==========================================
+    // PHASE 2: COPY & VERIFY SECRETS & DB
+    // ==========================================
     if (hasLegacySigning) {
       await _secureStorage.write(
         key: WalletStorageKeys.mnemonicFor(walletId),
@@ -141,13 +174,13 @@ class WalletMigrationService {
       value: capability.storageValue,
     );
 
-    // 6. Verify persistence.
+    // Verify secret persistence
     if (hasLegacySigning) {
       final readBack = await _secureStorage.read(
         key: WalletStorageKeys.mnemonicFor(walletId),
       );
       if (readBack != legacyMnemonic.trim()) {
-        throw StateError(
+        throw const WalletMigrationException(
           'Migration secret verification failed: scoped mnemonic mismatch.',
         );
       }
@@ -157,13 +190,13 @@ class WalletMigrationService {
         key: WalletStorageKeys.externalDescriptorFor(walletId),
       );
       if (readBack != legacyExtDesc.trim()) {
-        throw StateError(
+        throw const WalletMigrationException(
           'Migration secret verification failed: scoped descriptor mismatch.',
         );
       }
     }
 
-    // 7. Relocate legacy BDK SQLite database to isolated directory.
+    // Database copy
     try {
       final basePath = await _walletStoragePathLoader();
       final targetDir = Directory('$basePath/wallets/$walletId');
@@ -181,28 +214,42 @@ class WalletMigrationService {
           'root_wallet_testnet.sqlite',
         ];
 
+        File? sourceDb;
         for (final filename in candidateFilenames) {
           final legacyFile = File('$basePath/$filename');
           if (await legacyFile.exists() && await legacyFile.length() > 0) {
-            await legacyFile.copy(targetDb.path);
-
-            final legacyWal = File('${legacyFile.path}-wal');
-            if (await legacyWal.exists()) {
-              await legacyWal.copy('${targetDb.path}-wal');
-            }
-            final legacyShm = File('${legacyFile.path}-shm');
-            if (await legacyShm.exists()) {
-              await legacyShm.copy('${targetDb.path}-shm');
-            }
+            sourceDb = legacyFile;
             break;
           }
         }
+
+        if (sourceDb != null) {
+          try {
+            await sourceDb.copy(targetDb.path);
+
+            final legacyWal = File('${sourceDb.path}-wal');
+            if (await legacyWal.exists()) {
+              await legacyWal.copy('${targetDb.path}-wal');
+            }
+            final legacyShm = File('${sourceDb.path}-shm');
+            if (await legacyShm.exists()) {
+              await legacyShm.copy('${targetDb.path}-shm');
+            }
+          } catch (e) {
+            throw WalletMigrationException(
+              'Failed to copy legacy database "${sourceDb.path}": $e',
+              e,
+            );
+          }
+        }
       }
+    } on WalletMigrationException {
+      rethrow;
     } catch (_) {
-      // Non-fatal if filesystem is unavailable or in unit test environment
+      // In headless test environments where path loader throws, proceed if DB was absent.
     }
 
-    // 8. Migrate BIP-329 labels.
+    // Migrate BIP-329 labels
     final legacyLabels =
         _prefs.getString('wallet.local_labels.v2.primary') ??
         _prefs.getString('wallet.local_labels.v1');
@@ -210,13 +257,15 @@ class WalletMigrationService {
       await _prefs.setString('wallet.local_labels.v3.$walletId', legacyLabels);
     }
 
-    // 9. Migrate locked UTXOs.
+    // Migrate locked UTXOs
     final legacyLocked = _prefs.getStringList('settings.locked_utxos');
     if (legacyLocked != null && legacyLocked.isNotEmpty) {
       await _prefs.setStringList('wallet.$walletId.locked_utxos', legacyLocked);
     }
 
-    // 10. Register in WalletRegistry.
+    // ==========================================
+    // PHASE 3: REGISTER
+    // ==========================================
     final record = WalletRecord(
       id: walletId,
       name: walletName,
@@ -229,6 +278,10 @@ class WalletMigrationService {
     );
 
     await registry.registerWallet(record, makeActive: true);
+
+    // ==========================================
+    // PHASE 4: MARK COMPLETE
+    // ==========================================
     await _prefs.setBool(WalletStorageKeys.legacyMigrationCompleted, true);
 
     return record;

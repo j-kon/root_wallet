@@ -25,29 +25,61 @@ class WalletRegistry {
   static const String activeWalletIdKey = 'wallet.active_id';
 
   /// Returns all registered wallets.
+  ///
+  /// Distinguishes:
+  /// - Absent key -> empty valid registry (`[]`)
+  /// - Valid JSON list -> parsed records
+  /// - Corrupt JSON, non-list, missing ID, or duplicate IDs -> throws [WalletRegistryException]
   List<WalletRecord> getWallets() {
     final raw = _prefs.getString(registryKey);
     if (raw == null || raw.trim().isEmpty) {
       return const <WalletRecord>[];
     }
 
+    final dynamic decoded;
     try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) {
-        return const <WalletRecord>[];
-      }
-
-      final activeId = getActiveWalletId();
-      return decoded
-          .whereType<Map>()
-          .map((item) {
-            final record = WalletRecord.fromJson(item.cast<String, dynamic>());
-            return record.copyWith(isActive: record.id == activeId);
-          })
-          .toList(growable: false);
-    } catch (_) {
-      return const <WalletRecord>[];
+      decoded = jsonDecode(raw);
+    } catch (e) {
+      throw WalletRegistryException('Corrupted registry JSON: $e');
     }
+
+    if (decoded is! List) {
+      throw WalletRegistryException(
+        'Invalid registry schema: expected JSON List but got ${decoded.runtimeType}',
+      );
+    }
+
+    final activeId = getActiveWalletId();
+    final seenIds = <String>{};
+    final records = <WalletRecord>[];
+
+    for (final item in decoded) {
+      if (item is! Map) {
+        throw const WalletRegistryException(
+          'Invalid registry schema: expected JSON Map entry in list.',
+        );
+      }
+      final map = item.cast<String, dynamic>();
+      final id = map['id'];
+      if (id is! String || id.trim().isEmpty) {
+        throw const WalletRegistryException(
+          'Invalid registry entry: missing or empty wallet ID.',
+        );
+      }
+      if (!seenIds.add(id)) {
+        throw WalletRegistryException(
+          'Duplicate wallet ID detected in registry: "$id".',
+        );
+      }
+      try {
+        final record = WalletRecord.fromJson(map);
+        records.add(record.copyWith(isActive: record.id == activeId));
+      } catch (e) {
+        throw WalletRegistryException('Failed to parse wallet record "$id": $e');
+      }
+    }
+
+    return List<WalletRecord>.unmodifiable(records);
   }
 
   /// Returns the ID of the currently active wallet, if any.
@@ -93,7 +125,7 @@ class WalletRegistry {
     final normalized = fingerprint.trim().toUpperCase();
     final wallets = getWallets();
     for (final w in wallets) {
-      if (w.fingerprint.toUpperCase() == normalized) {
+      if (w.fingerprint != null && w.fingerprint!.toUpperCase() == normalized) {
         return w;
       }
     }

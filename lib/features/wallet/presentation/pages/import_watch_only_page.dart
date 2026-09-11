@@ -10,6 +10,7 @@ import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/info_banner.dart';
 import 'package:root_wallet/core/widgets/magnetic_pressable.dart';
 import 'package:root_wallet/core/widgets/primary_button.dart';
+import 'package:root_wallet/features/wallet/data/services/add_wallet_service.dart';
 import 'package:root_wallet/features/wallet/data/services/descriptor_validator.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
@@ -62,14 +63,15 @@ class _ImportWatchOnlyPageState extends ConsumerState<ImportWatchOnlyPage> {
     });
 
     try {
-      final repository = ref.read(walletRepositoryProvider);
-      await repository.importWatchOnlyWallet(
+      final addWalletService = await ref.read(addWalletServiceProvider.future);
+      await addWalletService.importWatchOnlyWallet(
         externalDescriptor: ext,
         internalDescriptor: internal.isEmpty ? null : internal,
       );
 
       ref.invalidate(walletCapabilityProvider);
       ref.invalidate(walletHomeControllerProvider);
+      await ref.read(walletsListProvider.notifier).refresh();
 
       if (!mounted) return;
 
@@ -86,7 +88,9 @@ class _ImportWatchOnlyPageState extends ConsumerState<ImportWatchOnlyPage> {
         _isLoading = false;
         _errorMessage = e is DescriptorValidationException
             ? e.message
-            : e.toString().replaceFirst('Exception: ', '');
+            : e is AddWalletDuplicateException
+                ? e.message
+                : e.toString().replaceFirst('Exception: ', '');
       });
     }
   }

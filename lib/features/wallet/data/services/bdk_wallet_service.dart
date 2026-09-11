@@ -1,14 +1,13 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
 import 'package:bdk_dart/bdk_dart.dart' as bdk;
-import 'package:crypto/crypto.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
 import 'package:root_wallet/features/wallet/data/services/descriptor_validator.dart';
+import 'package:root_wallet/features/wallet/data/services/wallet_storage_cleaner.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_creation_result.dart';
@@ -86,7 +85,7 @@ class BdkWalletService {
       final stored = await _secureStorage.read(
         key: WalletStorageKeys.capabilityFor(_walletId),
       );
-      if (stored != null) {
+      if (stored != null && stored.trim().isNotEmpty) {
         return WalletCapability.fromStorageValue(stored);
       }
       final mnemonic = await _secureStorage.read(
@@ -101,6 +100,7 @@ class BdkWalletService {
       if (extDesc != null && extDesc.trim().isNotEmpty) {
         return WalletCapability.watchOnly;
       }
+      throw StateError('Wallet "$_walletId" capability and secrets missing.');
     }
 
     final stored = await _secureStorage.read(
@@ -151,21 +151,23 @@ class BdkWalletService {
         key: WalletStorageKeys.internalDescriptorFor(id),
       );
 
-      // Legacy keys for fallback
-      await _secureStorage.write(
-        key: WalletStorageKeys.mnemonic,
-        value: phrase,
-      );
-      await _secureStorage.write(
-        key: WalletStorageKeys.scriptType,
-        value: scriptType.storageValue,
-      );
-      await _secureStorage.write(
-        key: WalletStorageKeys.walletCapability,
-        value: WalletCapability.signing.storageValue,
-      );
-      await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
-      await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+      // Legacy single-wallet fallback (ONLY when both _walletId and walletId are null)
+      if (_walletId == null && walletId == null) {
+        await _secureStorage.write(
+          key: WalletStorageKeys.mnemonic,
+          value: phrase,
+        );
+        await _secureStorage.write(
+          key: WalletStorageKeys.scriptType,
+          value: scriptType.storageValue,
+        );
+        await _secureStorage.write(
+          key: WalletStorageKeys.walletCapability,
+          value: WalletCapability.signing.storageValue,
+        );
+        await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
+        await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+      }
 
       await _resetSession();
 
@@ -254,12 +256,9 @@ class BdkWalletService {
       return null;
     }
     if (_walletId != null) {
-      final scoped = await _secureStorage.read(
+      return _secureStorage.read(
         key: WalletStorageKeys.mnemonicFor(_walletId),
       );
-      if (scoped != null && scoped.trim().isNotEmpty) {
-        return scoped;
-      }
     }
     return _secureStorage.read(key: WalletStorageKeys.mnemonic);
   }
@@ -275,9 +274,7 @@ class BdkWalletService {
       final extDesc = await _secureStorage.read(
         key: WalletStorageKeys.externalDescriptorFor(_walletId),
       );
-      if (extDesc != null && extDesc.trim().isNotEmpty) {
-        return true;
-      }
+      return extDesc != null && extDesc.trim().isNotEmpty;
     }
     final mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
     if (mnemonic != null && mnemonic.trim().isNotEmpty) {
@@ -327,21 +324,23 @@ class BdkWalletService {
         key: WalletStorageKeys.internalDescriptorFor(id),
       );
 
-      // Legacy fallback keys
-      await _secureStorage.write(
-        key: WalletStorageKeys.mnemonic,
-        value: phrase,
-      );
-      await _secureStorage.write(
-        key: WalletStorageKeys.scriptType,
-        value: scriptType.storageValue,
-      );
-      await _secureStorage.write(
-        key: WalletStorageKeys.walletCapability,
-        value: WalletCapability.signing.storageValue,
-      );
-      await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
-      await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+      // Legacy single-wallet fallback (ONLY when both _walletId and walletId are null)
+      if (_walletId == null && walletId == null) {
+        await _secureStorage.write(
+          key: WalletStorageKeys.mnemonic,
+          value: phrase,
+        );
+        await _secureStorage.write(
+          key: WalletStorageKeys.scriptType,
+          value: scriptType.storageValue,
+        );
+        await _secureStorage.write(
+          key: WalletStorageKeys.walletCapability,
+          value: WalletCapability.signing.storageValue,
+        );
+        await _secureStorage.delete(key: WalletStorageKeys.externalDescriptor);
+        await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+      }
 
       await _resetSession();
 
@@ -412,30 +411,32 @@ class BdkWalletService {
       );
       await _secureStorage.delete(key: WalletStorageKeys.mnemonicFor(id));
 
-      // Legacy fallback keys
-      await _secureStorage.write(
-        key: WalletStorageKeys.walletCapability,
-        value: WalletCapability.watchOnly.storageValue,
-      );
-      await _secureStorage.write(
-        key: WalletStorageKeys.externalDescriptor,
-        value: validated.externalDescriptor,
-      );
-      if (validated.internalDescriptor != null &&
-          validated.internalDescriptor!.isNotEmpty) {
+      // Legacy single-wallet fallback (ONLY when both _walletId and walletId are null)
+      if (_walletId == null && walletId == null) {
         await _secureStorage.write(
-          key: WalletStorageKeys.internalDescriptor,
-          value: validated.internalDescriptor!,
+          key: WalletStorageKeys.walletCapability,
+          value: WalletCapability.watchOnly.storageValue,
         );
-      } else {
-        await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+        await _secureStorage.write(
+          key: WalletStorageKeys.externalDescriptor,
+          value: validated.externalDescriptor,
+        );
+        if (validated.internalDescriptor != null &&
+            validated.internalDescriptor!.isNotEmpty) {
+          await _secureStorage.write(
+            key: WalletStorageKeys.internalDescriptor,
+            value: validated.internalDescriptor!,
+          );
+        } else {
+          await _secureStorage.delete(key: WalletStorageKeys.internalDescriptor);
+        }
+        await _secureStorage.write(
+          key: WalletStorageKeys.scriptType,
+          value: validated.scriptType.storageValue,
+        );
+        await _secureStorage.delete(key: WalletStorageKeys.mnemonic);
+        // Note: NEVER delete decoyMnemonic
       }
-      await _secureStorage.write(
-        key: WalletStorageKeys.scriptType,
-        value: validated.scriptType.storageValue,
-      );
-      await _secureStorage.delete(key: WalletStorageKeys.mnemonic);
-      await _secureStorage.delete(key: WalletStorageKeys.decoyMnemonic);
 
       await _resetSession();
 
@@ -446,12 +447,7 @@ class BdkWalletService {
       }
       await isolatedDir.create(recursive: true);
 
-      final fingerprint = validated.fingerprint ??
-          sha256
-              .convert(utf8.encode(validated.externalDescriptor))
-              .toString()
-              .substring(0, 8)
-              .toUpperCase();
+      final fingerprint = validated.fingerprint;
 
       final record = WalletRecord(
         id: id,
@@ -670,11 +666,23 @@ class BdkWalletService {
     WalletScriptType scriptType, {
     String? id,
   }) {
-    final fingerprint = sha256
-        .convert(utf8.encode(mnemonic))
-        .toString()
-        .substring(0, 8)
-        .toUpperCase();
+    final normalized = _normalizeMnemonic(mnemonic);
+    String? fingerprint;
+    try {
+      final parsed = bdk.Mnemonic.fromString(mnemonic: normalized);
+      final secKey = bdk.DescriptorSecretKey(
+        networkKind: _networkKind,
+        mnemonic: parsed,
+        password: null,
+      );
+      final pubKey = secKey.asPublic();
+      fingerprint = pubKey.masterFingerprint().toUpperCase();
+      secKey.dispose();
+      pubKey.dispose();
+      parsed.dispose();
+    } catch (_) {
+      fingerprint = null;
+    }
 
     return WalletIdentity(
       id: id ?? _walletId ?? 'wallet_${_network.name}_${scriptType.storageValue}',
@@ -817,24 +825,18 @@ class BdkWalletService {
       final extDescStr = _walletId != null
           ? await _secureStorage.read(
               key: WalletStorageKeys.externalDescriptorFor(_walletId),
-            ) ??
-            await _secureStorage.read(
-              key: WalletStorageKeys.externalDescriptor,
             )
           : await _secureStorage.read(
               key: WalletStorageKeys.externalDescriptor,
             );
       if (extDescStr == null || extDescStr.trim().isEmpty) {
         throw StateError(
-          'Watch-only wallet not initialized. Import descriptor first.',
+          'Watch-only wallet ${_walletId ?? ""} not initialized. Import descriptor first.',
         );
       }
       final intDescStr = _walletId != null
           ? await _secureStorage.read(
               key: WalletStorageKeys.internalDescriptorFor(_walletId),
-            ) ??
-            await _secureStorage.read(
-              key: WalletStorageKeys.internalDescriptor,
             )
           : await _secureStorage.read(
               key: WalletStorageKeys.internalDescriptor,
@@ -913,9 +915,6 @@ class BdkWalletService {
       mnemonic = await _secureStorage.read(
         key: WalletStorageKeys.mnemonicFor(_walletId),
       );
-      if (mnemonic == null || mnemonic.trim().isEmpty) {
-        mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
-      }
     } else {
       mnemonic = await _secureStorage.read(key: WalletStorageKeys.mnemonic);
     }
@@ -1084,38 +1083,12 @@ class BdkWalletService {
   ///
   /// Leaves all other wallets completely untouched.
   Future<void> deleteWalletData(String targetWalletId) async {
-    // 1. Delete isolated SQLite directory
-    final walletDirectory = await _walletStoragePathLoader();
-    final isolatedDir = Directory('$walletDirectory/wallets/$targetWalletId');
-    if (await isolatedDir.exists()) {
-      await isolatedDir.delete(recursive: true);
-    }
-
-    // 2. Delete secure storage keys
-    await _secureStorage.delete(
-      key: WalletStorageKeys.mnemonicFor(targetWalletId),
+    final cleaner = WalletStorageCleaner(
+      secureStorage: _secureStorage,
+      preferences: await _preferencesLoader(),
+      walletStoragePathLoader: _walletStoragePathLoader,
     );
-    await _secureStorage.delete(
-      key: WalletStorageKeys.scriptTypeFor(targetWalletId),
-    );
-    await _secureStorage.delete(
-      key: WalletStorageKeys.capabilityFor(targetWalletId),
-    );
-    await _secureStorage.delete(
-      key: WalletStorageKeys.externalDescriptorFor(targetWalletId),
-    );
-    await _secureStorage.delete(
-      key: WalletStorageKeys.internalDescriptorFor(targetWalletId),
-    );
-    await _secureStorage.delete(
-      key: WalletStorageKeys.metadataFor(targetWalletId),
-    );
-
-    // 3. Delete SharedPreferences keys (labels, locked UTXOs, snapshot cache)
-    final prefs = await _preferencesLoader();
-    await prefs.remove('wallet.local_labels.v3.$targetWalletId');
-    await prefs.remove('wallet.$targetWalletId.locked_utxos');
-    await prefs.remove('wallet.snapshot.$targetWalletId.v3');
+    await cleaner.deleteWalletData(targetWalletId);
   }
 
   /// Cleans up active BDK native pointers and session resources.
@@ -1155,6 +1128,7 @@ class BdkWalletService {
       if (value != null && value.trim().isNotEmpty) {
         return WalletScriptType.fromStorageValue(value);
       }
+      throw StateError('Missing script type for wallet "$_walletId".');
     }
     final value = await _secureStorage.read(key: WalletStorageKeys.scriptType);
     return WalletScriptType.fromStorageValue(value);

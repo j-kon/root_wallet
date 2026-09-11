@@ -88,7 +88,7 @@ abstract final class DescriptorValidator {
       }
 
       scriptType = _inferScriptType(externalDescObj);
-      fingerprint = _extractFingerprint(cleanExt);
+      fingerprint = extractFingerprint(cleanExt);
     } finally {
       externalDescObj.dispose();
     }
@@ -111,7 +111,7 @@ abstract final class DescriptorValidator {
         }
 
         // Verify key lineage if fingerprint is present in both
-        final intFingerprint = _extractFingerprint(cleanInt);
+        final intFingerprint = extractFingerprint(cleanInt);
         if (fingerprint != null &&
             intFingerprint != null &&
             fingerprint != intFingerprint) {
@@ -239,8 +239,8 @@ abstract final class DescriptorValidator {
     );
   }
 
-  static String? _extractFingerprint(String descriptor) {
+  static String? extractFingerprint(String descriptor) {
     final match = RegExp(r'\[([0-9a-fA-F]{8})').firstMatch(descriptor);
-    return match?.group(1)?.toLowerCase();
+    return match?.group(1)?.toUpperCase();
   }
 }

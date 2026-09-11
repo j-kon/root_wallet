@@ -32,7 +32,8 @@ abstract final class AppRouter {
       case AppRoutes.welcome:
         return _page(settings, const WelcomePage());
       case AppRoutes.createWallet:
-        return _page(settings, const CreateWalletPage());
+        final isAddWallet = settings.arguments == true;
+        return _page(settings, CreateWalletPage(isAddWallet: isAddWallet));
       case AppRoutes.backupSeed:
         final args = settings.arguments;
         final options = args is BackupSeedPageArgs
@@ -49,7 +50,8 @@ abstract final class AppRouter {
       case AppRoutes.confirmSeed:
         return _page(settings, const ConfirmSeedPage());
       case AppRoutes.restoreWallet:
-        return _page(settings, const RestoreWalletPage());
+        final isAddWallet = settings.arguments == true;
+        return _page(settings, RestoreWalletPage(isAddWallet: isAddWallet));
       case AppRoutes.importWatchOnly:
         return _page(settings, const ImportWatchOnlyPage());
       case AppRoutes.transactionDetails:

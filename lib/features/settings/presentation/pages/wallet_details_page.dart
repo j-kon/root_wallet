@@ -382,9 +382,9 @@ class _WalletDetailsPageState extends ConsumerState<WalletDetailsPage> {
                           _buildDetailRow(
                             context: context,
                             label: 'Fingerprint',
-                            value: wallet.fingerprint,
+                            value: wallet.fingerprint ?? 'Unavailable',
                             isMonospace: true,
-                            canCopy: true,
+                            canCopy: wallet.fingerprint != null,
                             textPrimary: textPrimary,
                             textSecondary: textSecondary,
                             borderColor: borderColor,

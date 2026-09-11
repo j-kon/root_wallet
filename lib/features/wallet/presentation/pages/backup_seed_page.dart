@@ -18,6 +18,7 @@ import 'package:root_wallet/core/widgets/primary_button.dart';
 import 'package:root_wallet/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
 export 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page_args.dart';
@@ -25,9 +26,18 @@ export 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page_
 final backupSeedRecoveryPhraseProvider = FutureProvider.autoDispose<String>((
   ref,
 ) async {
-  final phrase = await ref
-      .watch(secureStorageProvider)
-      .read(key: WalletStorageKeys.mnemonic);
+  final activeId = ref.watch(activeWalletIdProvider).valueOrNull;
+  final secureStorage = ref.watch(secureStorageProvider);
+  if (activeId != null) {
+    final phrase = await secureStorage.read(
+      key: WalletStorageKeys.mnemonicFor(activeId),
+    );
+    if (phrase != null && phrase.trim().isNotEmpty) {
+      return phrase;
+    }
+    throw StateError('Recovery phrase is not available for wallet: $activeId');
+  }
+  final phrase = await secureStorage.read(key: WalletStorageKeys.mnemonic);
   if (phrase == null || phrase.trim().isEmpty) {
     throw StateError('Recovery phrase is not available.');
   }
@@ -336,11 +346,18 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
                   ? null
                   : () async {
                       HapticFeedback.mediumImpact();
-                      await ref
-                          .read(onboardingControllerProvider.notifier)
-                          .prepareSeedChallenge();
-                      if (!context.mounted) return;
-                      Navigator.of(context).pushNamed(AppRoutes.confirmSeed);
+                      if (widget.isOnboardingFlow) {
+                        await ref
+                            .read(onboardingControllerProvider.notifier)
+                            .prepareSeedChallenge();
+                        if (!context.mounted) return;
+                        Navigator.of(context).pushNamed(AppRoutes.confirmSeed);
+                      } else {
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                          AppRoutes.walletHome,
+                          (route) => false,
+                        );
+                      }
                     },
               child: PrimaryButton(
                 label: 'I wrote it down',
@@ -348,11 +365,18 @@ class _BackupSeedPageState extends ConsumerState<BackupSeedPage> {
                     ? null
                     : () async {
                         HapticFeedback.mediumImpact();
-                        await ref
-                            .read(onboardingControllerProvider.notifier)
-                            .prepareSeedChallenge();
-                        if (!context.mounted) return;
-                        Navigator.of(context).pushNamed(AppRoutes.confirmSeed);
+                        if (widget.isOnboardingFlow) {
+                          await ref
+                              .read(onboardingControllerProvider.notifier)
+                              .prepareSeedChallenge();
+                          if (!context.mounted) return;
+                          Navigator.of(context).pushNamed(AppRoutes.confirmSeed);
+                        } else {
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            AppRoutes.walletHome,
+                            (route) => false,
+                          );
+                        }
                       },
               ),
             ),

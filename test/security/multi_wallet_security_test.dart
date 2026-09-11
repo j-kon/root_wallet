@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:root_wallet/app/di/providers.dart';
@@ -7,9 +10,12 @@ import 'package:root_wallet/core/security/pin_lock_service.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
+import 'package:root_wallet/features/wallet/data/services/add_wallet_service.dart';
+import 'package:root_wallet/features/wallet/data/services/wallet_storage_cleaner.dart';
 import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
+import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -182,6 +188,238 @@ void main() {
       final allWallets = registry.getWallets();
       expect(allWallets.length, equals(1));
       expect(allWallets.any((w) => w.id.contains('decoy')), isFalse);
+    });
+
+    test('storage isolation: wallet A cannot access wallet B keys or DB directory', () async {
+      final tempDir = Directory.systemTemp.createTempSync('sec_isolation_test_');
+      addTearDown(() {
+        try {
+          tempDir.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+
+      const walletA = 'w_isolated_a';
+      const walletB = 'w_isolated_b';
+
+      await storage.write(
+        key: WalletStorageKeys.mnemonicFor(walletA),
+        value: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+      );
+      await storage.write(
+        key: WalletStorageKeys.mnemonicFor(walletB),
+        value: 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong',
+      );
+
+      final dirA = Directory('${tempDir.path}/wallets/$walletA');
+      final dirB = Directory('${tempDir.path}/wallets/$walletB');
+      await dirA.create(recursive: true);
+      await dirB.create(recursive: true);
+
+      final dbA = File('${dirA.path}/bdk_wallet.sqlite');
+      final dbB = File('${dirB.path}/bdk_wallet.sqlite');
+      await dbA.writeAsString('db_a_private_data');
+      await dbB.writeAsString('db_b_private_data');
+
+      final cleaner = WalletStorageCleaner(
+        secureStorage: storage,
+        preferences: prefs,
+        walletStoragePathLoader: () async => tempDir.path,
+      );
+
+      // Clean wallet A data only
+      await cleaner.deleteWalletData(walletA);
+
+      // Wallet A data is purged
+      expect(await storage.read(key: WalletStorageKeys.mnemonicFor(walletA)), isNull);
+      expect(await dirA.exists(), isFalse);
+
+      // Wallet B data remains completely intact
+      expect(
+        await storage.read(key: WalletStorageKeys.mnemonicFor(walletB)),
+        equals('zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong'),
+      );
+      expect(await dirB.exists(), isTrue);
+      expect(await dbB.readAsString(), equals('db_b_private_data'));
+    });
+
+    test('decoy protection: watch-only import and add-wallet operations preserve decoy mnemonic', () async {
+      final tempDir = Directory.systemTemp.createTempSync('decoy_protect_test_');
+      addTearDown(() {
+        try {
+          tempDir.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+
+      const decoyPhrase = 'decoy canary phrase 123';
+      await storage.write(
+        key: WalletStorageKeys.decoyMnemonic,
+        value: decoyPhrase,
+      );
+
+      final addWalletService = AddWalletService(
+        secureStorage: storage,
+        preferences: prefs,
+        walletStoragePathLoader: () async => tempDir.path,
+      );
+
+      // Create new signing wallet
+      await addWalletService.createWallet(
+        scriptType: WalletScriptType.nativeSegwit,
+        walletName: 'New Wallet',
+      );
+
+      // Decoy mnemonic must still exist and match
+      expect(
+        await storage.read(key: WalletStorageKeys.decoyMnemonic),
+        equals(decoyPhrase),
+      );
+
+      // Import watch-only wallet
+      const testTpub =
+          'tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s';
+      await addWalletService.importWatchOnlyWallet(
+        externalDescriptor: testTpub,
+        walletName: 'Watch Wallet',
+      );
+
+      // Decoy mnemonic must still be completely untouched
+      expect(
+        await storage.read(key: WalletStorageKeys.decoyMnemonic),
+        equals(decoyPhrase),
+      );
+    });
+
+    test('fail-closed registry: corrupted JSON, non-list JSON, or duplicate IDs throw WalletRegistryException', () async {
+      final registry = WalletRegistry(prefs);
+
+      // 1. Corrupted JSON fails closed
+      await prefs.setString(WalletRegistry.registryKey, '{not valid json');
+      expect(
+        () => registry.getWallets(),
+        throwsA(isA<WalletRegistryException>().having((e) => e.message, 'message', contains('Corrupted registry JSON'))),
+      );
+
+      // 2. Non-list JSON fails closed
+      await prefs.setString(WalletRegistry.registryKey, '{"key": "value"}');
+      expect(
+        () => registry.getWallets(),
+        throwsA(isA<WalletRegistryException>().having((e) => e.message, 'message', contains('expected JSON List'))),
+      );
+
+      // 3. Duplicate wallet IDs fail closed
+      final duplicateJson = [
+        {
+          'id': 'w_dup',
+          'name': 'Wallet 1',
+          'type': 'signing',
+          'scriptType': 'nativeSegwit',
+          'network': 'testnet',
+          'createdAt': DateTime.now().toIso8601String(),
+        },
+        {
+          'id': 'w_dup',
+          'name': 'Wallet 2',
+          'type': 'signing',
+          'scriptType': 'nativeSegwit',
+          'network': 'testnet',
+          'createdAt': DateTime.now().toIso8601String(),
+        },
+      ];
+      // Re-set valid JSON with duplicate IDs
+      await prefs.setString(WalletRegistry.registryKey, jsonEncode(duplicateJson));
+      expect(
+        () => registry.getWallets(),
+        throwsA(isA<WalletRegistryException>().having((e) => e.message, 'message', contains('Duplicate wallet ID'))),
+      );
+    });
+
+    test('stale active ID deterministic repair in activeWalletIdProvider', () async {
+      final registry = WalletRegistry(prefs);
+      final w1 = WalletRecord(
+        id: 'w_existing_1',
+        name: 'First Wallet',
+        type: WalletType.signing,
+        scriptType: WalletScriptType.nativeSegwit,
+        network: 'testnet',
+        createdAt: DateTime.now(),
+        fingerprint: '11111111',
+      );
+      final w2 = WalletRecord(
+        id: 'w_existing_2',
+        name: 'Second Wallet',
+        type: WalletType.signing,
+        scriptType: WalletScriptType.nativeSegwit,
+        network: 'testnet',
+        createdAt: DateTime.now(),
+        fingerprint: '22222222',
+      );
+      await registry.registerWallet(w1);
+      await registry.registerWallet(w2);
+
+      // Set stale active ID that does not exist in registry
+      await prefs.setString(WalletRegistry.activeWalletIdKey, 'w_ghost_deleted_wallet');
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((ref) => prefs),
+          walletRegistryProvider.overrideWith((ref) => registry),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final activeId = await container.read(activeWalletIdProvider.future);
+
+      // Deterministically repairs to the first existing wallet in registry
+      expect(activeId, equals('w_existing_1'));
+      expect(registry.getActiveWalletId(), equals('w_existing_1'));
+    });
+
+    test('zero writes to legacy global keys during multi-wallet operations', () async {
+      final tempDir = Directory.systemTemp.createTempSync('zero_legacy_test_');
+      addTearDown(() {
+        try {
+          tempDir.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+
+      final addWalletService = AddWalletService(
+        secureStorage: storage,
+        preferences: prefs,
+        walletStoragePathLoader: () async => tempDir.path,
+      );
+
+      // Perform create
+      final createResult = await addWalletService.createWallet(
+        scriptType: WalletScriptType.nativeSegwit,
+        walletName: 'Multi Wallet 1',
+      );
+
+      // Perform restore
+      await addWalletService.restoreWallet(
+        mnemonic: 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong',
+        scriptType: WalletScriptType.nativeSegwit,
+        walletName: 'Multi Wallet 2',
+      );
+
+      // Perform watch-only import
+      const testTpub =
+          'tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s';
+      await addWalletService.importWatchOnlyWallet(
+        externalDescriptor: testTpub,
+        walletName: 'Multi Wallet 3',
+      );
+
+      // Verify zero writes to legacy global keys
+      expect(await storage.read(key: WalletStorageKeys.legacyMnemonic), isNull);
+      expect(await storage.read(key: WalletStorageKeys.legacyScriptType), isNull);
+      expect(await storage.read(key: WalletStorageKeys.legacyExternalDescriptor), isNull);
+      expect(await storage.read(key: WalletStorageKeys.legacyInternalDescriptor), isNull);
+
+      // Verify scoped keys exist
+      expect(
+        await storage.read(key: WalletStorageKeys.mnemonicFor(createResult.walletRecord!.id)),
+        isNotNull,
+      );
     });
   });
 }

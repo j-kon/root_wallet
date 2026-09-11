@@ -49,7 +49,10 @@ class AddWalletPage extends ConsumerWidget {
             textPrimary: textPrimary,
             textSecondary: textSecondary,
             onTap: () {
-              Navigator.of(context).pushNamed(AppRoutes.createWallet);
+              Navigator.of(context).pushNamed(
+                AppRoutes.createWallet,
+                arguments: true,
+              );
             },
           ),
           const SizedBox(height: RootSpacing.md),
@@ -65,7 +68,10 @@ class AddWalletPage extends ConsumerWidget {
             textPrimary: textPrimary,
             textSecondary: textSecondary,
             onTap: () {
-              Navigator.of(context).pushNamed(AppRoutes.restoreWallet);
+              Navigator.of(context).pushNamed(
+                AppRoutes.restoreWallet,
+                arguments: true,
+              );
             },
           ),
           const SizedBox(height: RootSpacing.md),
@@ -80,7 +86,7 @@ class AddWalletPage extends ConsumerWidget {
             borderColor: borderColor,
             textPrimary: textPrimary,
             textSecondary: textSecondary,
-            badge: 'AIR-GAPPED',
+            badge: 'PUBLIC KEYS ONLY',
             onTap: () {
               Navigator.of(context).pushNamed(AppRoutes.importWatchOnly);
             },

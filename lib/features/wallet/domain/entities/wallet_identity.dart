@@ -12,7 +12,7 @@ import 'package:root_wallet/features/wallet/domain/entities/wallet_capability.da
 class WalletIdentity {
   const WalletIdentity({
     required this.id,
-    required this.fingerprint,
+    this.fingerprint,
     required this.network,
     this.capability = WalletCapability.signing,
   });
@@ -20,7 +20,7 @@ class WalletIdentity {
   factory WalletIdentity.fromRecord(dynamic record) {
     return WalletIdentity(
       id: record.id as String,
-      fingerprint: record.fingerprint as String,
+      fingerprint: record.fingerprint as String?,
       network: record.network as String,
       capability: (record.type.name == 'watchOnly')
           ? WalletCapability.watchOnly
@@ -29,7 +29,7 @@ class WalletIdentity {
   }
 
   final String id;
-  final String fingerprint;
+  final String? fingerprint;
   final String network;
   final WalletCapability capability;
 }

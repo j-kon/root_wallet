@@ -45,7 +45,7 @@ class WalletRecord {
     required this.scriptType,
     required this.network,
     required this.createdAt,
-    required this.fingerprint,
+    this.fingerprint,
     this.isActive = false,
   });
 
@@ -55,11 +55,13 @@ class WalletRecord {
   final WalletScriptType scriptType;
   final String network;
   final DateTime createdAt;
-  final String fingerprint;
+  final String? fingerprint;
   final bool isActive;
 
   bool get isWatchOnly => type.isWatchOnly;
   bool get isSigning => type.isSigning;
+  bool get hasFingerprint =>
+      fingerprint != null && fingerprint!.trim().isNotEmpty;
 
   /// Validates a user-supplied wallet name (1-32 characters, non-empty trimmed).
   static bool isValidName(String name) =>
@@ -124,7 +126,10 @@ class WalletRecord {
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),
-      fingerprint: (json['fingerprint'] as String? ?? '').toUpperCase(),
+      fingerprint: json['fingerprint'] != null &&
+              (json['fingerprint'] as String).trim().isNotEmpty
+          ? (json['fingerprint'] as String).trim().toUpperCase()
+          : null,
       isActive: json['isActive'] as bool? ?? false,
     );
   }
