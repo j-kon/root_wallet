@@ -106,8 +106,12 @@ class _PsbtInspectionPageState extends ConsumerState<PsbtInspectionPage> {
     // 3. Security Gate / Fail-closed Re-auth check
     try {
       final lockController = ref.read(lockControllerProvider.notifier);
+      bool noPin = false;
       final authOk = await lockController.requireSensitiveActionAuthentication(
         biometricReason: 'Authorize PSBT signing',
+        onNoPinConfigured: () {
+          noPin = true;
+        },
         promptPin: () => showPinEntryDialog(
           context,
           title: 'Authorize signing',
@@ -118,19 +122,38 @@ class _PsbtInspectionPageState extends ConsumerState<PsbtInspectionPage> {
 
       if (!authOk) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Authentication required to sign PSBT.'),
-            ),
-          );
+          final lockState = ref.read(lockControllerProvider).valueOrNull;
+          final isNoPin = noPin || (lockState != null && !lockState.hasPin);
+          if (isNoPin) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Set a 6-digit PIN in Security before signing PSBTs.',
+                ),
+                action: SnackBarAction(
+                  label: 'Security',
+                  textColor: RootBrandColors.warmIvory,
+                  onPressed: () {
+                    Navigator.of(context).pushNamed(AppRoutes.security);
+                  },
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Authentication required to sign PSBT.'),
+              ),
+            );
+          }
         }
         return;
       }
-    } catch (e) {
+    } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Authentication error: ${e.toString()}'),
+          const SnackBar(
+            content: Text('Authentication required to sign PSBT.'),
           ),
         );
       }

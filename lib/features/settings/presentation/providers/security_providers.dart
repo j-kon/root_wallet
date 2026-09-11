@@ -304,22 +304,21 @@ class LockController extends AsyncNotifier<AppLockState> {
   /// Requires explicit authorization for sensitive actions (such as PSBT signing).
   ///
   /// Fails closed:
-  /// - If no lock or PIN is configured: returns `true`.
+  /// - Sensitive actions fail closed when no approved authentication
+  ///   credential is configured.
   /// - If biometrics are configured and available: attempts biometric re-auth.
-  /// - If biometrics are unavailable, disabled, cancelled, or fails:
+  /// - If biometrics are unavailable, disabled, cancelled, or fail:
   ///   falls back to PIN verification via [promptPin] and [verifyPin].
+  /// - If no PIN is configured, returns `false` without invoking [promptPin].
   /// - If neither approved authentication method succeeds: returns `false`.
   Future<bool> requireSensitiveActionAuthentication({
     required Future<String?> Function() promptPin,
     String biometricReason = 'Authorize sensitive action',
+    void Function()? onNoPinConfigured,
   }) async {
     final current = state.valueOrNull;
     if (current == null) {
       return false;
-    }
-
-    if (!current.isLockEnabled && !current.hasPin) {
-      return true;
     }
 
     if (current.isInCooldown) {
@@ -338,20 +337,22 @@ class LockController extends AsyncNotifier<AppLockState> {
       }
     }
 
-    // B. Provide existing secure PIN verification path
-    if (current.hasPin) {
-      try {
-        final pin = await promptPin();
-        if (pin == null || pin.isEmpty) {
-          return false;
-        }
-        return await verifyPin(pin);
-      } catch (_) {
-        return false;
-      }
+    // B. If no PIN is configured, fail closed immediately without prompting PIN
+    if (!current.hasPin) {
+      onNoPinConfigured?.call();
+      return false;
     }
 
-    return false;
+    // C. Provide existing secure PIN verification path
+    try {
+      final pin = await promptPin();
+      if (pin == null || pin.isEmpty) {
+        return false;
+      }
+      return await verifyPin(pin);
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> setAutoLockOption(AutoLockOption option) async {

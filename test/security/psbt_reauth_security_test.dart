@@ -153,6 +153,81 @@ void main() {
       expect(authFailed, isFalse, reason: 'Any exception during auth must fail closed');
     });
 
+    test('no PIN and no biometrics -> sensitive action authorization fails closed', () async {
+      final biometric = _MockBiometricService(
+        isAvailableResult: false,
+        authenticateResult: false,
+      );
+      final container = await _buildTestContainer(
+        prefs: {
+          'security.lock_enabled': false,
+          'security.biometrics_enabled': false,
+        },
+        biometricService: biometric,
+        setPin: false,
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(lockControllerProvider.notifier);
+      final state = await container.read(lockControllerProvider.future);
+      expect(state.hasPin, isFalse);
+      expect(state.isLockEnabled, isFalse);
+
+      var promptCalled = false;
+      var noPinCallbackCalled = false;
+      final authOk = await controller.requireSensitiveActionAuthentication(
+        onNoPinConfigured: () {
+          noPinCallbackCalled = true;
+        },
+        promptPin: () async {
+          promptCalled = true;
+          return '123456';
+        },
+      );
+
+      expect(authOk, isFalse, reason: 'Must fail closed when no PIN or biometrics are configured');
+      expect(promptCalled, isFalse, reason: 'PIN prompt must not be invoked when no PIN exists');
+      expect(noPinCallbackCalled, isTrue, reason: 'onNoPinConfigured callback must be invoked');
+    });
+
+    test('PIN exists but app lock disabled -> PIN is STILL required for sensitive action', () async {
+      final biometric = _MockBiometricService(
+        isAvailableResult: false,
+        authenticateResult: false,
+      );
+      final container = await _buildTestContainer(
+        prefs: {
+          'security.lock_enabled': false,
+          'security.biometrics_enabled': false,
+        },
+        biometricService: biometric,
+        setPin: true,
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(lockControllerProvider.notifier);
+      final state = await container.read(lockControllerProvider.future);
+      expect(state.hasPin, isTrue);
+      expect(state.isLockEnabled, isFalse);
+
+      // Scenario 1: Wrong PIN -> rejected
+      var promptCalled = false;
+      final authWrong = await controller.requireSensitiveActionAuthentication(
+        promptPin: () async {
+          promptCalled = true;
+          return '000000';
+        },
+      );
+      expect(promptCalled, isTrue);
+      expect(authWrong, isFalse, reason: 'Wrong PIN must reject authorization');
+
+      // Scenario 2: Correct PIN -> authorized
+      final authCorrect = await controller.requireSensitiveActionAuthentication(
+        promptPin: () async => '123456',
+      );
+      expect(authCorrect, isTrue, reason: 'Correct PIN authorizes sensitive action even when app lock is disabled');
+    });
+
     test('watch-only wallet -> cannot sign regardless of authentication', () async {
       SharedPreferences.setMockInitialValues({});
       final storage = InMemorySecureStorage();
@@ -193,11 +268,14 @@ void main() {
 Future<ProviderContainer> _buildTestContainer({
   required Map<String, Object> prefs,
   required BiometricService biometricService,
+  bool setPin = true,
 }) async {
   SharedPreferences.setMockInitialValues(prefs);
   final storage = InMemorySecureStorage();
   final pinLockService = PinLockService(storage);
-  await pinLockService.setPin('123456');
+  if (setPin) {
+    await pinLockService.setPin('123456');
+  }
   final lockService = LockService(
     pinLockService: pinLockService,
     biometricService: biometricService,
