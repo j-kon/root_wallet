@@ -92,11 +92,23 @@ Root Wallet supports routing Bitcoin backend traffic through a user-configured S
 - Tor `.onion` addresses are strictly destination targets, not proxy listeners. Entering `.onion` as a proxy host is rejected with actionable error guidance.
 - Onion targets are configured in the Custom Electrum Server field and validated against the Tor v3 specification (exactly 56 base32 characters).
 
-### Transport Encryption vs Proxy Routing
-- SOCKS5 routing anonymizes the client IP address but does NOT encrypt plaintext TCP streams (`tcp://`).
-- For encrypted Electrum transport over clearnet proxies, `ssl://` or `tls://` endpoints must be used.
-- Root Wallet strictly enforces TLS domain certificate validation (`validateDomain: true`) for `ssl://` and `tls://` endpoints, preventing active TLS MITM attacks.
+### Transport Privacy & Proxy Limits
+- When the configured SOCKS5 proxy is functioning, the selected Electrum backend does not receive the device's direct IP address.
+- The SOCKS proxy can observe connection metadata and timing.
+- Tor and privacy guarantees depend strictly on the external proxy configuration; Root Wallet does not promise anonymity or untraceability.
+- SOCKS5 routing does NOT encrypt plaintext TCP streams (`tcp://`).
+- For encrypted Electrum transport over clearnet proxies, `ssl://` endpoints must be used.
+- Root Wallet strictly enforces TLS domain certificate validation (`validateDomain: true`) for `ssl://` endpoints, preventing active TLS MITM attacks. Plaintext `tcp://` endpoints use `validateDomain: false`.
 - For Tor hidden services, onion routing provides end-to-end circuit encryption at the Tor protocol level.
+
+### Remote DNS Resolution
+- Electrum target hostnames are resolved through the SOCKS5 proxy via SOCKS5 domain name addressing (`0x03`).
+- Zero OS DNS queries applies specifically to the audited pinned `rust-electrum-client` SOCKS target path, preventing ISP/local network DNS leakage.
+
+### Esplora Scoping & Custom Backend Disclosure
+- Root Wallet supports custom Esplora endpoints in direct clearnet mode.
+- When SOCKS5 is active, Esplora is completely bypassed because upstream BDK Esplora does not expose SOCKS5 proxying.
+- Configured custom Esplora endpoints are NOT proxied under SOCKS5 and remain inactive until direct transport is restored.
 
 ### Address-Only Unauthenticated SOCKS5 Proxy
 - The underlying BDK Rust FFI accepts an address-only SOCKS5 endpoint (`host:port`).

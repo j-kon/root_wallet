@@ -179,10 +179,10 @@ Network routing follows a strict capability-gated, fail-closed architecture:
   - `NetworkTransportController`: persists transport settings in `SharedPreferences` and probes connections using real BDK `ElectrumClient` via Rust FFI targeting the configured custom Electrum endpoint.
   - Invalidates `bdkWalletServiceProvider` upon transport mode or proxy configuration changes.
 - `features/wallet/data/services/bdk_wallet_service.dart`
-  - **Capability Gating:** Electrum supports native SOCKS5 proxying with remote DNS (`0x03` domain addressing) and `.onion` support. Esplora (`minreq` HTTP CONNECT only) is bypassed completely in SOCKS5 mode.
+  - **Capability Gating:** Electrum supports native SOCKS5 proxying with remote DNS (`0x03` domain addressing) and `.onion` support. Esplora (`minreq` HTTP CONNECT only) is bypassed completely in SOCKS5 mode; configured custom Esplora endpoints are not proxied.
   - **Fail-Closed Guarantee:** When SOCKS5 is active, sync, fee estimation, transaction broadcast, and tip height queries fail immediately if the proxy is unreachable. Silent fallback to clearnet is strictly prohibited.
   - **Single-Backend Isolation:** When a custom Electrum server is set, failure never triggers fallback to public Electrum servers.
-  - **TLS Domain Validation:** Strictly enforces domain certificate validation (`validateDomain: true`) for `ssl://` and `tls://` endpoints.
+  - **TLS Domain Validation:** Strictly enforces domain certificate validation (`validateDomain: true`) for `ssl://` endpoints; plaintext `tcp://` endpoints use `validateDomain: false`.
 
 ## Persistence Model
 

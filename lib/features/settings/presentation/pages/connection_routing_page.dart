@@ -811,23 +811,23 @@ class _TechnicalDisclosuresCard extends StatelessWidget {
           ),
           const SizedBox(height: RootSpacing.xs),
           _BulletPoint(
-            title: 'Backend scope:',
+            title: 'Backend scope & custom Esplora:',
             body:
-                'SOCKS5 routing applies to the Electrum backend (sync, broadcast, fee estimation, and tip height). Esplora HTTP proxying is not supported by BDK and is bypassed.',
+                'SOCKS5 routing applies to Electrum backends only (sync, broadcast, fee estimation, and tip height). Esplora is bypassed while SOCKS5 is active because upstream BDK Esplora does not support SOCKS5; any configured custom Esplora endpoint is not proxied and remains inactive under SOCKS5.',
             isDark: isDark,
           ),
           const SizedBox(height: RootSpacing.xs),
           _BulletPoint(
             title: 'Remote DNS resolution:',
             body:
-                'Electrum target hostnames are resolved remotely by the SOCKS5 proxy. Tor v3 .onion Electrum targets are supported without local DNS leakage.',
+                'Electrum target hostnames are resolved through the SOCKS5 proxy. Tor v3 .onion Electrum targets are supported without local device DNS queries.',
             isDark: isDark,
           ),
           const SizedBox(height: RootSpacing.xs),
           _BulletPoint(
-            title: 'Transport encryption vs proxy routing:',
+            title: 'Transport privacy & proxy limits:',
             body:
-                'SOCKS5 routing hides client IP but does not turn plaintext Electrum TCP (tcp://) into TLS. Use ssl:// for encrypted Electrum traffic with verified domain validation, or .onion for Tor onion end-to-end circuit encryption.',
+                'When the configured SOCKS5 proxy is functioning, the selected Electrum backend does not receive the device\'s direct IP address. The SOCKS proxy can observe connection metadata, and privacy properties depend on external proxy configuration. Root Wallet does not promise anonymity or untraceability. SOCKS5 routing does not turn plaintext Electrum TCP (tcp://) into TLS; use ssl:// for encrypted Electrum traffic with verified domain validation, or .onion for Tor onion end-to-end circuit encryption.',
             isDark: isDark,
           ),
           const SizedBox(height: RootSpacing.xs),

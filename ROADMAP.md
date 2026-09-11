@@ -49,7 +49,7 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
   - Fail-closed privacy guarantee: immediate graceful failure upon proxy unreachable, with strict avoidance of silent clearnet fallback.
   - Upstream capability gating: Esplora bypassed during SOCKS5 mode due to `bdk_esplora` `minreq` HTTP CONNECT-only limitation.
   - Custom Electrum backend isolation: configured custom nodes never fall back to public servers on failure.
-  - Domain validation policy: TLS certificate verification enforced on `ssl://` and `tls://` endpoints.
+  - Domain validation policy: TLS certificate verification enforced on `ssl://` endpoints (`tcp://` is plaintext application transport).
   - Address-only unauthenticated SOCKS5: removed unsupported credential storage to strictly match BDK FFI capabilities.
   - Dedicated Connection Routing settings interface with real-time FFI connectivity probing and honest technical disclosures.
 - [x] Dedicated automated CI security test suite (`test/security/`).
@@ -75,7 +75,7 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
 **Status: PLANNED 🔒**
 
 - [ ] **Custom Node Configuration:** Allow users to connect directly to their personal home node (custom Esplora or Electrum endpoints).
-- [ ] **Native Tor / SOCKS5 Proxy Support:** Route all wallet network queries and transaction broadcasts through the Tor anonymity network to conceal client IP addresses.
+- [ ] **Native Tor / SOCKS5 Proxy Support:** Route all wallet network queries and transaction broadcasts through the Tor network so backends do not receive the device's direct IP address.
 - [ ] **Coin Control Enhancements:** Granular UTXO label management, output tagging, and coin freezing to prevent accidental address clustering.
 - [ ] **Mempool Privacy Enhancements:** Dandelion++ transaction propagation exploration and custom fee estimation sources.
 
