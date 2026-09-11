@@ -187,5 +187,43 @@ void main() {
       expect(secondRun, isNull);
       expect(registry.getWallets().length, equals(1));
     });
+
+    test('Item 19: Migrates legacy global backup confirmation to migrated wallet and isolates new wallets', () async {
+      const mnemonic =
+          'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+      await secureStorage.write(
+        key: WalletStorageKeys.legacyMnemonic,
+        value: mnemonic,
+      );
+      await prefs.setBool('settings.backup_confirmed', true);
+
+      final service = WalletMigrationService(
+        secureStorage: secureStorage,
+        preferences: prefs,
+        walletStoragePathLoader: () async => tempDir.path,
+      );
+
+      final record = await service.migrateIfNeeded();
+      expect(record, isNotNull);
+      expect(record!.id, equals(WalletMigrationService.defaultMigratedWalletId));
+
+      // Migrated wallet receives backup_confirmed = true
+      expect(
+        prefs.getBool(WalletStorageKeys.backupConfirmedFor(record.id)),
+        isTrue,
+      );
+
+      // Subsequent new wallet B must be initialized to false and never inherit global true
+      const walletBId = 'w_22222222-2222-2222-2222-222222222222';
+      await prefs.setBool(WalletStorageKeys.backupConfirmedFor(walletBId), false);
+      expect(
+        prefs.getBool(WalletStorageKeys.backupConfirmedFor(walletBId)),
+        isFalse,
+      );
+      expect(
+        prefs.getBool(WalletStorageKeys.backupConfirmedFor(record.id)),
+        isTrue,
+      );
+    });
   });
 }

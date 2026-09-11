@@ -154,6 +154,12 @@ class AddWalletService {
         capability: WalletCapability.signing,
       );
 
+      // 5. Initialize scoped backup confirmation state to false (must be confirmed by user)
+      final backupSaved = await _preferences.setBool(WalletStorageKeys.backupConfirmedFor(id), false);
+      if (!backupSaved) {
+        throw const FileSystemException('Failed to initialize scoped backup confirmation');
+      }
+
       return WalletCreationResult(
         walletIdentity: identity,
         recoveryPhrase: phrase,
@@ -270,6 +276,13 @@ class AddWalletService {
       );
 
       await registry.registerWallet(record, makeActive: false);
+
+      // 5. Initialize scoped backup confirmation state to true (seed was possessed to restore)
+      final backupSaved = await _preferences.setBool(WalletStorageKeys.backupConfirmedFor(id), true);
+      if (!backupSaved) {
+        throw const FileSystemException('Failed to initialize scoped backup confirmation');
+      }
+
       return record;
     } catch (e) {
       await _rollbackPartialWallet(id, e);
@@ -434,11 +447,18 @@ class AddWalletService {
       rollbackFailures.add('Isolated directory for "$walletId": $e');
     }
 
-    // 3. Remove from registry if registered
+    // 3. Remove scoped backup confirmation from preferences
+    try {
+      await _preferences.remove(WalletStorageKeys.backupConfirmedFor(walletId));
+    } catch (e) {
+      rollbackFailures.add('Preferences backupConfirmedFor "$walletId": $e');
+    }
+
+    // 4. Remove from registry if registered (bypassing last-wallet check for rollback)
     try {
       final registry = _registryInstance;
       if (registry.getWallets().any((w) => w.id == walletId)) {
-        await registry.deleteWallet(walletId);
+        await registry.unregisterWalletForRollback(walletId);
       }
     } catch (e) {
       rollbackFailures.add('Registry removal for "$walletId": $e');

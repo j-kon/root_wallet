@@ -61,7 +61,7 @@ class _RestoreWalletPageState extends ConsumerState<RestoreWalletPage> {
       ref.invalidate(walletCapabilityProvider);
       ref.invalidate(walletHomeControllerProvider);
       await ref.read(walletsListProvider.notifier).refresh();
-      await ref.read(backupReminderProvider.notifier).confirmBackup();
+      await ref.read(backupReminderProvider.notifier).confirmBackup(record.id);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

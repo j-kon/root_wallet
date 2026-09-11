@@ -80,9 +80,9 @@ void main() {
     },
   );
 
-  test('restore clears stale wallet cache, labels, and backup flag', () async {
+  test('restore clears stale wallet cache and labels, and marks backup confirmed', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{
-      'settings.backup_confirmed': true,
+      'settings.backup_confirmed': false,
     });
     final prefs = await SharedPreferences.getInstance();
     await WalletSnapshotCache(prefs).write(
@@ -133,7 +133,7 @@ void main() {
     await _waitForCleanup(container, prefs);
     expect(await WalletSnapshotCache(prefs).read(), isNull);
     expect(WalletLabelStore(prefs).read().addressLabel('tb1qold'), isEmpty);
-    expect(container.read(backupReminderProvider).valueOrNull, isFalse);
+    expect(container.read(backupReminderProvider).valueOrNull, isTrue);
   });
 }
 
@@ -147,9 +147,9 @@ Future<void> _waitForCleanup(
     final labelsCleared = WalletLabelStore(
       prefs,
     ).read().addressLabel('tb1qold').isEmpty;
-    final backupCleared =
-        container.read(backupReminderProvider).valueOrNull == false;
-    if (cacheCleared && labelsCleared && backupCleared) {
+    final backupSet =
+        container.read(backupReminderProvider).valueOrNull == true;
+    if (cacheCleared && labelsCleared && backupSet) {
       return;
     }
     await Future<void>.delayed(const Duration(milliseconds: 10));

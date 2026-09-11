@@ -42,6 +42,7 @@ abstract final class AppRouter {
         return _page(
           settings,
           BackupSeedPage(
+            walletId: options.walletId,
             requireReauth: options.requireReauth,
             isOnboardingFlow: options.isOnboardingFlow,
             recoveryPhrase: options.recoveryPhrase,

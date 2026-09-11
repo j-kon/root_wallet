@@ -1,3 +1,5 @@
+import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
+
 abstract final class WalletStorageKeys {
   // Legacy single-wallet keys (preserved for migration & compatibility)
   static const mnemonic = 'wallet.mnemonic';
@@ -24,6 +26,12 @@ abstract final class WalletStorageKeys {
   static String internalDescriptorFor(String walletId) =>
       'wallet.$walletId.internal_descriptor';
   static String metadataFor(String walletId) => 'wallet.$walletId.metadata';
+
+  /// Wallet-scoped backup confirmation key in [SharedPreferences].
+  static String backupConfirmedFor(String walletId) {
+    WalletRecord.validateWalletId(walletId);
+    return 'wallet.$walletId.backup_confirmed';
+  }
 
   static List<String> allKeysFor(String walletId) => [
         mnemonicFor(walletId),

@@ -115,8 +115,8 @@ void main() {
       await initialRegistry.setActiveWalletId(walletA.id);
       expect(initialRegistry.getActiveWalletId(), equals(walletA.id));
 
-      // User confirms seed backup
-      await prefs.setBool('settings.backup_confirmed', true);
+      // User confirms seed backup for wallet A
+      await prefs.setBool(WalletStorageKeys.backupConfirmedFor(walletA.id), true);
 
       // 3. App Restart Simulation
       // In a new session with persisted storage and prefs:

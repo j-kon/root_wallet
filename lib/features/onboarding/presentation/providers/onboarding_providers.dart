@@ -126,7 +126,7 @@ class OnboardingController extends StateNotifier<OnboardingState> {
       await _ref.read(walletsListProvider.notifier).refresh();
       _ref.invalidate(walletCapabilityProvider);
       _ref.invalidate(walletHomeControllerProvider);
-      await _ref.read(backupReminderProvider.notifier).confirmBackup();
+      await _ref.read(backupReminderProvider.notifier).confirmBackup(record.id);
       _resetLocalWalletSessionState();
       state = state.copyWith(
         isBusy: false,
@@ -213,7 +213,9 @@ class OnboardingController extends StateNotifier<OnboardingState> {
         }
       }
 
-      await _ref.read(backupReminderProvider.notifier).confirmBackup();
+      final activeId = _ref.read(activeWalletIdProvider).valueOrNull ??
+          _ref.read(walletRegistryProvider).valueOrNull?.getActiveWalletId();
+      await _ref.read(backupReminderProvider.notifier).confirmBackup(activeId);
       _ref.invalidate(appStartControllerProvider);
       state = state.copyWith(
         isBusy: false,
@@ -244,7 +246,6 @@ class OnboardingController extends StateNotifier<OnboardingState> {
   }
 
   Future<void> _clearLocalWalletSessionState() async {
-    await _ref.read(backupReminderProvider.notifier).clearBackupConfirmation();
     final prefs = await _ref.read(sharedPreferencesProvider.future);
     await WalletSnapshotCache(prefs).clear();
     await WalletLabelStore(prefs).clear();

@@ -374,7 +374,8 @@ class WalletHomePage extends ConsumerWidget {
                         : 'Back up now',
                     action: () => Navigator.of(context).pushNamed(
                       AppRoutes.backupSeed,
-                      arguments: const BackupSeedPageArgs(
+                      arguments: BackupSeedPageArgs(
+                        walletId: activeWallet?.id,
                         requireReauth: true,
                         isOnboardingFlow: false,
                       ),

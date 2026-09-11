@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
-import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
+import 'package:root_wallet/features/wallet/data/wallet_storage_keys.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 
 enum AppStartDestination { onboarding, mainShell, needsBackup }
@@ -20,8 +20,6 @@ class AppStartState {
 }
 
 class AppStartController extends AsyncNotifier<AppStartState> {
-  static const _backupConfirmedKey = 'settings.backup_confirmed';
-
   @override
   Future<AppStartState> build() {
     return _load();
@@ -42,24 +40,63 @@ class AppStartController extends AsyncNotifier<AppStartState> {
     final registry = await ref.read(walletRegistryProvider.future);
     final walletExists = registry.hasWallets();
 
-    final prefs = await ref.read(sharedPreferencesProvider.future);
-    final rawBackupConfirmed = prefs.getBool(_backupConfirmedKey) ?? false;
+    if (!walletExists) {
+      return const AppStartState(
+        destination: AppStartDestination.onboarding,
+        walletExists: false,
+        backupConfirmed: false,
+      );
+    }
 
-    // Watch-only wallets do not have a seed phrase to back up
+    // 3. Determine active wallet
     final activeWallet =
         registry.getActiveWallet() ?? registry.getWallets().firstOrNull;
-    final isWatchOnly = activeWallet?.type == WalletType.watchOnly;
-    final backupConfirmed = isWatchOnly || rawBackupConfirmed;
+    if (activeWallet == null) {
+      return const AppStartState(
+        destination: AppStartDestination.onboarding,
+        walletExists: false,
+        backupConfirmed: false,
+      );
+    }
 
-    final destination = !walletExists
-        ? AppStartDestination.onboarding
-        : backupConfirmed
+    // 4. Watch-only wallets do not require seed backup
+    if (activeWallet.isWatchOnly) {
+      return const AppStartState(
+        destination: AppStartDestination.mainShell,
+        walletExists: true,
+        backupConfirmed: true,
+      );
+    }
+
+    // 5. Read wallet-scoped backup confirmation (Req 14 & 20)
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    final scopedKey = WalletStorageKeys.backupConfirmedFor(activeWallet.id);
+    final scopedVal = prefs.getBool(scopedKey);
+
+    bool backupConfirmed = false;
+    if (scopedVal != null) {
+      backupConfirmed = scopedVal;
+    } else {
+      // Compatibility fallback for single signing wallet legacy installs (Req 13)
+      final signingWallets =
+          registry.getWallets().where((w) => !w.isWatchOnly).toList();
+      if (signingWallets.length == 1 &&
+          signingWallets.first.id == activeWallet.id) {
+        final legacyVal = prefs.getBool('settings.backup_confirmed');
+        if (legacyVal != null) {
+          await prefs.setBool(scopedKey, legacyVal);
+          backupConfirmed = legacyVal;
+        }
+      }
+    }
+
+    final destination = backupConfirmed
         ? AppStartDestination.mainShell
         : AppStartDestination.needsBackup;
 
     return AppStartState(
       destination: destination,
-      walletExists: walletExists,
+      walletExists: true,
       backupConfirmed: backupConfirmed,
     );
   }

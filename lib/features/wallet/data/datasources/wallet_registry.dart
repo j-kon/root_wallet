@@ -117,6 +117,14 @@ class WalletRegistry {
     );
   }
 
+  /// Returns the [WalletRecord] matching [walletId], or null if not found.
+  WalletRecord? getWallet(String walletId) {
+    for (final wallet in getWallets()) {
+      if (wallet.id == walletId) return wallet;
+    }
+    return null;
+  }
+
   /// Returns true if at least one wallet exists in the registry.
   bool hasWallets() {
     return getWallets().isNotEmpty;
@@ -223,6 +231,32 @@ class WalletRegistry {
     final index = wallets.indexWhere((w) => w.id == walletId);
     if (index == -1) {
       return; // Already deleted
+    }
+
+    final activeId = getActiveWalletId();
+    final isDeletingActive = activeId == walletId;
+
+    wallets.removeAt(index);
+    await _saveWallets(wallets);
+
+    if (isDeletingActive && wallets.isNotEmpty) {
+      await _prefs.setString(activeWalletIdKey, wallets.first.id);
+    } else if (wallets.isEmpty) {
+      await _prefs.remove(activeWalletIdKey);
+    }
+  }
+
+  /// Unregisters a partially registered wallet during a rollback transaction.
+  ///
+  /// Unlike [deleteWallet], this method bypasses the user-facing last-wallet
+  /// protection so that failed first-wallet creation/restoration attempts can
+  /// be rolled back completely to a clean uninitialized state.
+  Future<void> unregisterWalletForRollback(String walletId) async {
+    WalletRecord.validateWalletId(walletId);
+    final wallets = getWallets().toList();
+    final index = wallets.indexWhere((w) => w.id == walletId);
+    if (index == -1) {
+      return; // Not registered or already removed
     }
 
     final activeId = getActiveWalletId();

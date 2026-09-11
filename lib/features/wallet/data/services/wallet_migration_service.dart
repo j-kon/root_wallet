@@ -52,7 +52,9 @@ class WalletMigrationService {
     final registry = WalletRegistry(_prefs);
 
     // 1. If registry already has wallets, modern multi-wallet is in use -> return null.
+    // Performs one-time compatibility migration from global backup key if exactly one signing wallet exists.
     if (registry.hasWallets()) {
+      await _migrateScopedBackupForModernSingleSigningWallet(registry);
       return null;
     }
 
@@ -291,6 +293,15 @@ class WalletMigrationService {
       await _prefs.setStringList('wallet.$walletId.locked_utxos', legacyLocked);
     }
 
+    // Migrate backup confirmation status (Req 12)
+    // Legacy settings.backup_confirmed is copied to wallet.w_primary_migrated.backup_confirmed
+    final legacyBackupConfirmed =
+        _prefs.getBool('settings.backup_confirmed') ?? false;
+    await _prefs.setBool(
+      WalletStorageKeys.backupConfirmedFor(walletId),
+      legacyBackupConfirmed,
+    );
+
     // ==========================================
     // PHASE 3: REGISTER
     // ==========================================
@@ -313,5 +324,23 @@ class WalletMigrationService {
     await _prefs.setBool(WalletStorageKeys.legacyMigrationCompleted, true);
 
     return record;
+  }
+
+  /// One-time compatibility migration for existing single-wallet modern installs (Req 13).
+  Future<void> _migrateScopedBackupForModernSingleSigningWallet(
+    WalletRegistry registry,
+  ) async {
+    final signingWallets =
+        registry.getWallets().where((w) => !w.isWatchOnly).toList();
+    if (signingWallets.length == 1) {
+      final soleWallet = signingWallets.first;
+      final scopedKey = WalletStorageKeys.backupConfirmedFor(soleWallet.id);
+      if (!_prefs.containsKey(scopedKey)) {
+        final globalVal = _prefs.getBool('settings.backup_confirmed');
+        if (globalVal != null) {
+          await _prefs.setBool(scopedKey, globalVal);
+        }
+      }
+    }
   }
 }

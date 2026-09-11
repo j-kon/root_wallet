@@ -64,6 +64,7 @@ class _CreateWalletPageState extends ConsumerState<CreateWalletPage> {
       Navigator.of(context).pushReplacementNamed(
         AppRoutes.backupSeed,
         arguments: BackupSeedPageArgs(
+          walletId: result.walletRecord!.id,
           requireReauth: false,
           isOnboardingFlow: !isAdding,
           recoveryPhrase: result.recoveryPhrase,

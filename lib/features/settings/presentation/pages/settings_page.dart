@@ -179,27 +179,29 @@ class SettingsPage extends ConsumerWidget {
                   Navigator.of(context).pushNamed(AppRoutes.security);
                 },
               ),
-              _SettingsRow(
-                icon: Icons.vpn_key_rounded,
-                title: 'Recovery Phrase',
-                subtitle: backupConfirmed
-                    ? '12-word seed backup verified'
-                    : 'Back up your seed to avoid loss of funds',
-                badgeText: backupConfirmed ? 'Verified' : 'Action needed',
-                badgeTone: backupConfirmed
-                    ? RootBrandColors.pineGreen
-                    : RootBrandColors.amberAccent,
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  Navigator.of(context).pushNamed(
-                    AppRoutes.backupSeed,
-                    arguments: const BackupSeedPageArgs(
-                      requireReauth: true,
-                      isOnboardingFlow: false,
-                    ),
-                  );
-                },
-              ),
+              if (activeWallet != null && !activeWallet.isWatchOnly)
+                _SettingsRow(
+                  icon: Icons.vpn_key_rounded,
+                  title: 'Recovery Phrase',
+                  subtitle: backupConfirmed
+                      ? '12-word seed backup verified'
+                      : 'Back up your seed to avoid loss of funds',
+                  badgeText: backupConfirmed ? 'Verified' : 'Action needed',
+                  badgeTone: backupConfirmed
+                      ? RootBrandColors.pineGreen
+                      : RootBrandColors.amberAccent,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    Navigator.of(context).pushNamed(
+                      AppRoutes.backupSeed,
+                      arguments: BackupSeedPageArgs(
+                        walletId: activeWallet.id,
+                        requireReauth: true,
+                        isOnboardingFlow: false,
+                      ),
+                    );
+                  },
+                ),
               _SettingsRow(
                 icon: useCupertino
                     ? CupertinoIcons.cloud_upload_fill

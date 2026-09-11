@@ -54,11 +54,12 @@ class WalletStorageCleaner {
       }
     }
 
-    // 2. Remove wallet-scoped labels, locked UTXOs, and snapshot cache
+    // 2. Remove wallet-scoped labels, locked UTXOs, snapshot cache, and backup confirmation
     for (final prefKey in [
       'wallet.local_labels.v3.$walletId',
       'wallet.$walletId.locked_utxos',
       'wallet.snapshot.$walletId.v3',
+      WalletStorageKeys.backupConfirmedFor(walletId),
     ]) {
       try {
         await _preferences.remove(prefKey);
