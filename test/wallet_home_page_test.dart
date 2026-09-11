@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:root_wallet/app/theme/app_theme.dart';
 import 'package:root_wallet/features/rates/domain/entities/fx_rate.dart';
 import 'package:root_wallet/features/rates/presentation/providers/rates_providers.dart';
+import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/wallet_home_page.dart';
@@ -124,12 +125,59 @@ void main() {
 
     expect(activityTapped, isTrue);
   });
+
+  testWidgets(
+    'wallet home shows "Secure your recovery phrase" card when backup is not confirmed',
+    (WidgetTester tester) async {
+      await _pumpWalletHome(
+        tester,
+        isBackupConfirmed: false,
+        state: WalletHomeState(
+          balance: const Balance(confirmedSats: 15000),
+          transactions: const [],
+          receiveAddress: 'tb1qlive',
+          lastSyncedAt: DateTime.now(),
+          isOffline: false,
+          isSyncing: false,
+        ),
+      );
+
+      expect(find.text('Secure your recovery phrase'), findsOneWidget);
+      expect(find.text('Back up now'), findsOneWidget);
+      expect(find.text('Review phrase'), findsNothing);
+      expect(find.text('Recovery phrase secured'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'wallet home completely hides recovery phrase container when backup is confirmed',
+    (WidgetTester tester) async {
+      await _pumpWalletHome(
+        tester,
+        isBackupConfirmed: true,
+        state: WalletHomeState(
+          balance: const Balance(confirmedSats: 15000),
+          transactions: const [],
+          receiveAddress: 'tb1qlive',
+          lastSyncedAt: DateTime.now(),
+          isOffline: false,
+          isSyncing: false,
+        ),
+      );
+
+      expect(find.text('Secure your recovery phrase'), findsNothing);
+      expect(find.text('Back up now'), findsNothing);
+      expect(find.text('Recovery phrase secured'), findsNothing);
+      expect(find.text('Review phrase'), findsNothing);
+    },
+  );
 }
 
 Future<void> _pumpWalletHome(
   WidgetTester tester, {
   required WalletHomeState state,
   VoidCallback? onActivityRequested,
+  bool isBackupConfirmed = false,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await tester.pumpWidget(
@@ -137,6 +185,9 @@ Future<void> _pumpWalletHome(
       overrides: [
         walletHomeControllerProvider.overrideWith(
           () => _FakeWalletHomeController(state),
+        ),
+        backupReminderProvider.overrideWith(
+          () => _FakeBackupReminderController(isBackupConfirmed),
         ),
         btcNgnRateProvider.overrideWith(
           (ref) async => FxRate(
@@ -164,4 +215,13 @@ class _FakeWalletHomeController extends WalletHomeController {
 
   @override
   Future<WalletHomeState> build() async => _state;
+}
+
+class _FakeBackupReminderController extends BackupReminderController {
+  _FakeBackupReminderController(this._value);
+
+  final bool _value;
+
+  @override
+  Future<bool> build() async => _value;
 }
