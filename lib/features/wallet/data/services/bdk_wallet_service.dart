@@ -29,6 +29,62 @@ class BdkWalletServiceException implements Exception {
   String toString() => 'Unable to $action: $cause';
 }
 
+typedef ElectrumClientFactory = bdk.ElectrumClient Function({
+  required String url,
+  String? socks5,
+  int timeout,
+  int retry,
+  bool? validateDomain,
+});
+
+typedef EsploraClientFactory = bdk.EsploraClient Function(
+  String url, {
+  String? proxy,
+});
+
+bool resolveElectrumValidateDomain(String url) {
+  final lower = url.trim().toLowerCase();
+  return lower.startsWith('ssl://') || lower.startsWith('tls://');
+}
+
+bdk.ElectrumClient defaultElectrumClientFactory({
+  required String url,
+  String? socks5,
+  int timeout = 10,
+  int retry = 2,
+  bool? validateDomain,
+}) {
+  return bdk.ElectrumClient(
+    url: url.trim(),
+    socks5: socks5,
+    timeout: timeout,
+    retry: retry,
+    validateDomain: validateDomain ?? resolveElectrumValidateDomain(url),
+  );
+}
+
+bdk.EsploraClient defaultEsploraClientFactory(
+  String url, {
+  String? proxy,
+}) {
+  return bdk.EsploraClient(
+    url: url,
+    proxy: proxy,
+  );
+}
+
+List<String> resolveElectrumEndpoints({required String? customUrl}) {
+  final trimmed = customUrl?.trim();
+  if (trimmed != null && trimmed.isNotEmpty) {
+    return [trimmed];
+  }
+  return const [
+    'tcp://testnet.aranguren.org:51001',
+    'tcp://testnet.qtornado.com:51001',
+    'tcp://testnet.hsmiths.com:53011',
+  ];
+}
+
 class BdkWalletService {
   BdkWalletService({
     required SecureStorage secureStorage,
@@ -37,16 +93,23 @@ class BdkWalletService {
     required bool allowCustomEsploraEndpoint,
     String? walletId,
     NetworkConfiguration? networkConfiguration,
+    ElectrumClientFactory? electrumClientFactory,
+    EsploraClientFactory? esploraClientFactory,
   }) : _secureStorage = secureStorage,
        _walletStoragePathLoader = walletStoragePathLoader,
        _preferencesLoader = preferencesLoader,
        _allowCustomEsploraEndpoint = allowCustomEsploraEndpoint,
        _walletId = walletId,
-       _networkConfiguration = networkConfiguration {
+       _networkConfiguration = networkConfiguration,
+       _electrumClientFactory = electrumClientFactory ?? defaultElectrumClientFactory,
+       _esploraClientFactory = esploraClientFactory ?? defaultEsploraClientFactory {
     if (walletId != null) {
       WalletRecord.validateWalletId(walletId);
     }
   }
+
+  final ElectrumClientFactory _electrumClientFactory;
+  final EsploraClientFactory _esploraClientFactory;
 
   NetworkConfiguration? _networkConfiguration;
 
@@ -537,12 +600,7 @@ class BdkWalletService {
         final wallet = await _loadWallet();
         final prefs = await _preferencesLoader();
         final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
-        final electrumUrls = [
-          if (customUrl != null) customUrl,
-          'tcp://testnet.aranguren.org:51001',
-          'tcp://testnet.qtornado.com:51001',
-          'tcp://testnet.hsmiths.com:53011',
-        ];
+        final electrumUrls = resolveElectrumEndpoints(customUrl: customUrl);
         Object? lastError;
         for (final url in electrumUrls) {
           bdk.ElectrumClient? client;
@@ -550,12 +608,12 @@ class BdkWalletService {
           bdk.FullScanRequest? request;
           bdk.FullScanRequestBuilder? requestBuilder;
           try {
-            client = bdk.ElectrumClient(
+            client = _electrumClientFactory(
               url: url,
               socks5: proxy,
               timeout: 10,
               retry: 2,
-              validateDomain: false,
+              validateDomain: resolveElectrumValidateDomain(url),
             );
             requestBuilder = wallet.startFullScan();
             request = requestBuilder.build();
@@ -610,13 +668,9 @@ class BdkWalletService {
     }
     final prefs = await _preferencesLoader();
     final modeString = prefs.getString(NetworkStorageKeys.transportMode);
-    final transportMode = NetworkTransportMode.fromString(modeString);
+    final transportMode = NetworkTransportMode.parsePersisted(modeString);
     final host = prefs.getString(NetworkStorageKeys.proxyHost);
     final port = prefs.getInt(NetworkStorageKeys.proxyPort);
-    final username = prefs.getString(NetworkStorageKeys.proxyUsername);
-    final password = await _secureStorage.read(
-      key: NetworkStorageKeys.proxyPassword,
-    );
 
     Socks5ProxyConfig? proxyConfig;
     if (host != null && host.trim().isNotEmpty && port != null && port > 0) {
@@ -624,8 +678,6 @@ class BdkWalletService {
         proxyConfig = Socks5ProxyConfig(
           host: host,
           port: port,
-          username: username,
-          password: password,
         );
       } catch (_) {
         proxyConfig = null;
@@ -653,22 +705,17 @@ class BdkWalletService {
           }
           final prefs = await _preferencesLoader();
           final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
-          final electrumUrls = [
-            if (customUrl != null) customUrl,
-            'tcp://testnet.aranguren.org:51001',
-            'tcp://testnet.qtornado.com:51001',
-            'tcp://testnet.hsmiths.com:53011',
-          ];
+          final electrumUrls = resolveElectrumEndpoints(customUrl: customUrl);
           Object? lastError;
           for (final url in electrumUrls) {
             bdk.ElectrumClient? client;
             try {
-              client = bdk.ElectrumClient(
+              client = _electrumClientFactory(
                 url: url,
                 socks5: proxy,
                 timeout: 5,
                 retry: 1,
-                validateDomain: false,
+                validateDomain: resolveElectrumValidateDomain(url),
               );
               final notification = client.blockHeadersSubscribe();
               return notification.height;
@@ -687,108 +734,103 @@ class BdkWalletService {
     );
   }
 
-  Future<double> estimateFeeSatPerVbyte({int targetBlocks = 3}) {
-    return _guard('estimate transaction fee', () async {
-      final config = await _loadNetworkConfiguration();
-      final String? socks5 = config.activeSocks5Address;
-      if (config.isSocks5 && (socks5 == null || socks5.isEmpty)) {
-        throw StateError(
-          'SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.',
-        );
-      }
-
-      final prefs = await _preferencesLoader();
-      final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
-
-      final electrumUrls = [
-        if (customUrl != null) customUrl,
-        'tcp://testnet.aranguren.org:51001',
-        'tcp://testnet.qtornado.com:51001',
-        'tcp://testnet.hsmiths.com:53011',
-      ];
-
-      Object? lastError;
-      for (final url in electrumUrls) {
-        bdk.ElectrumClient? client;
-        try {
-          client = bdk.ElectrumClient(
-            url: url,
-            socks5: socks5,
-            timeout: 10,
-            retry: 3,
-            validateDomain: false,
-          );
-          final estimate = client.estimateFee(number: targetBlocks);
-          return estimate <= 0 ? 1.0 : estimate;
-        } catch (error) {
-          lastError = error;
-        } finally {
-          client?.dispose();
-        }
-      }
-
-      if (lastError != null) {
-        if (config.isSocks5) {
+  Future<double> estimateFeeSatPerVbyte({int targetBlocks = 6}) {
+    return _guard(
+      'estimate fee rate',
+      () async {
+        final config = await _loadNetworkConfiguration();
+        final socks5 = config.activeSocks5Address;
+        if (config.isSocks5 && (socks5 == null || socks5.isEmpty)) {
           throw StateError(
-            'SOCKS5 proxy is unavailable for fee estimation. Clearnet fallback is disabled: $lastError',
+            'SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.',
           );
         }
-        throw lastError;
-      }
-      return 1.0;
-    });
+
+        final prefs = await _preferencesLoader();
+        final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
+        final electrumUrls = resolveElectrumEndpoints(customUrl: customUrl);
+
+        Object? lastError;
+        for (final url in electrumUrls) {
+          bdk.ElectrumClient? client;
+          try {
+            client = _electrumClientFactory(
+              url: url,
+              socks5: socks5,
+              timeout: 10,
+              retry: 3,
+              validateDomain: resolveElectrumValidateDomain(url),
+            );
+            final estimate = client.estimateFee(number: targetBlocks);
+            return estimate <= 0 ? 1.0 : estimate;
+          } catch (error) {
+            lastError = error;
+          } finally {
+            client?.dispose();
+          }
+        }
+
+        if (lastError != null) {
+          if (config.isSocks5) {
+            throw StateError(
+              'SOCKS5 proxy is unavailable for fee estimation. Clearnet fallback is disabled: $lastError',
+            );
+          }
+          throw lastError;
+        }
+
+        return 1.0;
+      },
+    );
   }
 
   Future<String> broadcastTransaction(bdk.Transaction transaction) {
-    return _guard('broadcast transaction', () async {
-      final config = await _loadNetworkConfiguration();
-      final String? socks5 = config.activeSocks5Address;
-      if (config.isSocks5 && (socks5 == null || socks5.isEmpty)) {
-        throw StateError(
-          'SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.',
-        );
-      }
-
-      final prefs = await _preferencesLoader();
-      final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
-
-      final electrumUrls = [
-        if (customUrl != null) customUrl,
-        'tcp://testnet.aranguren.org:51001',
-        'tcp://testnet.qtornado.com:51001',
-        'tcp://testnet.hsmiths.com:53011',
-      ];
-
-      Object? lastError;
-      for (final url in electrumUrls) {
-        bdk.ElectrumClient? client;
-        try {
-          client = bdk.ElectrumClient(
-            url: url,
-            socks5: socks5,
-            timeout: 10,
-            retry: 3,
-            validateDomain: false,
-          );
-          final txid = client.transactionBroadcast(tx: transaction);
-          return txid.toString();
-        } catch (error) {
-          lastError = error;
-        } finally {
-          client?.dispose();
-        }
-      }
-
-      if (lastError != null) {
-        if (config.isSocks5) {
+    return _guard(
+      'broadcast transaction',
+      () async {
+        final config = await _loadNetworkConfiguration();
+        final socks5 = config.activeSocks5Address;
+        if (config.isSocks5 && (socks5 == null || socks5.isEmpty)) {
           throw StateError(
-            'SOCKS5 proxy is unavailable for transaction broadcast. Clearnet fallback is disabled: $lastError',
+            'SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.',
           );
         }
-        throw lastError;
-      }
-      throw StateError('Broadcast failed: No active Electrum servers');
-    });
+
+        final prefs = await _preferencesLoader();
+        final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
+        final electrumUrls = resolveElectrumEndpoints(customUrl: customUrl);
+
+        Object? lastError;
+        for (final url in electrumUrls) {
+          bdk.ElectrumClient? client;
+          try {
+            client = _electrumClientFactory(
+              url: url,
+              socks5: socks5,
+              timeout: 10,
+              retry: 3,
+              validateDomain: resolveElectrumValidateDomain(url),
+            );
+            final txid = client.transactionBroadcast(tx: transaction);
+            return txid.toString();
+          } catch (error) {
+            lastError = error;
+          } finally {
+            client?.dispose();
+          }
+        }
+
+        if (lastError != null) {
+          if (config.isSocks5) {
+            throw StateError(
+              'SOCKS5 proxy is unavailable for transaction broadcast. Clearnet fallback is disabled: $lastError',
+            );
+          }
+          throw lastError;
+        }
+        throw StateError('Broadcast failed: No active Electrum servers');
+      },
+    );
   }
 
   Future<bdk.Wallet> resolveWallet() {
@@ -921,7 +963,7 @@ class BdkWalletService {
       final index = (_activeEsploraIndex + offset) % endpointCount;
       _activeEsploraIndex = index;
       final endpoint = _currentEsploraEndpoint;
-      final client = bdk.EsploraClient(url: endpoint, proxy: null);
+      final client = _esploraClientFactory(endpoint, proxy: null);
       try {
         return task(client);
       } catch (error, stackTrace) {
@@ -1702,12 +1744,9 @@ Future<IsolateSyncResult> _performBackgroundSync(
       );
     }
 
-    final electrumUrls = [
-      if (params.customElectrumUrl != null) params.customElectrumUrl!,
-      'tcp://testnet.aranguren.org:51001',
-      'tcp://testnet.qtornado.com:51001',
-      'tcp://testnet.hsmiths.com:53011',
-    ];
+    final electrumUrls = resolveElectrumEndpoints(
+      customUrl: params.customElectrumUrl,
+    );
 
     for (final electrumUrl in electrumUrls) {
       bdk.ElectrumClient? client;
@@ -1715,12 +1754,11 @@ Future<IsolateSyncResult> _performBackgroundSync(
       bdk.FullScanRequest? request;
       bdk.FullScanRequestBuilder? requestBuilder;
       try {
-        client = bdk.ElectrumClient(
+        client = defaultElectrumClientFactory(
           url: electrumUrl,
           socks5: socks5Proxy,
           timeout: isSocks5 ? 10 : 5,
           retry: 2,
-          validateDomain: false,
         );
         requestBuilder = wallet.startFullScan();
         request = requestBuilder.build();
