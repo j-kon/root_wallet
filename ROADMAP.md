@@ -74,8 +74,8 @@ Root Wallet is being developed in deliberate, verifiable stages. Because we buil
 ## Phase 4: Privacy Tooling & Network Sovereignty  
 **Status: PLANNED 🔒**
 
-- [ ] **Custom Node Configuration:** Allow users to connect directly to their personal home node (custom Esplora or Electrum endpoints).
-- [ ] **Native Tor / SOCKS5 Proxy Support:** Route all wallet network queries and transaction broadcasts through the Tor network so backends do not receive the device's direct IP address.
+- [ ] **Custom Esplora Endpoint Support:** Extend custom node connections beyond Electrum to include personal self-hosted Esplora HTTP backends with full proxy parity.
+- [ ] **Bundled / Native Tor Daemon Support:** Embed or manage an internal Tor daemon directly within Root Wallet. (Note: External SOCKS5 / Tor-compatible proxy routing is completed in Phase 2 Milestone 2B).
 - [ ] **Coin Control Enhancements:** Granular UTXO label management, output tagging, and coin freezing to prevent accidental address clustering.
 - [ ] **Mempool Privacy Enhancements:** Dandelion++ transaction propagation exploration and custom fee estimation sources.
 

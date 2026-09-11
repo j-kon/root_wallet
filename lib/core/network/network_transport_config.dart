@@ -239,6 +239,9 @@ class NetworkConfiguration {
     if (isDirect) {
       return 'Direct connection';
     }
+    if (proxyConfig == null) {
+      return 'SOCKS5 configuration invalid';
+    }
     if (lastProxyTestError != null) {
       return 'SOCKS5 unavailable';
     }

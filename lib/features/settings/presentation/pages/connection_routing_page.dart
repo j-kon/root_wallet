@@ -436,6 +436,7 @@ class _RoutingStatusCard extends StatelessWidget {
         badgeTextColor = RootBrandColors.amberAccent;
         break;
       case 'SOCKS5 unavailable':
+      case 'SOCKS5 configuration invalid':
         badgeColor = RootBrandColors.error.withValues(alpha: 0.15);
         badgeTextColor = RootBrandColors.error;
         break;
@@ -476,8 +477,8 @@ class _RoutingStatusCard extends StatelessWidget {
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: isDark
-                      ? RootBrandColors.warmIvory
-                      : RootBrandColors.charcoalPine,
+                    ? RootBrandColors.warmIvory
+                    : RootBrandColors.charcoalPine,
                 ),
               ),
               const Spacer(),
@@ -501,7 +502,9 @@ class _RoutingStatusCard extends StatelessWidget {
           const SizedBox(height: RootSpacing.xs),
           Text(
             config.isSocks5
-                ? 'Bitcoin Electrum traffic is routed through ${config.proxyConfig?.displayAddress ?? "configured SOCKS5 proxy"}. Esplora is disabled.'
+                ? (config.proxyConfig == null
+                    ? 'SOCKS5 configuration is invalid or missing. Network operations fail closed without falling back to a direct connection.'
+                    : 'Bitcoin Electrum traffic is routed through ${config.proxyConfig!.displayAddress}. Esplora is disabled.')
                 : 'Bitcoin backend traffic connects directly over standard TCP/HTTPS testnet infrastructure.',
             style: TextStyle(
               fontSize: 13,

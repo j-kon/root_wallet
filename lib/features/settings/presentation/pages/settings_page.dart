@@ -246,13 +246,19 @@ class SettingsPage extends ConsumerWidget {
                     : Icons.security_rounded,
                 title: 'Connection Routing',
                 subtitle: transportConfig.isSocks5
-                    ? 'SOCKS5 Proxy (${transportConfig.proxyConfig?.displayAddress ?? "Active"})'
+                    ? (transportConfig.proxyConfig != null
+                        ? 'SOCKS5 Proxy (${transportConfig.proxyConfig!.displayAddress})'
+                        : 'SOCKS5 configuration invalid')
                     : 'Direct testnet connection',
-                badgeText: transportConfig.isSocks5 ? 'SOCKS5' : 'Direct',
+                badgeText: transportConfig.isSocks5
+                    ? (transportConfig.proxyConfig != null ? 'SOCKS5' : 'Invalid')
+                    : 'Direct',
                 badgeTone: transportConfig.isSocks5
-                    ? (transportConfig.isProxyVerified
-                        ? RootBrandColors.pineGreen
-                        : RootBrandColors.amberAccent)
+                    ? (transportConfig.proxyConfig != null
+                        ? (transportConfig.isProxyVerified
+                            ? RootBrandColors.pineGreen
+                            : RootBrandColors.amberAccent)
+                        : RootBrandColors.error)
                     : RootBrandColors.pineGreen,
                 onTap: () {
                   HapticFeedback.selectionClick();

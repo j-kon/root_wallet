@@ -76,7 +76,10 @@ class NetworkTransportController extends AsyncNotifier<NetworkConfiguration> {
   /// Switching from SOCKS5 to Direct requires explicit user intent.
   Future<void> setTransportMode(NetworkTransportMode mode) async {
     final prefs = await ref.read(sharedPreferencesProvider.future);
-    await prefs.setString(NetworkStorageKeys.transportMode, mode.storageValue);
+    final saved = await prefs.setString(NetworkStorageKeys.transportMode, mode.storageValue);
+    if (!saved) {
+      throw StateError('Failed to persist transport mode.');
+    }
 
     final current = state.valueOrNull ?? const NetworkConfiguration();
     state = AsyncData(
@@ -99,7 +102,7 @@ class NetworkTransportController extends AsyncNotifier<NetworkConfiguration> {
     final prefs = await ref.read(sharedPreferencesProvider.future);
     final secureStorage = ref.read(secureStorageProvider);
 
-    // Snapshot previous known-good state for rollback in case of partial persistence failure.
+    // Snapshot previous known-good state for best-effort rollback in case of persistence failure.
     final previousHost = prefs.getString(NetworkStorageKeys.proxyHost);
     final previousPort = prefs.getInt(NetworkStorageKeys.proxyPort);
     final previousMode = prefs.getString(NetworkStorageKeys.transportMode);
@@ -111,12 +114,21 @@ class NetworkTransportController extends AsyncNotifier<NetworkConfiguration> {
 
     try {
       // Persist proxy endpoint
-      await prefs.setString(NetworkStorageKeys.proxyHost, config.host);
-      await prefs.setInt(NetworkStorageKeys.proxyPort, config.port);
+      final hostSaved = await prefs.setString(NetworkStorageKeys.proxyHost, config.host);
+      if (!hostSaved) {
+        throw StateError('Failed to persist proxy host.');
+      }
+      final portSaved = await prefs.setInt(NetworkStorageKeys.proxyPort, config.port);
+      if (!portSaved) {
+        throw StateError('Failed to persist proxy port.');
+      }
 
       // Persist transport mode LAST
       final mode = activate ? NetworkTransportMode.socks5 : NetworkTransportMode.direct;
-      await prefs.setString(NetworkStorageKeys.transportMode, mode.storageValue);
+      final modeSaved = await prefs.setString(NetworkStorageKeys.transportMode, mode.storageValue);
+      if (!modeSaved) {
+        throw StateError('Failed to persist transport mode.');
+      }
 
       state = AsyncData(
         NetworkConfiguration(
@@ -127,7 +139,7 @@ class NetworkTransportController extends AsyncNotifier<NetworkConfiguration> {
       );
       ref.invalidate(bdkWalletServiceProvider);
     } catch (e) {
-      // Rollback to previous known-good configuration
+      // Best-effort rollback to the previous known-good configuration
       if (previousHost != null) {
         await prefs.setString(NetworkStorageKeys.proxyHost, previousHost);
       } else {
