@@ -201,6 +201,8 @@ class _StaticWalletRepository implements WalletRepository {
   @override
   Future<WalletCreationResult> createWallet({
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletId,
+    String? walletName,
   }) {
     throw UnimplementedError();
   }
@@ -234,12 +236,19 @@ class _StaticWalletRepository implements WalletRepository {
   Future<WalletIdentity> restoreWallet({
     required String mnemonic,
     WalletScriptType scriptType = WalletScriptType.nativeSegwit,
+    String? walletId,
+    String? walletName,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<void> resetWallet() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteWalletData(String walletId) async {
     throw UnimplementedError();
   }
 
@@ -260,7 +269,8 @@ class _StaticWalletRepository implements WalletRepository {
   Future<WalletIdentity> importWatchOnlyWallet({
     required String externalDescriptor,
     String? internalDescriptor,
-    WalletScriptType? scriptType,
+    String? walletId,
+    String? walletName,
   }) {
     throw UnimplementedError();
   }

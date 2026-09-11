@@ -67,7 +67,7 @@ void main() {
       );
 
       expect(prefs.getString('wallet.snapshot.v1'), isNull);
-      expect(prefs.getString('wallet.snapshot.v2'), isNotNull);
+      expect(prefs.getString('wallet.snapshot.default.v3'), isNotNull);
     });
   });
 }
