@@ -213,10 +213,12 @@ final bdkWalletServiceProvider = Provider<BdkWalletService>(
     final activeId = ref.watch(
       activeWalletIdProvider.select((v) => v.valueOrNull),
     );
+    final prefsFuture = ref.watch(sharedPreferencesProvider.future);
+    final pathFuture = ref.watch(walletStoragePathProvider.future);
     final service = BdkWalletService(
       secureStorage: ref.watch(secureStorageProvider),
-      walletStoragePathLoader: () => ref.read(walletStoragePathProvider.future),
-      preferencesLoader: () => ref.read(sharedPreferencesProvider.future),
+      walletStoragePathLoader: () => pathFuture,
+      preferencesLoader: () => prefsFuture,
       allowCustomEsploraEndpoint: !ref.watch(appEnvProvider).isProduction,
       walletId: activeId,
     );
@@ -226,6 +228,7 @@ final bdkWalletServiceProvider = Provider<BdkWalletService>(
     return service;
   },
 );
+
 
 final bdkSyncDatasourceProvider = Provider<BdkSyncDatasource>(
   (ref) =>

@@ -294,8 +294,13 @@ class SendController extends StateNotifier<SendState> {
   }
 
   Future<void> _primeFee() async {
-    final fee = await _ref.read(suggestedFeeProvider.future);
-    setFeePreset(FeePreset.standard, fee.satsPerVByte);
+    try {
+      final fee = await _ref.read(suggestedFeeProvider.future);
+      if (!mounted) return;
+      setFeePreset(FeePreset.standard, fee.satsPerVByte);
+    } catch (_) {
+      // Ignored if fee estimation fails or provider was disposed before fee arrived.
+    }
   }
 
   int _rateForPreset(FeePreset preset, int suggestedRate) {

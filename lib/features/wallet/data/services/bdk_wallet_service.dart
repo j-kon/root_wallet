@@ -4,6 +4,8 @@ import 'dart:isolate';
 
 import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:root_wallet/core/constants/app_constants.dart';
+import 'package:root_wallet/core/network/network_storage_keys.dart';
+import 'package:root_wallet/core/network/network_transport_config.dart';
 import 'package:root_wallet/core/security/secure_storage.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_registry.dart';
 import 'package:root_wallet/features/wallet/data/services/descriptor_validator.dart';
@@ -34,15 +36,20 @@ class BdkWalletService {
     required Future<SharedPreferences> Function() preferencesLoader,
     required bool allowCustomEsploraEndpoint,
     String? walletId,
+    NetworkConfiguration? networkConfiguration,
   }) : _secureStorage = secureStorage,
        _walletStoragePathLoader = walletStoragePathLoader,
        _preferencesLoader = preferencesLoader,
        _allowCustomEsploraEndpoint = allowCustomEsploraEndpoint,
-       _walletId = walletId {
+       _walletId = walletId,
+       _networkConfiguration = networkConfiguration {
     if (walletId != null) {
       WalletRecord.validateWalletId(walletId);
     }
   }
+
+  NetworkConfiguration? _networkConfiguration;
+
 
   static const _customEsploraEndpointKey = 'settings.custom_esplora_endpoint';
   static const _network = bdk.Network.testnet;
@@ -519,6 +526,62 @@ class BdkWalletService {
 
   Future<void> syncWallet() {
     return _guard('sync wallet', () async {
+      final config = await _loadNetworkConfiguration();
+      if (config.isSocks5) {
+        final proxy = config.activeSocks5Address;
+        if (proxy == null || proxy.isEmpty) {
+          throw StateError(
+            'SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.',
+          );
+        }
+        final wallet = await _loadWallet();
+        final prefs = await _preferencesLoader();
+        final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
+        final electrumUrls = [
+          if (customUrl != null) customUrl,
+          'tcp://testnet.aranguren.org:51001',
+          'tcp://testnet.qtornado.com:51001',
+          'tcp://testnet.hsmiths.com:53011',
+        ];
+        Object? lastError;
+        for (final url in electrumUrls) {
+          bdk.ElectrumClient? client;
+          bdk.Update? update;
+          bdk.FullScanRequest? request;
+          bdk.FullScanRequestBuilder? requestBuilder;
+          try {
+            client = bdk.ElectrumClient(
+              url: url,
+              socks5: proxy,
+              timeout: 10,
+              retry: 2,
+              validateDomain: false,
+            );
+            requestBuilder = wallet.startFullScan();
+            request = requestBuilder.build();
+            update = client.fullScan(
+              request: request,
+              stopGap: AppConstants.walletAddressDiscoveryStopGap,
+              batchSize: 10,
+              fetchPrevTxouts: true,
+            );
+            wallet.applyUpdate(update: update);
+            wallet.persist(persister: _requirePersister());
+            return;
+          } catch (error) {
+            lastError = error;
+          } finally {
+            update?.dispose();
+            request?.dispose();
+            requestBuilder?.dispose();
+            client?.dispose();
+          }
+        }
+        throw StateError(
+          'SOCKS5 proxy is unavailable for wallet sync. Clearnet fallback is disabled: ${lastError ?? "No active Electrum servers"}',
+        );
+      }
+
       final wallet = await _loadWallet();
       await _withEsploraFailover<void>((client) {
         final requestBuilder = wallet.startFullScan();
@@ -541,17 +604,101 @@ class BdkWalletService {
     });
   }
 
+  Future<NetworkConfiguration> _loadNetworkConfiguration() async {
+    if (_networkConfiguration != null) {
+      return _networkConfiguration!;
+    }
+    final prefs = await _preferencesLoader();
+    final modeString = prefs.getString(NetworkStorageKeys.transportMode);
+    final transportMode = NetworkTransportMode.fromString(modeString);
+    final host = prefs.getString(NetworkStorageKeys.proxyHost);
+    final port = prefs.getInt(NetworkStorageKeys.proxyPort);
+    final username = prefs.getString(NetworkStorageKeys.proxyUsername);
+    final password = await _secureStorage.read(
+      key: NetworkStorageKeys.proxyPassword,
+    );
+
+    Socks5ProxyConfig? proxyConfig;
+    if (host != null && host.trim().isNotEmpty && port != null && port > 0) {
+      try {
+        proxyConfig = Socks5ProxyConfig(
+          host: host,
+          port: port,
+          username: username,
+          password: password,
+        );
+      } catch (_) {
+        proxyConfig = null;
+      }
+    }
+
+    _networkConfiguration = NetworkConfiguration(
+      transportMode: transportMode,
+      proxyConfig: proxyConfig,
+    );
+    return _networkConfiguration!;
+  }
+
   Future<int> chainHeight() {
     return _guard(
       'read testnet chain height',
-      () => _withEsploraFailover<int>((client) => client.getHeight()),
+      () async {
+        final config = await _loadNetworkConfiguration();
+        if (config.isSocks5) {
+          final proxy = config.activeSocks5Address;
+          if (proxy == null || proxy.isEmpty) {
+            throw StateError(
+              'SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.',
+            );
+          }
+          final prefs = await _preferencesLoader();
+          final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
+          final electrumUrls = [
+            if (customUrl != null) customUrl,
+            'tcp://testnet.aranguren.org:51001',
+            'tcp://testnet.qtornado.com:51001',
+            'tcp://testnet.hsmiths.com:53011',
+          ];
+          Object? lastError;
+          for (final url in electrumUrls) {
+            bdk.ElectrumClient? client;
+            try {
+              client = bdk.ElectrumClient(
+                url: url,
+                socks5: proxy,
+                timeout: 5,
+                retry: 1,
+                validateDomain: false,
+              );
+              final notification = client.blockHeadersSubscribe();
+              return notification.height;
+            } catch (error) {
+              lastError = error;
+            } finally {
+              client?.dispose();
+            }
+          }
+          throw StateError(
+            'SOCKS5 proxy is unavailable to read chain height. Clearnet fallback is disabled: ${lastError ?? "No active Electrum servers"}',
+          );
+        }
+        return _withEsploraFailover<int>((client) => client.getHeight());
+      },
     );
   }
 
   Future<double> estimateFeeSatPerVbyte({int targetBlocks = 3}) {
     return _guard('estimate transaction fee', () async {
+      final config = await _loadNetworkConfiguration();
+      final String? socks5 = config.activeSocks5Address;
+      if (config.isSocks5 && (socks5 == null || socks5.isEmpty)) {
+        throw StateError(
+          'SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.',
+        );
+      }
+
       final prefs = await _preferencesLoader();
-      final customUrl = prefs.getString('settings.custom_electrum_url');
+      final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
 
       final electrumUrls = [
         if (customUrl != null) customUrl,
@@ -562,24 +709,30 @@ class BdkWalletService {
 
       Object? lastError;
       for (final url in electrumUrls) {
-        final client = bdk.ElectrumClient(
-          url: url,
-          socks5: null,
-          timeout: 10,
-          retry: 3,
-          validateDomain: false,
-        );
+        bdk.ElectrumClient? client;
         try {
+          client = bdk.ElectrumClient(
+            url: url,
+            socks5: socks5,
+            timeout: 10,
+            retry: 3,
+            validateDomain: false,
+          );
           final estimate = client.estimateFee(number: targetBlocks);
           return estimate <= 0 ? 1.0 : estimate;
         } catch (error) {
           lastError = error;
         } finally {
-          client.dispose();
+          client?.dispose();
         }
       }
 
       if (lastError != null) {
+        if (config.isSocks5) {
+          throw StateError(
+            'SOCKS5 proxy is unavailable for fee estimation. Clearnet fallback is disabled: $lastError',
+          );
+        }
         throw lastError;
       }
       return 1.0;
@@ -588,8 +741,16 @@ class BdkWalletService {
 
   Future<String> broadcastTransaction(bdk.Transaction transaction) {
     return _guard('broadcast transaction', () async {
+      final config = await _loadNetworkConfiguration();
+      final String? socks5 = config.activeSocks5Address;
+      if (config.isSocks5 && (socks5 == null || socks5.isEmpty)) {
+        throw StateError(
+          'SOCKS5 proxy is enabled but proxy address is missing. Clearnet fallback is disabled.',
+        );
+      }
+
       final prefs = await _preferencesLoader();
-      final customUrl = prefs.getString('settings.custom_electrum_url');
+      final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
 
       final electrumUrls = [
         if (customUrl != null) customUrl,
@@ -600,24 +761,30 @@ class BdkWalletService {
 
       Object? lastError;
       for (final url in electrumUrls) {
-        final client = bdk.ElectrumClient(
-          url: url,
-          socks5: null,
-          timeout: 10,
-          retry: 3,
-          validateDomain: false,
-        );
+        bdk.ElectrumClient? client;
         try {
+          client = bdk.ElectrumClient(
+            url: url,
+            socks5: socks5,
+            timeout: 10,
+            retry: 3,
+            validateDomain: false,
+          );
           final txid = client.transactionBroadcast(tx: transaction);
           return txid.toString();
         } catch (error) {
           lastError = error;
         } finally {
-          client.dispose();
+          client?.dispose();
         }
       }
 
       if (lastError != null) {
+        if (config.isSocks5) {
+          throw StateError(
+            'SOCKS5 proxy is unavailable for transaction broadcast. Clearnet fallback is disabled: $lastError',
+          );
+        }
         throw lastError;
       }
       throw StateError('Broadcast failed: No active Electrum servers');
@@ -635,6 +802,7 @@ class BdkWalletService {
   Future<WalletDiagnostics> diagnostics() async {
     await _loadEndpointPreferences();
     final scriptType = await _readWalletScriptType();
+    final networkConfig = await _loadNetworkConfiguration();
     return WalletDiagnostics(
       networkLabel: AppConstants.networkDisplayName,
       bdkNetwork: _network.name,
@@ -647,6 +815,9 @@ class BdkWalletService {
       walletDatabasePath: await _databasePath(),
       walletExists: await hasWallet(),
       scriptType: scriptType.displayName,
+      transportMode: networkConfig.transportMode.storageValue,
+      proxyAddress: networkConfig.isSocks5 ? networkConfig.proxyConfig?.displayAddress : null,
+      backendType: networkConfig.isSocks5 ? 'Electrum (via SOCKS5)' : 'Electrum / Esplora (Direct)',
     );
   }
 
@@ -1246,7 +1417,8 @@ class BdkWalletService {
       await _resetSession();
 
       final prefs = await _preferencesLoader();
-      final customElectrumUrl = prefs.getString('settings.custom_electrum_url');
+      final customElectrumUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
+      final networkConfig = await _loadNetworkConfiguration();
 
       final params = IsolateSyncParams(
         mnemonic: mnemonic,
@@ -1262,6 +1434,8 @@ class BdkWalletService {
         lookahead: AppConstants.walletAddressDiscoveryStopGap,
         parallelRequests: AppConstants.esploraRequestConcurrency,
         customElectrumUrl: customElectrumUrl,
+        transportMode: networkConfig.transportMode,
+        socks5ProxyAddress: networkConfig.activeSocks5Address,
       );
 
       final result = await _runSyncIsolate(params);
@@ -1296,6 +1470,8 @@ class IsolateSyncParams {
     required this.lookahead,
     required this.parallelRequests,
     this.customElectrumUrl,
+    this.transportMode = NetworkTransportMode.direct,
+    this.socks5ProxyAddress,
   });
 
   final String? mnemonic;
@@ -1311,6 +1487,8 @@ class IsolateSyncParams {
   final int lookahead;
   final int parallelRequests;
   final String? customElectrumUrl;
+  final NetworkTransportMode transportMode;
+  final String? socks5ProxyAddress;
 }
 
 class IsolateTxItem {
@@ -1508,7 +1686,22 @@ Future<IsolateSyncResult> _performBackgroundSync(
     final endpointCount = params.esploraEndpoints.length;
     var activeIndex = params.activeEsploraIndex;
 
-    // Prioritize Electrum sync as it is faster, has connection timeouts, and is not rate-limited.
+    final isSocks5 = params.transportMode == NetworkTransportMode.socks5;
+    final socks5Proxy = isSocks5 ? params.socks5ProxyAddress : null;
+
+    if (isSocks5 && (socks5Proxy == null || socks5Proxy.trim().isEmpty)) {
+      return IsolateSyncResult(
+        confirmedSats: 0,
+        pendingSats: 0,
+        transactions: const [],
+        receiveAddress: '',
+        syncSucceeded: false,
+        syncErrorString:
+            'SOCKS5 proxy is enabled but proxy address is missing or invalid. Clearnet fallback is disabled.',
+        newActiveIndex: params.activeEsploraIndex,
+      );
+    }
+
     final electrumUrls = [
       if (params.customElectrumUrl != null) params.customElectrumUrl!,
       'tcp://testnet.aranguren.org:51001',
@@ -1524,8 +1717,8 @@ Future<IsolateSyncResult> _performBackgroundSync(
       try {
         client = bdk.ElectrumClient(
           url: electrumUrl,
-          socks5: null,
-          timeout: 5,
+          socks5: socks5Proxy,
+          timeout: isSocks5 ? 10 : 5,
           retry: 2,
           validateDomain: false,
         );
@@ -1553,6 +1746,23 @@ Future<IsolateSyncResult> _performBackgroundSync(
     }
 
     if (!syncSucceeded) {
+      if (isSocks5) {
+        // FAIL CLOSED GUARANTEE:
+        // Do NOT call _testHttpsEndpoint!
+        // Do NOT instantiate bdk.EsploraClient!
+        // Do NOT retry Electrum with socks5: null!
+        return IsolateSyncResult(
+          confirmedSats: 0,
+          pendingSats: 0,
+          transactions: const [],
+          receiveAddress: '',
+          syncSucceeded: false,
+          syncErrorString:
+              'SOCKS5 proxy is unavailable. Root Wallet will not fall back to a direct connection: ${lastError ?? "No reachable Electrum backend"}',
+          newActiveIndex: params.activeEsploraIndex,
+        );
+      }
+
       for (var offset = 0; offset < endpointCount; offset++) {
         final index = (activeIndex + offset) % endpointCount;
         final endpoint = params.esploraEndpoints[index];
@@ -1594,7 +1804,7 @@ Future<IsolateSyncResult> _performBackgroundSync(
 
     int? chainHeight;
     if (syncSucceeded) {
-      if (activeIndex < params.esploraEndpoints.length) {
+      if (!isSocks5 && activeIndex < params.esploraEndpoints.length) {
         final endpoint = params.esploraEndpoints[activeIndex];
         bdk.EsploraClient? client;
         try {
