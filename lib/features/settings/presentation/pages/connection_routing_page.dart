@@ -25,13 +25,12 @@ class ConnectionRoutingPage extends ConsumerStatefulWidget {
 class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
   late final TextEditingController _hostController;
   late final TextEditingController _portController;
-  late final TextEditingController _usernameController;
-  late final TextEditingController _passwordController;
 
   NetworkTransportMode _selectedMode = NetworkTransportMode.direct;
   bool _isTesting = false;
   String? _testSuccessMessage;
   String? _testErrorMessage;
+  Socks5ProxyConfig? _lastTestedConfig;
   bool _initialized = false;
 
   @override
@@ -39,16 +38,28 @@ class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
     super.initState();
     _hostController = TextEditingController();
     _portController = TextEditingController();
-    _usernameController = TextEditingController();
-    _passwordController = TextEditingController();
+    _hostController.addListener(_onFieldChanged);
+    _portController.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    final currentConfig = _buildConfigFromInputs(showErrors: false);
+    if (_lastTestedConfig != null && currentConfig != _lastTestedConfig) {
+      if (_testSuccessMessage != null || _testErrorMessage != null) {
+        setState(() {
+          _testSuccessMessage = null;
+          _testErrorMessage = null;
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
+    _hostController.removeListener(_onFieldChanged);
+    _portController.removeListener(_onFieldChanged);
     _hostController.dispose();
     _portController.dispose();
-    _usernameController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
@@ -58,8 +69,9 @@ class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
     if (config.proxyConfig != null) {
       _hostController.text = config.proxyConfig!.host;
       _portController.text = config.proxyConfig!.port.toString();
-      _usernameController.text = config.proxyConfig!.username ?? '';
-      _passwordController.text = config.proxyConfig!.password ?? '';
+      if (config.isProxyVerified) {
+        _lastTestedConfig = config.proxyConfig;
+      }
     } else {
       _hostController.text = '127.0.0.1';
       _portController.text = '9050';
@@ -70,8 +82,6 @@ class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
   Socks5ProxyConfig? _buildConfigFromInputs({bool showErrors = true}) {
     final host = _hostController.text.trim();
     final portStr = _portController.text.trim();
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text;
 
     if (host.isEmpty) {
       if (showErrors) {
@@ -92,8 +102,6 @@ class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
       return Socks5ProxyConfig(
         host: host,
         port: port,
-        username: username.isEmpty ? null : username,
-        password: password.isEmpty ? null : password,
       );
     } catch (e) {
       if (showErrors) {
@@ -128,10 +136,12 @@ class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
     setState(() {
       _isTesting = false;
       if (success) {
+        _lastTestedConfig = config;
         _testSuccessMessage =
             'Connected to Electrum node via SOCKS5 (${config.displayAddress}).';
         _testErrorMessage = null;
       } else {
+        _lastTestedConfig = null;
         _testErrorMessage =
             'SOCKS5 proxy is unavailable. Root Wallet will not fall back to a direct connection. Check proxy host, port, and external Tor/proxy status.';
         _testSuccessMessage = null;
@@ -156,7 +166,7 @@ class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
     final config = _buildConfigFromInputs(showErrors: true);
     if (config == null) return;
 
-    final isVerified = _testSuccessMessage != null;
+    final isVerified = _lastTestedConfig != null && config == _lastTestedConfig;
     try {
       await controller.saveProxyConfig(
         config,
@@ -194,6 +204,11 @@ class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
         ),
         data: (currentConfig) {
           _populateFromConfig(currentConfig);
+
+          final currentFormConfig = _buildConfigFromInputs(showErrors: false);
+          final isConfigVerified = _lastTestedConfig != null &&
+              currentFormConfig != null &&
+              currentFormConfig == _lastTestedConfig;
 
           return ListView(
             padding: EdgeInsets.fromLTRB(
@@ -244,7 +259,7 @@ class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
                     _InputField(
                       controller: _hostController,
                       label: 'Proxy Host or IP',
-                      hintText: '127.0.0.1 or hostname / .onion',
+                      hintText: '127.0.0.1 or localhost / proxy hostname',
                       keyboardType: TextInputType.url,
                     ),
                     const SizedBox(height: RootSpacing.sm),
@@ -255,28 +270,15 @@ class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
-                    const SizedBox(height: RootSpacing.sm),
-                    _InputField(
-                      controller: _usernameController,
-                      label: 'Username (Optional)',
-                      hintText: 'Leave empty if unauthenticated',
-                    ),
-                    const SizedBox(height: RootSpacing.sm),
-                    _InputField(
-                      controller: _passwordController,
-                      label: 'Password (Optional)',
-                      hintText: 'Stored in SecureStorage only',
-                      obscureText: true,
-                    ),
                   ],
                 ),
                 const SizedBox(height: RootSpacing.sm),
-                // Authentication capability disclosure
+                // Honest disclosure
                 const InfoBanner(
                   type: InfoBannerType.info,
                   icon: Icons.shield_outlined,
                   message:
-                      'Note: The underlying Bitcoin Dev Kit (BDK) Electrum client currently supports unauthenticated SOCKS5 proxies. Credentials entered will be securely retained in SecureStorage without transmission.',
+                      'Note: SOCKS5 routing applies to Electrum backends only. Plaintext TCP connections routed through SOCKS5 are not TLS encrypted. Tor .onion addresses are supported for custom Electrum servers. Root Wallet does not bundle an internal Tor daemon.',
                 ),
                 const SizedBox(height: RootSpacing.md),
 
@@ -356,7 +358,7 @@ class _ConnectionRoutingPageState extends ConsumerState<ConnectionRoutingPage> {
                           ),
                           child: Center(
                             child: Text(
-                              _testSuccessMessage != null
+                              isConfigVerified
                                   ? 'Save & Activate'
                                   : 'Save (Unverified)',
                               style: const TextStyle(
@@ -675,7 +677,6 @@ class _InputField extends StatelessWidget {
     this.hintText,
     this.keyboardType,
     this.inputFormatters,
-    this.obscureText = false,
   });
 
   final TextEditingController controller;
@@ -683,7 +684,6 @@ class _InputField extends StatelessWidget {
   final String? hintText;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
-  final bool obscureText;
 
   @override
   Widget build(BuildContext context) {
@@ -707,7 +707,6 @@ class _InputField extends StatelessWidget {
           controller: controller,
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
-          obscureText: obscureText,
           style: TextStyle(
             fontSize: 14,
             color: isDark
@@ -821,7 +820,21 @@ class _TechnicalDisclosuresCard extends StatelessWidget {
           _BulletPoint(
             title: 'Remote DNS resolution:',
             body:
-                'Hostnames are resolved remotely by the SOCKS5 proxy. Tor .onion addresses are supported without local DNS leakage.',
+                'Electrum target hostnames are resolved remotely by the SOCKS5 proxy. Tor v3 .onion Electrum targets are supported without local DNS leakage.',
+            isDark: isDark,
+          ),
+          const SizedBox(height: RootSpacing.xs),
+          _BulletPoint(
+            title: 'Transport encryption vs proxy routing:',
+            body:
+                'SOCKS5 routing hides client IP but does not turn plaintext Electrum TCP (tcp://) into TLS. Use ssl:// for encrypted Electrum traffic with verified domain validation, or .onion for Tor onion end-to-end circuit encryption.',
+            isDark: isDark,
+          ),
+          const SizedBox(height: RootSpacing.xs),
+          _BulletPoint(
+            title: 'Custom backend isolation:',
+            body:
+                'When a custom Electrum server is configured, Root Wallet queries only that server. If it fails, wallet operations fail closed without falling back to public Electrum nodes.',
             isDark: isDark,
           ),
           const SizedBox(height: RootSpacing.xs),

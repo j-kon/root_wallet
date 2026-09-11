@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:bdk_dart/bdk.dart' as bdk;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:root_wallet/app/di/providers.dart';
-import 'package:root_wallet/core/constants/app_constants.dart';
 import 'package:root_wallet/core/network/network_storage_keys.dart';
 import 'package:root_wallet/core/network/network_transport_config.dart';
+import 'package:root_wallet/features/wallet/data/services/bdk_wallet_service.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 
 /// Function signature for probing an Electrum server through a SOCKS5 proxy.
@@ -15,6 +15,8 @@ typedef ProxyConnectionTester = Future<bool> Function({
 });
 
 /// Default connection tester using the real BDK Electrum client in Rust via FFI.
+///
+/// Applies the central Electrum TLS policy (domain validation strictly enforced for ssl://).
 Future<bool> defaultElectrumProxyTester({
   required String electrumUrl,
   required String socks5Address,
@@ -22,12 +24,11 @@ Future<bool> defaultElectrumProxyTester({
 }) async {
   bdk.ElectrumClient? client;
   try {
-    client = bdk.ElectrumClient(
+    client = defaultElectrumClientFactory(
       url: electrumUrl,
       socks5: socks5Address,
       timeout: timeoutSeconds,
       retry: 1,
-      validateDomain: false,
     );
     client.ping();
     return true;
@@ -45,17 +46,12 @@ class NetworkTransportController extends AsyncNotifier<NetworkConfiguration> {
   @override
   Future<NetworkConfiguration> build() async {
     final prefs = await ref.watch(sharedPreferencesProvider.future);
-    final secureStorage = ref.watch(secureStorageProvider);
 
     final modeString = prefs.getString(NetworkStorageKeys.transportMode);
-    final transportMode = NetworkTransportMode.fromString(modeString);
+    final transportMode = NetworkTransportMode.parsePersisted(modeString);
 
     final host = prefs.getString(NetworkStorageKeys.proxyHost);
     final port = prefs.getInt(NetworkStorageKeys.proxyPort);
-    final username = prefs.getString(NetworkStorageKeys.proxyUsername);
-    final password = await secureStorage.read(
-      key: NetworkStorageKeys.proxyPassword,
-    );
 
     Socks5ProxyConfig? proxyConfig;
     if (host != null && host.trim().isNotEmpty && port != null && port > 0) {
@@ -63,8 +59,6 @@ class NetworkTransportController extends AsyncNotifier<NetworkConfiguration> {
         proxyConfig = Socks5ProxyConfig(
           host: host,
           port: port,
-          username: username,
-          password: password,
         );
       } catch (_) {
         proxyConfig = null;
@@ -96,8 +90,7 @@ class NetworkTransportController extends AsyncNotifier<NetworkConfiguration> {
 
   /// Saves the SOCKS5 proxy configuration and optionally activates SOCKS5 mode.
   ///
-  /// Non-secret values (host, port, username) are stored in [SharedPreferences].
-  /// Passwords, if present, are stored strictly in [SecureStorage].
+  /// Non-secret values (host, port) are stored in [SharedPreferences].
   Future<void> saveProxyConfig(
     Socks5ProxyConfig config, {
     bool activate = true,
@@ -106,32 +99,13 @@ class NetworkTransportController extends AsyncNotifier<NetworkConfiguration> {
     final prefs = await ref.read(sharedPreferencesProvider.future);
     final secureStorage = ref.read(secureStorageProvider);
 
-    // Persist non-secrets to SharedPreferences
+    // Persist proxy endpoint
     await prefs.setString(NetworkStorageKeys.proxyHost, config.host);
     await prefs.setInt(NetworkStorageKeys.proxyPort, config.port);
 
-    if (config.username != null && config.username!.isNotEmpty) {
-      await prefs.setString(NetworkStorageKeys.proxyUsername, config.username!);
-    } else {
-      await prefs.remove(NetworkStorageKeys.proxyUsername);
-    }
-
-    // Persist secret strictly to SecureStorage
-    if (config.password != null && config.password!.isNotEmpty) {
-      try {
-        await secureStorage.write(
-          key: NetworkStorageKeys.proxyPassword,
-          value: config.password!,
-        );
-      } catch (error) {
-        // If secure storage write fails, do not activate authenticated proxy
-        throw StateError(
-          'Failed to securely store proxy password. Authentication cannot be enabled.',
-        );
-      }
-    } else {
-      await secureStorage.delete(key: NetworkStorageKeys.proxyPassword);
-    }
+    // Clean up any legacy credential keys if previously stored
+    await prefs.remove('settings.network.proxy_username');
+    await secureStorage.delete(key: 'secure.settings.network.proxy_password');
 
     final mode = activate ? NetworkTransportMode.socks5 : NetworkTransportMode.direct;
     await prefs.setString(NetworkStorageKeys.transportMode, mode.storageValue);
@@ -153,11 +127,14 @@ class NetworkTransportController extends AsyncNotifier<NetworkConfiguration> {
 
   /// Tests connectivity to an Electrum server through the configured SOCKS5 proxy
   /// using the real [bdk.ElectrumClient] via Rust FFI.
+  ///
+  /// Tests the EXACT runtime target: custom Electrum URL if configured, or default fallback.
   Future<bool> testConnection(Socks5ProxyConfig config) async {
     final tester = ref.read(proxyConnectionTesterProvider);
     final prefs = await ref.read(sharedPreferencesProvider.future);
     final customUrl = prefs.getString(NetworkStorageKeys.customElectrumUrl);
-    final electrumUrl = customUrl ?? AppConstants.testnetElectrumUrl;
+    final electrumUrls = resolveElectrumEndpoints(customUrl: customUrl);
+    final electrumUrl = electrumUrls.first;
 
     try {
       final success = await tester(
