@@ -7,7 +7,10 @@ import 'package:root_wallet/features/rates/presentation/providers/rates_provider
 import 'package:root_wallet/features/settings/presentation/providers/security_providers.dart';
 import 'package:root_wallet/features/wallet/domain/entities/balance.dart';
 import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/wallet_home_page.dart';
+import 'package:root_wallet/features/notifications/presentation/providers/notifications_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -171,18 +174,177 @@ void main() {
       expect(find.text('Review phrase'), findsNothing);
     },
   );
+
+  testWidgets(
+    'wallet home top bar has no settings icon and displays notifications button',
+    (WidgetTester tester) async {
+      await _pumpWalletHome(
+        tester,
+        state: WalletHomeState(
+          balance: const Balance(confirmedSats: 10000),
+          transactions: const [],
+          receiveAddress: 'tb1qlive',
+          lastSyncedAt: DateTime.now(),
+          isOffline: false,
+          isSyncing: false,
+        ),
+      );
+
+      // Settings icon MUST NOT be present in the home top bar
+      expect(find.byIcon(Icons.settings_outlined), findsNothing);
+
+      // Notifications button MUST be present
+      expect(
+        find.byKey(const ValueKey('home_notifications_button')),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'tapping notifications button triggers onNotificationsRequested callback',
+    (WidgetTester tester) async {
+      var notificationsTapped = false;
+      await _pumpWalletHome(
+        tester,
+        onNotificationsRequested: () {
+          notificationsTapped = true;
+        },
+        state: WalletHomeState(
+          balance: const Balance(confirmedSats: 10000),
+          transactions: const [],
+          receiveAddress: 'tb1qlive',
+          lastSyncedAt: DateTime.now(),
+          isOffline: false,
+          isSyncing: false,
+        ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('home_notifications_button')));
+      await tester.pumpAndSettle();
+
+      expect(notificationsTapped, isTrue);
+    },
+  );
+
+  testWidgets(
+    'home notifications button has accessible Semantics label indicating unread count',
+    (WidgetTester tester) async {
+      // 0 unread: plain label
+      await _pumpWalletHome(
+        tester,
+        unreadNotificationsCount: 0,
+        state: WalletHomeState(
+          balance: const Balance(confirmedSats: 10000),
+          transactions: const [],
+          receiveAddress: 'tb1qlive',
+          lastSyncedAt: DateTime.now(),
+          isOffline: false,
+          isSyncing: false,
+        ),
+      );
+
+      expect(find.bySemanticsLabel('Notifications'), findsOneWidget);
+
+      // 3 unread: label includes unread count
+      await _pumpWalletHome(
+        tester,
+        unreadNotificationsCount: 3,
+        state: WalletHomeState(
+          balance: const Balance(confirmedSats: 10000),
+          transactions: const [],
+          receiveAddress: 'tb1qlive',
+          lastSyncedAt: DateTime.now(),
+          isOffline: false,
+          isSyncing: false,
+        ),
+      );
+
+      expect(find.bySemanticsLabel('Notifications, 3 unread'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'wallet switcher chip displays ACTIVE WALLET label and triggers switcher modal',
+    (WidgetTester tester) async {
+      await _pumpWalletHome(
+        tester,
+        state: WalletHomeState(
+          balance: const Balance(confirmedSats: 10000),
+          transactions: const [],
+          receiveAddress: 'tb1qlive',
+          lastSyncedAt: DateTime.now(),
+          isOffline: false,
+          isSyncing: false,
+        ),
+      );
+
+      // Active wallet label should be prominent
+      expect(find.text('ACTIVE WALLET'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('wallet_switcher_trigger')),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.unfold_more_rounded), findsOneWidget);
+
+      // Tap to open modal
+      await tester.tap(find.byKey(const ValueKey('wallet_switcher_trigger')));
+      await tester.pumpAndSettle();
+
+      // Modal bottom sheet should appear with Your Wallets
+      expect(find.text('Your Wallets'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'wallet switcher displays WATCH ONLY badge when active wallet is watch-only',
+    (WidgetTester tester) async {
+      final watchOnlyWallet = WalletRecord(
+        id: 'w_watch',
+        name: 'Cold Storage Vault',
+        type: WalletType.watchOnly,
+        scriptType: WalletScriptType.nativeSegwit,
+        network: 'testnet',
+        createdAt: DateTime(2026, 1, 1),
+      );
+
+      await _pumpWalletHome(
+        tester,
+        activeWallet: watchOnlyWallet,
+        state: WalletHomeState(
+          balance: const Balance(confirmedSats: 50000),
+          transactions: const [],
+          receiveAddress: 'tb1qwatch',
+          lastSyncedAt: DateTime.now(),
+          isOffline: false,
+          isSyncing: false,
+        ),
+      );
+
+      expect(find.text('ACTIVE WALLET'), findsOneWidget);
+      expect(find.text('Cold Storage Vault'), findsOneWidget);
+      expect(find.text('WATCH ONLY'), findsWidgets);
+    },
+  );
 }
 
 Future<void> _pumpWalletHome(
   WidgetTester tester, {
   required WalletHomeState state,
   VoidCallback? onActivityRequested,
+  VoidCallback? onNotificationsRequested,
   bool isBackupConfirmed = false,
+  WalletRecord? activeWallet,
+  int unreadNotificationsCount = 0,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        unreadNotificationCountProvider.overrideWithValue(unreadNotificationsCount),
+        if (activeWallet != null)
+          activeWalletRecordProvider.overrideWithValue(activeWallet),
         walletHomeControllerProvider.overrideWith(
           () => _FakeWalletHomeController(state),
         ),
@@ -201,7 +363,10 @@ Future<void> _pumpWalletHome(
       child: MaterialApp(
         theme: buildAppTheme(),
         darkTheme: buildAppTheme(brightness: Brightness.dark),
-        home: WalletHomePage(onActivityRequested: onActivityRequested),
+        home: WalletHomePage(
+          onActivityRequested: onActivityRequested,
+          onNotificationsRequested: onNotificationsRequested,
+        ),
       ),
     ),
   );

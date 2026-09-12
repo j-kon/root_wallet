@@ -17,6 +17,7 @@ import 'package:root_wallet/features/wallet/domain/entities/wallet_diagnostics.d
 import 'package:root_wallet/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BdkWalletServiceException implements Exception {
@@ -141,13 +142,16 @@ class BdkWalletService {
   String? _lastBackendFailure;
   DateTime? _lastBackendFailureAt;
   bool _isDecoyActive = false;
+  final ValueNotifier<bool> _decoyNotifier = ValueNotifier<bool>(false);
 
+  ValueListenable<bool> get decoyListenable => _decoyNotifier;
   bool get isDecoyActive => _isDecoyActive;
 
   void setDecoyActive(bool active) {
     if (_isDecoyActive != active) {
       _isDecoyActive = active;
       _resetSession();
+      _decoyNotifier.value = active;
     }
   }
 

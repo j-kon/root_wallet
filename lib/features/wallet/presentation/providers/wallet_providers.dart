@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bdk_dart/bdk_dart.dart' as bdk;
 import 'package:root_wallet/app/di/providers.dart';
 import 'package:root_wallet/core/constants/app_constants.dart';
+import 'package:root_wallet/features/notifications/presentation/providers/notifications_providers.dart';
 import 'package:root_wallet/features/wallet/data/datasources/bdk_sync_datasource.dart';
 import 'package:root_wallet/features/wallet/data/services/bip329_service.dart';
 import 'package:root_wallet/features/wallet/data/datasources/wallet_label_store.dart';
@@ -190,6 +191,11 @@ class WalletsListNotifier extends AsyncNotifier<List<WalletRecord>> {
     // F. Remove target from registry only after cleanup succeeds
     await registry.deleteWallet(walletId);
 
+    // Clean up scoped notifications for this deleted wallet
+    await ref
+        .read(notificationsProvider.notifier)
+        .removeNotificationsForWallet(walletId);
+
     // G & H. Refresh UI
     await refresh();
   }
@@ -227,6 +233,29 @@ final bdkWalletServiceProvider = Provider<BdkWalletService>(
     });
     return service;
   },
+);
+
+class DecoyModeNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    final service = ref.watch(bdkWalletServiceProvider);
+    void listener() {
+      state = service.isDecoyActive;
+    }
+
+    service.decoyListenable.addListener(listener);
+    ref.onDispose(() => service.decoyListenable.removeListener(listener));
+    return service.isDecoyActive;
+  }
+
+  void setDecoyActive(bool active) {
+    ref.read(bdkWalletServiceProvider).setDecoyActive(active);
+    state = active;
+  }
+}
+
+final isDecoyModeProvider = NotifierProvider<DecoyModeNotifier, bool>(
+  DecoyModeNotifier.new,
 );
 
 

@@ -20,6 +20,8 @@ import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page.
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/balance_card.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/tx_list.dart';
+import 'package:flutter/services.dart';
+import 'package:root_wallet/features/notifications/presentation/providers/notifications_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/widgets/wallet_switcher_modal.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 import 'package:root_wallet/shared/widgets/primary_action_button.dart';
@@ -32,12 +34,14 @@ class WalletHomePage extends ConsumerWidget {
     this.onSendRequested,
     this.onSettingsRequested,
     this.onActivityRequested,
+    this.onNotificationsRequested,
   });
 
   final VoidCallback? onReceiveRequested;
   final VoidCallback? onSendRequested;
   final VoidCallback? onSettingsRequested;
   final VoidCallback? onActivityRequested;
+  final VoidCallback? onNotificationsRequested;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,44 +62,125 @@ class WalletHomePage extends ConsumerWidget {
     final walletLabels = ref.watch(walletLabelsControllerProvider);
     final scriptTypeAsync = ref.watch(walletScriptTypeProvider);
     final capabilityAsync = ref.watch(walletCapabilityProvider);
-    final isWatchOnly = capabilityAsync.valueOrNull?.isWatchOnly ?? false;
-    final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
     final activeWallet = ref.watch(activeWalletRecordProvider);
+    final isWatchOnly = (activeWallet?.isWatchOnly ?? false) ||
+        (capabilityAsync.valueOrNull?.isWatchOnly ?? false);
+    final isBackupConfirmed = backupConfirmed.valueOrNull ?? false;
+    final unreadNotificationsCount =
+        ref.watch(unreadNotificationCountProvider);
     const networkLabel = AppConstants.networkDisplayName;
 
     return AppScaffold(
-      titleWidget: InkWell(
-        key: const ValueKey('wallet_switcher_trigger'),
-        borderRadius: BorderRadius.circular(RootRadius.pill),
-        onTap: () => WalletSwitcherModal.show(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                isDark
-                    ? 'assets/branding/logo/root-mark-warm-ivory-64.png'
-                    : 'assets/branding/logo/root-mark-pine-green-64.png',
-                width: 22,
-                height: 22,
+      titleWidget: Semantics(
+        label: 'Active wallet switcher, currently ${activeWallet?.name ?? "Wallet"}',
+        button: true,
+        child: InkWell(
+          key: const ValueKey('wallet_switcher_trigger'),
+          borderRadius: BorderRadius.circular(RootRadius.lg),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            WalletSwitcherModal.show(context);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? RootBrandColors.nightPine
+                  : RootBrandColors.pureWhite,
+              borderRadius: BorderRadius.circular(RootRadius.lg),
+              border: Border.all(
+                color: isDark
+                    ? RootBrandColors.borderPine
+                    : const Color(0xFFD7E3DC),
+                width: 1.0,
               ),
-              const SizedBox(width: RootSpacing.sm),
-              Flexible(
-                child: Text(
-                  activeWallet?.name ?? 'Wallet',
-                  style: Theme.of(context).appBarTheme.titleTextStyle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  isDark
+                      ? 'assets/branding/logo/root-mark-warm-ivory-64.png'
+                      : 'assets/branding/logo/root-mark-pine-green-64.png',
+                  width: 20,
+                  height: 20,
                 ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 20,
-                color: textSecondary,
-              ),
-            ],
+                const SizedBox(width: RootSpacing.xs),
+                Flexible(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ACTIVE WALLET',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: isDark
+                              ? RootBrandColors.mutedSage
+                              : const Color(0xFF5E6F68),
+                          height: 1.1,
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              activeWallet?.name ?? 'Wallet',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: textPrimary,
+                                height: 1.2,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isWatchOnly) ...[
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: RootBrandColors.amberAccent
+                                    .withValues(alpha: 0.15),
+                                borderRadius:
+                                    BorderRadius.circular(RootRadius.xs),
+                                border: Border.all(
+                                  color: RootBrandColors.amberAccent
+                                      .withValues(alpha: 0.4),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: const Text(
+                                'WATCH ONLY',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.4,
+                                  color: RootBrandColors.amberAccent,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: RootSpacing.xs),
+                Icon(
+                  Icons.unfold_more_rounded,
+                  size: 18,
+                  color: textSecondary,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -111,34 +196,6 @@ class WalletHomePage extends ConsumerWidget {
                 : Icons.refresh_rounded,
           ),
         ),
-        if (isWatchOnly)
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(right: RootSpacing.xs),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: RootSpacing.sm,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: RootBrandColors.amberAccent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(RootRadius.pill),
-                  border: Border.all(
-                    color: RootBrandColors.amberAccent,
-                    width: 1.0,
-                  ),
-                ),
-                child: const Text(
-                  'WATCH ONLY',
-                  style: TextStyle(
-                    color: RootBrandColors.amberAccent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
         Center(
           child: Padding(
             padding: const EdgeInsets.only(right: RootSpacing.xs),
@@ -185,10 +242,37 @@ class WalletHomePage extends ConsumerWidget {
           ),
         ),
         IconButton(
-          onPressed:
-              onSettingsRequested ??
-              () => Navigator.of(context).pushNamed(AppRoutes.settings),
-          icon: const Icon(Icons.settings_outlined),
+          key: const ValueKey('home_notifications_button'),
+          onPressed: onNotificationsRequested ??
+              () {
+                HapticFeedback.selectionClick();
+                Navigator.of(context).pushNamed(AppRoutes.notifications);
+              },
+          tooltip: 'Notifications',
+          icon: Semantics(
+            label: unreadNotificationsCount > 0
+                ? 'Notifications, $unreadNotificationsCount unread'
+                : 'Notifications',
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (unreadNotificationsCount > 0)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: RootBrandColors.amberAccent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ],
       body: walletState.when(
