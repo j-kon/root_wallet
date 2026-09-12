@@ -18,6 +18,9 @@ void main() {
       prefs = await SharedPreferences.getInstance();
     });
 
+    const testWallet1 = 'w_11111111-1111-4111-8111-111111111111';
+    const testWallet2 = 'w_22222222-2222-4222-8222-222222222222';
+
     final testNotifications = [
       WalletNotification(
         id: 'n1',
@@ -25,7 +28,7 @@ void main() {
         message: 'Your Bitcoin testnet wallet is initialized.',
         category: NotificationCategory.wallet,
         createdAt: DateTime(2026, 1, 1, 12, 0),
-        walletId: 'w1',
+        walletId: testWallet1,
         walletName: 'Main Wallet',
         isRead: false,
       ),
@@ -35,10 +38,10 @@ void main() {
         message: 'Back up your 12-word seed phrase.',
         category: NotificationCategory.security,
         createdAt: DateTime(2026, 1, 1, 11, 0),
-        walletId: 'w2',
+        walletId: testWallet2,
         walletName: 'Savings',
         isRead: false,
-        routeTarget: AppRoutes.security,
+        action: NotificationAction.security,
       ),
       WalletNotification(
         id: 'n3',
@@ -47,7 +50,7 @@ void main() {
         category: NotificationCategory.system,
         createdAt: DateTime(2026, 1, 1, 10, 0),
         isRead: true,
-        routeTarget: AppRoutes.connectionRouting,
+        action: NotificationAction.connectionRouting,
       ),
     ];
 
@@ -191,25 +194,25 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      // Initial read will seed default notifications and persist them
+      // Fresh install starts with an empty list (no fabricated defaults)
       final initial = container.read(notificationsProvider);
-      expect(initial.isNotEmpty, isTrue);
+      expect(initial.isEmpty, isTrue);
 
       // Add a wallet-scoped notification
+      const customWalletId = 'w_33333333-3333-4333-8333-333333333333';
       final custom = WalletNotification(
         id: 'custom_1',
         title: 'Custom Testnet Alert',
         message: 'A testnet transaction was detected.',
         category: NotificationCategory.transaction,
         createdAt: DateTime(2026, 1, 2),
-        walletId: 'w_custom',
+        walletId: customWalletId,
         walletName: 'Test Wallet',
         isRead: false,
       );
 
-      container.read(notificationsProvider.notifier).addNotification(custom);
+      await container.read(notificationsProvider.notifier).addNotification(custom);
       expect(container.read(notificationsProvider).first.id, 'custom_1');
-      await Future<void>.delayed(const Duration(milliseconds: 50));
 
       // Create a second container simulating app restart with the same prefs
       final restartContainer = ProviderContainer(
@@ -223,7 +226,7 @@ void main() {
       expect(restored.any((n) => n.id == 'custom_1'), isTrue);
       final restoredCustom = restored.firstWhere((n) => n.id == 'custom_1');
       expect(restoredCustom.title, 'Custom Testnet Alert');
-      expect(restoredCustom.walletId, 'w_custom');
+      expect(restoredCustom.walletId, customWalletId);
       expect(restoredCustom.walletName, 'Test Wallet');
       expect(restoredCustom.category, NotificationCategory.transaction);
     });
@@ -232,10 +235,10 @@ void main() {
       final notifA = WalletNotification(
         id: 'na',
         title: 'Wallet A received funds',
-        message: '0.001 BTC received.',
+        message: 'Transaction detected.',
         category: NotificationCategory.transaction,
         createdAt: DateTime(2026, 1, 1),
-        walletId: 'w_a',
+        walletId: testWallet1,
         walletName: 'Wallet A',
       );
       final notifB = WalletNotification(
@@ -244,16 +247,17 @@ void main() {
         message: 'Backup required.',
         category: NotificationCategory.backup,
         createdAt: DateTime(2026, 1, 2),
-        walletId: 'w_b',
+        walletId: testWallet2,
         walletName: 'Wallet B',
+        action: NotificationAction.backup,
       );
 
       final list = [notifA, notifB];
 
       // Scoping is immutable to walletId and does not leak or mutate
-      expect(list[0].walletId, 'w_a');
+      expect(list[0].walletId, testWallet1);
       expect(list[0].walletName, 'Wallet A');
-      expect(list[1].walletId, 'w_b');
+      expect(list[1].walletId, testWallet2);
       expect(list[1].walletName, 'Wallet B');
     });
   });

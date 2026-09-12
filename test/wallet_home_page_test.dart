@@ -10,6 +10,7 @@ import 'package:root_wallet/features/wallet/domain/entities/tx_item.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 import 'package:root_wallet/features/wallet/domain/entities/wallet_script_type.dart';
 import 'package:root_wallet/features/wallet/presentation/pages/wallet_home_page.dart';
+import 'package:root_wallet/features/notifications/presentation/providers/notifications_providers.dart';
 import 'package:root_wallet/features/wallet/presentation/providers/wallet_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -228,6 +229,43 @@ void main() {
   );
 
   testWidgets(
+    'home notifications button has accessible Semantics label indicating unread count',
+    (WidgetTester tester) async {
+      // 0 unread: plain label
+      await _pumpWalletHome(
+        tester,
+        unreadNotificationsCount: 0,
+        state: WalletHomeState(
+          balance: const Balance(confirmedSats: 10000),
+          transactions: const [],
+          receiveAddress: 'tb1qlive',
+          lastSyncedAt: DateTime.now(),
+          isOffline: false,
+          isSyncing: false,
+        ),
+      );
+
+      expect(find.bySemanticsLabel('Notifications'), findsOneWidget);
+
+      // 3 unread: label includes unread count
+      await _pumpWalletHome(
+        tester,
+        unreadNotificationsCount: 3,
+        state: WalletHomeState(
+          balance: const Balance(confirmedSats: 10000),
+          transactions: const [],
+          receiveAddress: 'tb1qlive',
+          lastSyncedAt: DateTime.now(),
+          isOffline: false,
+          isSyncing: false,
+        ),
+      );
+
+      expect(find.bySemanticsLabel('Notifications, 3 unread'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'wallet switcher chip displays ACTIVE WALLET label and triggers switcher modal',
     (WidgetTester tester) async {
       await _pumpWalletHome(
@@ -298,11 +336,13 @@ Future<void> _pumpWalletHome(
   VoidCallback? onNotificationsRequested,
   bool isBackupConfirmed = false,
   WalletRecord? activeWallet,
+  int unreadNotificationsCount = 0,
 }) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        unreadNotificationCountProvider.overrideWithValue(unreadNotificationsCount),
         if (activeWallet != null)
           activeWalletRecordProvider.overrideWithValue(activeWallet),
         walletHomeControllerProvider.overrideWith(

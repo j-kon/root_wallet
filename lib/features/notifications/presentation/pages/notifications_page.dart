@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:root_wallet/app/routing/routes.dart';
 import 'package:root_wallet/app/theme/brand/root_brand_colors.dart';
 import 'package:root_wallet/app/theme/brand/root_brand_radius.dart';
 import 'package:root_wallet/app/theme/brand/root_brand_spacing.dart';
@@ -9,6 +10,7 @@ import 'package:root_wallet/core/widgets/app_scaffold.dart';
 import 'package:root_wallet/core/widgets/empty_state.dart';
 import 'package:root_wallet/features/notifications/domain/entities/notification_item.dart';
 import 'package:root_wallet/features/notifications/presentation/providers/notifications_providers.dart';
+import 'package:root_wallet/features/wallet/presentation/pages/backup_seed_page_args.dart';
 import 'package:root_wallet/shared/extensions/context_x.dart';
 
 enum _NotificationFilter { all, unread }
@@ -53,7 +55,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     final textSecondary =
         isDark ? RootBrandColors.mutedSage : const Color(0xFF5E6F68);
 
-    final notifications = ref.watch(notificationsProvider);
+    final notifications = ref.watch(visibleNotificationsProvider);
     final unreadCount = ref.watch(unreadNotificationCountProvider);
 
     final filteredList = switch (_filter) {
@@ -68,9 +70,18 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         if (unreadCount > 0)
           TextButton(
             key: const ValueKey('notifications_mark_all_read_button'),
-            onPressed: () {
+            onPressed: () async {
               HapticFeedback.selectionClick();
-              ref.read(notificationsProvider.notifier).markAllAsRead();
+              final ok = await ref
+                  .read(notificationsProvider.notifier)
+                  .markAllAsRead();
+              if (!ok && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Notification change could not be saved.'),
+                  ),
+                );
+              }
             },
             child: const Text(
               'Mark all as read',
@@ -148,16 +159,24 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                         isDark: isDark,
                         textPrimary: textPrimary,
                         textSecondary: textSecondary,
-                        onTap: () {
+                        onTap: () async {
                           HapticFeedback.selectionClick();
                           if (!item.isRead) {
-                            ref
+                            final ok = await ref
                                 .read(notificationsProvider.notifier)
                                 .markAsRead(item.id);
+                            if (!ok && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Notification change could not be saved.',
+                                  ),
+                                ),
+                              );
+                            }
                           }
-                          if (item.routeTarget != null) {
-                            Navigator.of(context).pushNamed(item.routeTarget!);
-                          }
+                          if (!context.mounted) return;
+                          _handleAction(context, item);
                         },
                       );
                     },
@@ -166,6 +185,30 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         ],
       ),
     );
+  }
+
+  void _handleAction(BuildContext context, WalletNotification item) {
+    final action = item.action;
+    if (action == null) return;
+
+    switch (action) {
+      case NotificationAction.security:
+        Navigator.of(context).pushNamed(AppRoutes.security);
+      case NotificationAction.connectionRouting:
+        Navigator.of(context).pushNamed(AppRoutes.connectionRouting);
+      case NotificationAction.backup:
+        final walletId = item.walletId;
+        if (walletId != null) {
+          Navigator.of(context).pushNamed(
+            AppRoutes.backupSeed,
+            arguments: BackupSeedPageArgs(
+              walletId: walletId,
+              requireReauth: true,
+              isOnboardingFlow: false,
+            ),
+          );
+        }
+    }
   }
 }
 
@@ -416,7 +459,7 @@ class _NotificationCard extends StatelessWidget {
                   ),
 
                   // Optional action indicator
-                  if (item.routeTarget != null) ...[
+                  if (item.action != null) ...[
                     const SizedBox(height: RootSpacing.xs),
                     Row(
                       children: [

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:root_wallet/features/wallet/domain/entities/wallet_record.dart';
 
 /// Categories of notifications in Root Wallet.
 enum NotificationCategory {
@@ -19,10 +20,25 @@ enum NotificationCategory {
       };
 }
 
-/// A product notification item.
+/// Typed safe actions for in-app navigation from notifications.
+enum NotificationAction {
+  security,
+  connectionRouting,
+  backup;
+
+  static NotificationAction? tryParse(String? value) {
+    if (value == null) return null;
+    for (final action in NotificationAction.values) {
+      if (action.name == value) return action;
+    }
+    return null;
+  }
+}
+
+/// A validated, immutable local notification item.
 @immutable
 class WalletNotification {
-  const WalletNotification({
+  WalletNotification({
     required this.id,
     required this.title,
     required this.message,
@@ -31,8 +47,19 @@ class WalletNotification {
     this.walletId,
     this.walletName,
     this.isRead = false,
-    this.routeTarget,
-  });
+    this.action,
+  }) {
+    validate(
+      id: id,
+      title: title,
+      message: message,
+      category: category,
+      createdAt: createdAt,
+      walletId: walletId,
+      walletName: walletName,
+      action: action,
+    );
+  }
 
   final String id;
   final String? walletId;
@@ -42,9 +69,77 @@ class WalletNotification {
   final String message;
   final DateTime createdAt;
   final bool isRead;
-  final String? routeTarget;
+  final NotificationAction? action;
 
   DateTime get timestamp => createdAt;
+
+  static void validate({
+    required String id,
+    required String title,
+    required String message,
+    required NotificationCategory category,
+    required DateTime createdAt,
+    String? walletId,
+    String? walletName,
+    NotificationAction? action,
+  }) {
+    if (id.trim().isEmpty || id.length > 128) {
+      throw const FormatException(
+        'Invalid notification ID: must be non-empty and at most 128 characters.',
+      );
+    }
+    if (title.trim().isEmpty || title.length > 256) {
+      throw const FormatException(
+        'Invalid notification title: must be non-empty and at most 256 characters.',
+      );
+    }
+    if (message.length > 1024) {
+      throw const FormatException(
+        'Invalid notification message: exceeds maximum length of 1024 characters.',
+      );
+    }
+    if (walletName != null) {
+      if (walletName.trim().isEmpty || walletName.length > 128) {
+        throw const FormatException(
+          'Invalid notification walletName: must be non-empty and at most 128 characters.',
+        );
+      }
+      if (walletId == null) {
+        throw const FormatException(
+          'Invalid notification: walletName supplied without a valid walletId.',
+        );
+      }
+    }
+    if (walletId != null) {
+      WalletRecord.validateWalletId(walletId);
+    }
+    if (action == NotificationAction.backup && walletId == null) {
+      throw const FormatException(
+        'Invalid notification: backup action requires a non-null walletId.',
+      );
+    }
+  }
+
+  /// Safe generator for recovery-phrase backup reminders that respects watch-only status.
+  static WalletNotification? createBackupReminder({
+    required WalletRecord wallet,
+    String? customId,
+  }) {
+    if (wallet.isWatchOnly) {
+      return null;
+    }
+    return WalletNotification(
+      id: customId ?? 'backup_reminder_${wallet.id}',
+      title: 'Secure your recovery phrase',
+      message:
+          'Back up your 12-word seed phrase and verify it to protect your wallet from permanent data loss.',
+      category: NotificationCategory.backup,
+      createdAt: DateTime.now(),
+      walletId: wallet.id,
+      walletName: wallet.name,
+      action: NotificationAction.backup,
+    );
+  }
 
   WalletNotification copyWith({
     String? id,
@@ -55,7 +150,7 @@ class WalletNotification {
     String? message,
     DateTime? createdAt,
     bool? isRead,
-    String? routeTarget,
+    NotificationAction? action,
   }) {
     return WalletNotification(
       id: id ?? this.id,
@@ -66,7 +161,7 @@ class WalletNotification {
       message: message ?? this.message,
       createdAt: createdAt ?? this.createdAt,
       isRead: isRead ?? this.isRead,
-      routeTarget: routeTarget ?? this.routeTarget,
+      action: action ?? this.action,
     );
   }
 
@@ -80,28 +175,65 @@ class WalletNotification {
       'message': message,
       'createdAt': createdAt.toIso8601String(),
       'isRead': isRead,
-      if (routeTarget != null) 'routeTarget': routeTarget,
+      if (action != null) 'action': action!.name,
     };
   }
 
   factory WalletNotification.fromJson(Map<String, dynamic> json) {
-    final categoryStr = json['category'] as String? ?? 'system';
+    final id = json['id'];
+    if (id is! String) {
+      throw const FormatException('Invalid or missing notification "id".');
+    }
+
+    final title = json['title'];
+    if (title is! String) {
+      throw const FormatException('Invalid or missing notification "title".');
+    }
+
+    final message = json['message'];
+    if (message is! String) {
+      throw const FormatException('Invalid or missing notification "message".');
+    }
+
+    final isRead = json['isRead'];
+    if (isRead is! bool) {
+      throw const FormatException('Invalid or missing notification "isRead" boolean.');
+    }
+
+    final categoryStr = json['category'];
+    if (categoryStr is! String) {
+      throw const FormatException('Invalid or missing notification "category".');
+    }
     final category = NotificationCategory.values.firstWhere(
       (c) => c.name == categoryStr,
-      orElse: () => NotificationCategory.system,
+      orElse: () => throw FormatException('Unsupported category "$categoryStr".'),
     );
 
+    final createdAtRaw = json['createdAt'];
+    if (createdAtRaw is! String) {
+      throw const FormatException('Invalid or missing notification "createdAt".');
+    }
+    final createdAt = DateTime.tryParse(createdAtRaw);
+    if (createdAt == null) {
+      throw FormatException('Malformed createdAt ISO timestamp: "$createdAtRaw".');
+    }
+
+    final walletId = json['walletId'] as String?;
+    final walletName = json['walletName'] as String?;
+
+    final actionRaw = json['action'];
+    final action = actionRaw is String ? NotificationAction.tryParse(actionRaw) : null;
+
     return WalletNotification(
-      id: json['id'] as String,
-      walletId: json['walletId'] as String?,
-      walletName: json['walletName'] as String?,
+      id: id,
+      title: title,
+      message: message,
       category: category,
-      title: json['title'] as String,
-      message: json['message'] as String,
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
-          DateTime.now(),
-      isRead: json['isRead'] as bool? ?? false,
-      routeTarget: json['routeTarget'] as String?,
+      createdAt: createdAt,
+      walletId: walletId,
+      walletName: walletName,
+      isRead: isRead,
+      action: action,
     );
   }
 
@@ -118,7 +250,7 @@ class WalletNotification {
           category == other.category &&
           createdAt == other.createdAt &&
           isRead == other.isRead &&
-          routeTarget == other.routeTarget;
+          action == other.action;
 
   @override
   int get hashCode => Object.hash(
@@ -130,7 +262,7 @@ class WalletNotification {
         category,
         createdAt,
         isRead,
-        routeTarget,
+        action,
       );
 }
 

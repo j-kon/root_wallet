@@ -249,24 +249,29 @@ class WalletHomePage extends ConsumerWidget {
                 Navigator.of(context).pushNamed(AppRoutes.notifications);
               },
           tooltip: 'Notifications',
-          icon: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              const Icon(Icons.notifications_outlined),
-              if (unreadNotificationsCount > 0)
-                Positioned(
-                  top: -2,
-                  right: -2,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: RootBrandColors.amberAccent,
-                      shape: BoxShape.circle,
+          icon: Semantics(
+            label: unreadNotificationsCount > 0
+                ? 'Notifications, $unreadNotificationsCount unread'
+                : 'Notifications',
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (unreadNotificationsCount > 0)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: RootBrandColors.amberAccent,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
